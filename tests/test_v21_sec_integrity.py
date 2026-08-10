@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from stock_agent.capital_structure import build_capital_structure
 from stock_agent.edgar_documents import ExhibitResolver
@@ -19,6 +20,56 @@ class FilingLifecycleTests(unittest.TestCase):
 
 
 class FinancialOntologyTests(unittest.TestCase):
+    @staticmethod
+    def _companyfacts_payload(rows):
+        return {"facts": {"us-gaap": {
+            "RevenueFromContractWithCustomerExcludingAssessedTax": {
+                "units": {"USD": rows}
+            }
+        }}}
+
+    def test_companyfacts_facts_prefers_direct_standalone_q2(self):
+        provider = SECCompanyFactsProvider("Agent test@example.com")
+        payload = self._companyfacts_payload([
+            {"start": "2026-01-01", "end": "2026-06-30", "val": 300,
+             "form": "10-Q", "filed": "2026-08-06", "fy": 2026, "fp": "Q2",
+             "accn": "YTD"},
+            {"start": "2026-01-01", "end": "2026-03-31", "val": 100,
+             "form": "10-Q", "filed": "2026-05-01", "fy": 2026, "fp": "Q1",
+             "accn": "Q1"},
+            {"start": "2026-04-01", "end": "2026-06-30", "val": 180,
+             "form": "10-Q", "filed": "2026-08-06", "fy": 2026, "fp": "Q2",
+             "frame": "CY2026Q2", "accn": "Q2"},
+        ])
+        with patch.object(provider, "_find_cik", return_value="0000000001"), \
+                patch.object(provider, "_get_json", return_value=payload):
+            result = provider.facts("INOD")
+        self.assertEqual(result["revenue"]["value"], 180)
+        self.assertFalse(result["revenue"]["derived"])
+        self.assertEqual(result["revenue"]["method"], "SEC_XBRL_DIRECT_FACT")
+        self.assertEqual(result["revenue"]["provenance"]["source_fact_ids"],
+                         [result["revenue"]["fact_id"]])
+
+    def test_companyfacts_facts_derives_q2_from_comparable_ytd_and_q1(self):
+        provider = SECCompanyFactsProvider("Agent test@example.com")
+        payload = self._companyfacts_payload([
+            {"start": "2026-01-01", "end": "2026-06-30", "val": 300,
+             "form": "10-Q", "filed": "2026-08-06", "fy": 2026, "fp": "Q2",
+             "accn": "YTD"},
+            {"start": "2026-01-01", "end": "2026-03-31", "val": 100,
+             "form": "10-Q", "filed": "2026-05-01", "fy": 2026, "fp": "Q1",
+             "accn": "Q1"},
+        ])
+        with patch.object(provider, "_find_cik", return_value="0000000001"), \
+                patch.object(provider, "_get_json", return_value=payload):
+            result = provider.facts("INOD")
+        self.assertEqual(result["revenue"]["value"], 200)
+        self.assertTrue(result["revenue"]["derived"])
+        self.assertEqual(result["revenue"]["formula"], "6M_YTD - Q1")
+        self.assertEqual(result["revenue"]["provenance"]["comparability"], "PASSED")
+        self.assertEqual(result["revenue"]["provenance"]["source_accessions"],
+                         ["YTD", "Q1"])
+
     def test_debt_payment_flow_is_not_debt_balance(self):
         payload = {"facts": {"us-gaap": {
             "PaymentsOfLongTermDebt": {"units": {"USD": [{
@@ -132,6 +183,50 @@ class CapitalOntologyTests(unittest.TestCase):
         )]
         snapshot = build_capital_structure("INOD", {"normalized_facts": [], "derived": {}}, evidence)
         self.assertEqual(snapshot.convertible_outstanding.status, "UNKNOWN")
+
+    def test_convertible_negative_history_does_not_create_outstanding(self):
+        for text in (
+            "convertible notes are no longer outstanding",
+            "the convertible notes were fully converted",
+            "previously outstanding convertible debt was retired",
+        ):
+            evidence = [EvidenceItem(
+                "NEGATIVE", "INOD", "SEC", "10-Q", "2026-08-06", "Capital", "u", "B",
+                "CAPITAL", text, normalized_fact=text,
+            )]
+            snapshot = build_capital_structure(
+                "INOD", {"normalized_facts": [], "derived": {}}, evidence)
+            self.assertEqual(snapshot.convertible_outstanding.status, "UNKNOWN", text)
+
+    def test_convertible_authorized_offerable_and_outstanding_are_separate(self):
+        authorized = "convertible notes are authorized but no longer outstanding"
+        evidence = [EvidenceItem(
+            "AUTHORIZED", "INOD", "SEC", "S-3", "2026-08-06", "Capital", "u", "B",
+            "CAPITAL", authorized, normalized_fact=authorized,
+        )]
+        snapshot = build_capital_structure(
+            "INOD", {"normalized_facts": [], "derived": {}}, evidence)
+        self.assertEqual(snapshot.convertible_authorized.status, "KNOWN")
+        self.assertEqual(snapshot.convertible_outstanding.status, "UNKNOWN")
+
+        offerable = "we may offer convertible notes"
+        evidence = [EvidenceItem(
+            "OFFERABLE", "INOD", "SEC", "S-3", "2026-08-06", "Capital", "u", "B",
+            "CAPITAL", offerable, normalized_fact=offerable,
+        )]
+        snapshot = build_capital_structure(
+            "INOD", {"normalized_facts": [], "derived": {}}, evidence)
+        self.assertEqual(snapshot.convertible_offerable.status, "KNOWN")
+        self.assertEqual(snapshot.convertible_outstanding.status, "UNKNOWN")
+
+        outstanding = "convertible notes are outstanding"
+        evidence = [EvidenceItem(
+            "OUTSTANDING", "INOD", "SEC", "10-Q", "2026-08-06", "Capital", "u", "B",
+            "CAPITAL", outstanding, normalized_fact=outstanding,
+        )]
+        snapshot = build_capital_structure(
+            "INOD", {"normalized_facts": [], "derived": {}}, evidence)
+        self.assertEqual(snapshot.convertible_outstanding.status, "KNOWN")
 
 
 if __name__ == "__main__":

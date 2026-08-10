@@ -339,6 +339,10 @@ class PositionSize:
     risk_rule_version: str = "portfolio_heat_v1"
     portfolio_risk_used_usd: float = 0.0
     risk_budget_remaining_usd: float = 0.0
+    open_sector_exposure_usd: float = 0.0
+    pending_sector_committed_exposure_usd: float = 0.0
+    sector_committed_exposure_usd: float = 0.0
+    risk_budget_basis: str = "INITIAL_RISK_AT_ENTRY"
 
 
 @dataclass

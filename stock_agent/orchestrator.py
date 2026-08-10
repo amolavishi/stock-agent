@@ -67,7 +67,8 @@ class Orchestrator:
                                            config["risk_rules"].get("max_loss_pct", 0.75),
                                            config.get("paper", {}).get("max_total_exposure_pct", 60),
                                            config.get("paper", {}).get("max_sector_exposure_pct", 25))
-        self.paper = PaperPortfolio(self.db)
+        self.paper = PaperPortfolio(
+            self.db, config.get("paper", {}).get("max_sector_exposure_pct", 25))
         self.guard = FinalGuard()
         self.cost_guard = CostGuard(config.get("cost_guard", {}))
         self.debate_engine = DebateEngine()
@@ -388,6 +389,9 @@ class Orchestrator:
             self.db.save_output("risk_outputs", run_id, ticker, risk)
             emit("RISK_COMPLETED", asdict(risk))
             account_id = str(self.config.get("paper", {}).get("account_id", "PAPER_DEFAULT"))
+            self.db.update_position_mark(
+                ticker, market.current, market.source,
+                market.observed_at or market.timestamp, account_id)
             account = self.db.paper_account_state(account_id)
             position_size = self.sizing.calculate_for_account(trade_plan, account, market.sector_name)
             emit("POSITION_SIZING", asdict(position_size))

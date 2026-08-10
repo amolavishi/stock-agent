@@ -1183,6 +1183,45 @@ class Database:
                     (account_id, "", timestamp, "INITIAL_DEPOSIT", initial_cash,
                      initial_cash, "Explicit PAPER account initialization"))
 
+    @staticmethod
+    def _current_mark_to_stop_risk(provenance_json: str | None,
+                                   mark: float | None) -> float | None:
+        if mark is None:
+            return None
+        try:
+            provenance = json.loads(provenance_json or "{}")
+        except (TypeError, ValueError):
+            return None
+        if provenance.get("status") != "KNOWN":
+            return None
+        try:
+            return round(sum(
+                max(0.0, float(mark) - float(component["stop_price"])) *
+                float(component["quantity"])
+                for component in provenance.get("components") or []
+            ), 2)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def update_position_mark(self, ticker: str, mark: float, source: str,
+                             observed_at: str = "", account_id: str = "PAPER_DEFAULT") -> bool:
+        """Persist the latest trusted mark used for exposure and mark-to-stop telemetry."""
+        if float(mark) <= 0:
+            raise ValueError("PAPER position mark must be positive")
+        timestamp = observed_at or now_iso()
+        with self.connect() as c:
+            row = c.execute("""SELECT quantity FROM portfolio_positions
+                WHERE ticker=? AND account_id=? AND status='OPEN'""",
+                            (ticker.upper(), account_id)).fetchone()
+            if row is None:
+                return False
+            c.execute("""UPDATE portfolio_positions SET market_value=?,latest_mark=?,
+                mark_timestamp=?,mark_source=?,mark_status='FRESH',updated_at=?
+                WHERE ticker=? AND account_id=? AND status='OPEN'""",
+                      (float(row["quantity"]) * float(mark), float(mark), timestamp,
+                       source or "UNKNOWN", timestamp, ticker.upper(), account_id))
+        return True
+
     def paper_account_state(self, account_id: str = "PAPER_DEFAULT") -> dict[str, Any]:
         with self.connect() as c:
             account = c.execute("SELECT * FROM paper_accounts WHERE account_id=?",
@@ -1193,7 +1232,8 @@ class Database:
                 position_risk_usd,risk_provenance_json,latest_mark,mark_timestamp,mark_source,mark_status
                 FROM portfolio_positions WHERE account_id=? AND status='OPEN'""",
                 (account_id,)).fetchall()
-            pending_rows = c.execute("""SELECT quantity,risk_per_share,risk_provenance_json
+            pending_rows = c.execute("""SELECT quantity,risk_per_share,risk_provenance_json,
+                sector,reserved_cash
                 FROM paper_orders WHERE account_id=?
                 AND status IN ('PENDING','TRIGGERED','REVALIDATING')""",
                 (account_id,)).fetchall()
@@ -1205,10 +1245,17 @@ class Database:
                 continue
             sector = row["sector"] or "UNKNOWN"
             sectors[sector] = sectors.get(sector, 0.0) + float(row["market_value"] or 0)
+        pending_sectors: dict[str, float] = {}
+        for row in pending_rows:
+            sector = row["sector"] or "UNKNOWN"
+            pending_sectors[sector] = pending_sectors.get(sector, 0.0) + float(
+                row["reserved_cash"] or 0)
         equity = float(account["cash"]) + exposure
         risk_budget = equity * float(account["risk_budget_pct"]) / 100
         open_risk = 0.0
         open_risk_complete = True
+        current_mark_risk = 0.0
+        current_mark_risk_complete = True
         for row in positions:
             try:
                 provenance = json.loads(row["risk_provenance_json"] or "{}")
@@ -1216,8 +1263,14 @@ class Database:
                 provenance = {}
             if provenance.get("status") != "KNOWN" or row["position_risk_usd"] is None:
                 open_risk_complete = False
-                continue
-            open_risk += max(0.0, float(row["position_risk_usd"] or 0))
+            else:
+                open_risk += max(0.0, float(row["position_risk_usd"] or 0))
+            mark_risk = self._current_mark_to_stop_risk(
+                row["risk_provenance_json"], row["latest_mark"])
+            if row["mark_status"] not in {"FRESH", "STALE_MARK"} or mark_risk is None:
+                current_mark_risk_complete = False
+            else:
+                current_mark_risk += mark_risk
         pending_risk = 0.0
         pending_risk_complete = True
         for row in pending_rows:
@@ -1243,7 +1296,15 @@ class Database:
             "open_position_risk_usd": round(open_risk, 2),
             "pending_committed_risk": round(pending_risk, 2),
             "portfolio_risk_used": round(portfolio_risk, 2),
+            "risk_budget_policy": "INITIAL_RISK_AT_ENTRY",
+            "current_mark_to_stop_risk_usd": round(current_mark_risk, 2),
+            "current_mark_to_stop_risk_complete": current_mark_risk_complete,
             "risk_provenance_complete": risk_complete,
+            "pending_sector_committed_exposure": pending_sectors,
+            "sector_committed_exposure": {
+                sector: sectors.get(sector, 0.0) + pending_sectors.get(sector, 0.0)
+                for sector in set(sectors) | set(pending_sectors)
+            },
             "open_positions": len(positions), "pending_conditional_orders": len(pending_rows),
             "available_cash": max(0.0, float(account["cash"]) - float(account["reserved_cash"])),
             "position_marks": [{"ticker": row["ticker"], "mark": row["latest_mark"],

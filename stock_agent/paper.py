@@ -24,8 +24,9 @@ class PerformanceMeasurement:
 
 
 class PaperPortfolio:
-    def __init__(self, database: Database):
+    def __init__(self, database: Database, max_sector_exposure_pct: float = 25.0):
         self.db = database
+        self.max_sector_exposure_pct = float(max_sector_exposure_pct)
 
     def plan_effect(self, decision: InvestmentDecision, size: PositionSize,
                     sector: str = "UNKNOWN", horizon: str = "1-2M") -> dict:
@@ -65,13 +66,27 @@ class PaperPortfolio:
         if decision.decision == "BUY":
             effect["action"] = "BUY"
         elif decision.decision == "CONDITIONAL_BUY":
-            effect.update({
-                "action": "CONDITIONAL_ORDER",
-                "order_id": f"ORDER_{decision.run_id}",
-                "trigger_price": decision.trade_plan.preferred_price_max,
-                "valid_until": (datetime.now(timezone.utc) + timedelta(days=40)).isoformat(),
-                "invalidation_price": decision.trade_plan.stop_price,
-            })
+            account = self.db.paper_account_state(effect["account_id"])
+            sector = effect["sector"]
+            committed_sector = (
+                float(account["sector_exposure"].get(sector, 0)) +
+                float(account.get("pending_sector_committed_exposure", {}).get(sector, 0)) +
+                float(effect["notional_usd"]))
+            sector_cap = float(account["equity"]) * self.max_sector_exposure_pct / 100
+            if committed_sector > sector_cap + 0.01:
+                effect.update({
+                    "action": "PREDICTION_ONLY",
+                    "paper_rejection": True,
+                    "reason_codes": ["SECTOR_EXPOSURE_LIMIT"],
+                })
+            else:
+                effect.update({
+                    "action": "CONDITIONAL_ORDER",
+                    "order_id": f"ORDER_{decision.run_id}",
+                    "trigger_price": decision.trade_plan.preferred_price_max,
+                    "valid_until": (datetime.now(timezone.utc) + timedelta(days=40)).isoformat(),
+                    "invalidation_price": decision.trade_plan.stop_price,
+                })
         elif decision.decision in {"SELL", "TRIM"}:
             with self.db.connect() as c:
                 row = c.execute("""SELECT quantity,average_price FROM portfolio_positions

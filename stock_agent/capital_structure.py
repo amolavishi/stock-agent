@@ -47,6 +47,7 @@ class CapitalStructureSnapshot:
     warrant_exercise_price: ProvenancedValue = field(default_factory=unknown)
     warrant_expiration: ProvenancedValue = field(default_factory=unknown)
     convertible_authorized: ProvenancedValue = field(default_factory=unknown)
+    convertible_offerable: ProvenancedValue = field(default_factory=unknown)
     convertible_outstanding: ProvenancedValue = field(default_factory=unknown)
     convertible_principal: ProvenancedValue = field(default_factory=unknown)
     convertible_conversion_rate: ProvenancedValue = field(default_factory=unknown)
@@ -83,6 +84,8 @@ class CapitalStructureSnapshot:
     def convertibles(self) -> str:
         if self.convertible_outstanding.status == "KNOWN":
             return "OUTSTANDING"
+        if self.convertible_offerable.status == "KNOWN":
+            return "OFFERABLE"
         if self.convertible_authorized.status == "KNOWN":
             return "AUTHORIZED"
         return "UNKNOWN"
@@ -131,6 +134,20 @@ def _provenance(item: EvidenceItem, value: Any, status: str, span: str,
                             item.filed_at or item.published_at, method, confidence)
 
 
+def _capital_context(text: str, start: int, end: int) -> str:
+    return text[max(0, start - 140):min(len(text), end + 140)]
+
+
+def _negative_outstanding_context(context: str) -> bool:
+    return bool(re.search(
+        r"\b(?:no|not|never|without|zero|none)\s+(?:longer\s+)?(?:being\s+)?outstanding\b|"
+        r"\bno\s+longer\s+outstanding\b|"
+        r"\b(?:fully|completely)\s+converted\b|"
+        r"\bpreviously\s+outstanding\b|"
+        r"\b(?:redeemed|retired|settled|extinguished|terminated)\b",
+        context, flags=re.I))
+
+
 def build_capital_structure(ticker: str, facts: dict[str, Any],
                             evidence: list[EvidenceItem]) -> CapitalStructureSnapshot:
     normalized = facts.get("normalized_facts", [])
@@ -168,31 +185,64 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
                 snapshot.shelf_registered_capacity = _provenance(
                     item, capacity, "KNOWN", text, "EXPLICIT_SHELF_CAPACITY", 85)
             snapshot.evidence_ids.append(item.evidence_id)
+        if re.search(r"\b(?:authorized|authorize)\b[^.]{0,80}\bwarrants?\b|"
+                     r"\bwarrants?\b[^.]{0,80}\b(?:authorized|authorize)\b", text):
+            snapshot.warrant_authorized = _provenance(
+                item, True, "KNOWN", text, "AUTHORIZED_WARRANT_LANGUAGE", 80)
+            snapshot.evidence_ids.append(item.evidence_id)
         if re.search(r"\b(?:may|could)\s+(?:offer|issue)[^.]{0,80}\bwarrants?\b", text):
             snapshot.warrant_offerable = _provenance(
                 item, True, "KNOWN", text, "OFFERABLE_LANGUAGE", 90)
             snapshot.evidence_ids.append(item.evidence_id)
         outstanding = re.search(r"(?<![\w-])([0-9,]+)\s+warrants?\s+(?:were\s+)?outstanding\b", text)
-        outstanding_context = text[max(0, outstanding.start() - 100):outstanding.end()] if outstanding else ""
+        outstanding_context = (_capital_context(text, outstanding.start(), outstanding.end())
+                               if outstanding else "")
         outstanding_count = (float(outstanding.group(1).replace(",", ""))
                              if outstanding else 0.0)
         if outstanding and outstanding_count > 0 and not re.search(
                 r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
-                outstanding_context, flags=re.I):
+                outstanding_context, flags=re.I) and not _negative_outstanding_context(
+                    outstanding_context):
             snapshot.warrant_outstanding = _provenance(
                 item, float(outstanding.group(1).replace(",", "")), "KNOWN",
                 outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
-        convertible = re.search(
-            r"\b(?:issued|outstanding)\s+convertible\s+(?:notes?|debt)\b|"
-            r"\bconvertible\s+(?:notes?|debt)\s+(?:(?:were|are|is|remain(?:s)?)\s+)?"
-            r"(?:issued|outstanding)\b", text)
-        if convertible:
-            if re.search(r"\b(?:issued|outstanding)\b", convertible.group(0)):
+        for convertible in re.finditer(
+                r"\bconvertible\s+(?:notes?|debt|debentures?)\b", text):
+            context = _capital_context(text, convertible.start(), convertible.end())
+            subject_context = _capital_context(text, convertible.start(),
+                                               min(len(text), convertible.end() + 100))
+            negative_outstanding = _negative_outstanding_context(context)
+            if negative_outstanding:
+                if re.search(r"\b(?:may|could)\s+(?:offer|issue)|"
+                             r"\b(?:offerable|issuable)\b", subject_context, flags=re.I):
+                    snapshot.convertible_offerable = _provenance(
+                        item, True, "KNOWN", subject_context,
+                        "CONVERTIBLE_OFFERABLE_LANGUAGE", 75)
+                elif re.search(r"\b(?:authorized|authorize)\b", subject_context, flags=re.I):
+                    snapshot.convertible_authorized = _provenance(
+                        item, True, "KNOWN", subject_context,
+                        "CONVERTIBLE_AUTHORIZATION_LANGUAGE", 70)
+                continue
+            after_term = text[convertible.end():min(len(text), convertible.end() + 100)]
+            before_term = text[max(0, convertible.start() - 100):convertible.start()]
+            has_outstanding_language = bool(
+                re.search(r"^\s*(?:are|is|were|was|remain(?:s)?)\s+"
+                          r"(?:currently\s+)?(?:issued|outstanding)\b",
+                          after_term, flags=re.I) or
+                re.search(r"\b(?:issued|outstanding)\s*$", before_term, flags=re.I))
+            if has_outstanding_language:
                 snapshot.convertible_outstanding = _provenance(
-                    item, True, "KNOWN", text, "EXPLICIT_CONVERTIBLE_OUTSTANDING", 85)
-            else:
+                    item, True, "KNOWN", subject_context,
+                    "EXPLICIT_CONVERTIBLE_OUTSTANDING", 85)
+            elif re.search(r"\b(?:may|could)\s+(?:offer|issue)|"
+                           r"\b(?:offerable|issuable)\b", subject_context, flags=re.I):
+                snapshot.convertible_offerable = _provenance(
+                    item, True, "KNOWN", subject_context,
+                    "CONVERTIBLE_OFFERABLE_LANGUAGE", 75)
+            elif re.search(r"\b(?:authorized|authorize)\b", subject_context, flags=re.I):
                 snapshot.convertible_authorized = _provenance(
-                    item, True, "KNOWN", text, "CONVERTIBLE_AUTHORIZATION_LANGUAGE", 70)
+                    item, True, "KNOWN", subject_context,
+                    "CONVERTIBLE_AUTHORIZATION_LANGUAGE", 70)
 
     if (snapshot.atm_authorized_capacity.value is not None and
             snapshot.atm_used_amount.value is not None):
@@ -211,7 +261,7 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
     metric_fields = (
         "atm_authorized_capacity", "atm_used_amount", "atm_remaining_amount",
         "shelf_registered_capacity", "shelf_used_amount", "warrant_outstanding",
-        "convertible_outstanding",
+        "convertible_authorized", "convertible_offerable", "convertible_outstanding",
     )
     for name in metric_fields:
         if getattr(snapshot, name).status == "UNKNOWN":

@@ -36,7 +36,8 @@ class PositionSizingEngine:
         return PositionSize(quantity, notional, round(loss_budget, 2),
                             round(notional / equity_usd * 100, 4), limiting,
                             initial_capital_at_risk_usd=round(quantity * risk_per_share, 2),
-                            gross_exposure_usd=notional)
+                            gross_exposure_usd=notional,
+                            risk_budget_basis="INITIAL_RISK_AT_ENTRY")
 
     def calculate_for_account(self, plan: TradePlan, account: dict,
                               sector: str = "UNKNOWN") -> PositionSize:
@@ -59,7 +60,9 @@ class PositionSizingEngine:
                               - float(account.get("current_exposure", 0))
                               - float(account.get("reserved_cash", 0)))
         sector_used = float(account.get("sector_exposure", {}).get(sector, 0))
-        sector_remaining = max(0.0, equity * self.max_sector_exposure_pct / 100 - sector_used)
+        pending_sector_used = float(account.get("pending_sector_committed_exposure", {}).get(sector, 0))
+        sector_committed_used = sector_used + pending_sector_used
+        sector_remaining = max(0.0, equity * self.max_sector_exposure_pct / 100 - sector_committed_used)
         limits = {
             "AVAILABLE_CASH": cash,
             "SINGLE_POSITION_CAP": single_cap,
@@ -77,11 +80,19 @@ class PositionSizingEngine:
                             round(float(account.get("current_exposure", 0)), 2),
                             round(sector_used, 2),
                             initial_capital_at_risk_usd=round(quantity * risk_per_share, 2),
-                            current_mark_to_stop_risk_usd=0.0,
+                            current_mark_to_stop_risk_usd=round(float(
+                                account.get("current_mark_to_stop_risk_usd", 0)), 2),
                             pending_committed_risk_usd=round(
                                 pending_risk, 2),
                             gross_exposure_usd=round(
                                 float(account.get("current_exposure", 0)) + notional, 2),
                             risk_rule_version="portfolio_heat_v1",
                             portfolio_risk_used_usd=round(portfolio_risk_used, 2),
-                            risk_budget_remaining_usd=round(loss_budget, 2))
+                            risk_budget_remaining_usd=round(loss_budget, 2),
+                            open_sector_exposure_usd=round(sector_used, 2),
+                            pending_sector_committed_exposure_usd=round(
+                                pending_sector_used, 2),
+                            sector_committed_exposure_usd=round(
+                                sector_committed_used, 2),
+                            risk_budget_basis=str(account.get(
+                                "risk_budget_policy", "INITIAL_RISK_AT_ENTRY")))

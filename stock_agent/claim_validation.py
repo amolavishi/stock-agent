@@ -6,10 +6,21 @@ from .schemas import EvidenceItem
 from .validation import AnalysisIncompleteError
 
 
+CLAIM_DOMAINS = frozenset({
+    "CAPITAL_STRUCTURE", "FINANCIAL_FACT", "MARKET_TECHNICAL", "MARKET_PRICE",
+    "SEC_FILING", "XBRL_FACT", "PORTFOLIO_STATE", "SYSTEM_STATE", "KNOWLEDGE_HISTORY",
+})
+CLAIM_TYPES = frozenset({
+    "FACT", "NUMERIC", "EVENT", "CAPITAL", "TECHNICAL", "PRICE", "RISK",
+    "COMPARATIVE", "INFERENCE", "DECISION",
+})
+EVIDENCE_GRADES = frozenset({"A", "B", "C", "D", "UNCLASSIFIED"})
+
+
 def _evidence_domains(item: EvidenceItem) -> set[str]:
     source = str(item.source_type).upper()
     domains = set()
-    if source in {"SEC", "EDGAR"}:
+    if source in {"SEC", "EDGAR", "MOCK_SEC", "MOCK_IR", "MOCK_NEWS"}:
         domains.add("SEC_FILING")
     if source in {"XBRL", "SEC_XBRL", "COMPANYFACTS"}:
         domains.add("XBRL_FACT")
@@ -26,19 +37,11 @@ def _evidence_domains(item: EvidenceItem) -> set[str]:
 
 def _claim_domain(claim: dict) -> str:
     explicit = str(claim.get("domain") or claim.get("claim_domain") or "").upper()
-    if explicit:
-        return explicit
-    text = str(claim.get("claim") or "").lower()
-    if any(value in text for value in ("ma20", "ma50", "ma200", "moving average", "relative volume",
-                                       "거래량", "이동평균", "stage")):
-        return "MARKET_TECHNICAL"
-    if any(value in text for value in ("current price", "share price", "현재가", "주가")):
-        return "MARKET_PRICE"
-    return "UNSPECIFIED"
+    return explicit
 
 
 def _domain_compatible(expected: str, actual: set[str]) -> bool:
-    if expected in {"", "UNSPECIFIED", "LLM_INFERENCE"}:
+    if not expected:
         return True
     if expected == "FINANCIAL_FACT":
         return bool(actual & {"XBRL_FACT", "SEC_FILING"})
@@ -77,6 +80,35 @@ def _relevance_failure(claim: dict, item: EvidenceItem, expected_domain: str) ->
     return not (required & evidence_terms)
 
 
+def validate_claim_schema(claim: dict) -> None:
+    """Fail closed before evidence matching can be bypassed by inferred metadata."""
+    if not isinstance(claim, dict):
+        raise AnalysisIncompleteError("material claim must be a JSON object")
+    if str(claim.get("verification_status") or "").upper() == "UNVERIFIED":
+        return
+    materiality = str(claim.get("materiality") or "MATERIAL").upper()
+    if materiality not in {"MATERIAL", "NON_MATERIAL"}:
+        raise AnalysisIncompleteError(f"invalid claim materiality: {materiality}")
+    if materiality == "NON_MATERIAL":
+        return
+    domain = _claim_domain(claim)
+    claim_type = str(claim.get("claim_type") or "").upper()
+    minimum_grade = str(claim.get("minimum_evidence_grade") or "").upper()
+    missing = [name for name, value in (
+        ("domain", domain), ("claim_type", claim_type),
+        ("minimum_evidence_grade", minimum_grade)) if not value]
+    if missing:
+        raise AnalysisIncompleteError(
+            "material claim contract missing required fields: " + ", ".join(missing))
+    if domain not in CLAIM_DOMAINS:
+        raise AnalysisIncompleteError(f"unsupported material claim domain: {domain}")
+    if claim_type not in CLAIM_TYPES:
+        raise AnalysisIncompleteError(f"unsupported material claim type: {claim_type}")
+    if minimum_grade not in EVIDENCE_GRADES:
+        raise AnalysisIncompleteError(
+            f"unsupported minimum evidence grade: {minimum_grade}")
+
+
 def validate_claim_evidence(claims: list[dict], evidence: list[EvidenceItem],
                             min_claims: int = 0,
                             additional_source_ids: set[str] | None = None) -> None:
@@ -85,6 +117,7 @@ def validate_claim_evidence(claims: list[dict], evidence: list[EvidenceItem],
     missing: list[str] = []
     verified_material = 0
     for claim in claims:
+        validate_claim_schema(claim)
         ids = claim.get("evidence_ids") or claim.get("source_ids")
         if ids is None and claim.get("evidence_id"):
             ids = [claim["evidence_id"]]
