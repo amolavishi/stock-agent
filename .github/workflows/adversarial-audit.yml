@@ -32,11 +32,4 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Secret scan
         if: always()
-        shell: python
-        run: |
-          from stock_agent.secret_scan import scan_tree
-          findings = scan_tree('.')
-          print('secret_findings=', len(findings))
-          for finding in findings:
-              print(finding)
-          raise SystemExit(1 if findings else 0)
+        run: python -c "from stock_agent.secret_scan import scan_tree; findings=scan_tree('.'); print('secret_findings=', len(findings)); [print(f) for f in findings]; raise SystemExit(1 if findings else 0)"
