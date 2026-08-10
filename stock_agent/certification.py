@@ -70,7 +70,11 @@ class RequiredDataContract:
 
         if live_mode:
             periodic = [item for item in evidence if getattr(item, "document_type", "") in {"10-Q", "10-K"}]
-            latest = max(periodic, key=lambda item: getattr(item, "filed_at", "") or getattr(item, "published_at", ""), default=None)
+            latest = max(
+                periodic,
+                key=lambda item: getattr(item, "filed_at", "") or getattr(item, "published_at", ""),
+                default=None,
+            )
             if latest is None:
                 result.failures.append("LATEST_MATERIAL_PERIODIC_FILING_MISSING")
             elif str(getattr(latest, "lifecycle_status", "DISCOVERED")) != "READY_FOR_ANALYSIS":
@@ -93,6 +97,34 @@ class RequiredDataContract:
 
 
 class CertificationEngine:
+    """Fail-closed certification that preserves every material blocker.
+
+    certification_status is a representative primary category. reason_codes is the complete
+    blocker set and must never be truncated by first-match control flow.
+    """
+
+    @staticmethod
+    def _primary_status(
+        *,
+        system_integrity_ok: bool,
+        data_failures: list[str],
+        evidence_blocked: bool,
+        debate_blocked: bool,
+    ) -> str:
+        if not system_integrity_ok:
+            return CertificationStatus.BLOCKED_SYSTEM_INTEGRITY.value
+        if any("CONFLICT" in item for item in data_failures):
+            return CertificationStatus.BLOCKED_DATA_CONFLICT.value
+        if any("MARKET" in item or "PRICE" in item for item in data_failures):
+            return CertificationStatus.BLOCKED_MARKET_DATA.value
+        if data_failures:
+            return CertificationStatus.BLOCKED_DATA_MISSING.value
+        if evidence_blocked:
+            return CertificationStatus.BLOCKED_EVIDENCE.value
+        if debate_blocked:
+            return CertificationStatus.BLOCKED_DEBATE.value
+        return CertificationStatus.CERTIFIED.value
+
     def evaluate(
         self,
         *,
@@ -117,48 +149,52 @@ class CertificationEngine:
             sizing_requested=sizing_requested,
             portfolio_state=portfolio_state,
         )
+
         reasons = list(data.failures)
-        analysis_status = AnalysisStatus.COMPLETED.value
-        status = CertificationStatus.CERTIFIED.value
-
         if not system_integrity_ok:
-            status = CertificationStatus.BLOCKED_SYSTEM_INTEGRITY.value
             reasons.append("SYSTEM_INTEGRITY_CHECK_FAILED")
-            analysis_status = AnalysisStatus.BLOCKED.value
-        elif any("MARKET" in item or "PRICE" in item for item in data.failures):
-            status = CertificationStatus.BLOCKED_MARKET_DATA.value
-            analysis_status = AnalysisStatus.BLOCKED.value
-        elif any("CONFLICT" in item for item in data.failures):
-            status = CertificationStatus.BLOCKED_DATA_CONFLICT.value
-            analysis_status = AnalysisStatus.BLOCKED.value
-        elif data.failures:
-            status = CertificationStatus.BLOCKED_DATA_MISSING.value
-            analysis_status = AnalysisStatus.BLOCKED.value
-        elif not claim_validation_passed:
-            status = CertificationStatus.BLOCKED_EVIDENCE.value
+        if not claim_validation_passed:
             reasons.append("CLAIM_EVIDENCE_VALIDATION_FAILED")
-            analysis_status = AnalysisStatus.BLOCKED.value
-        elif unresolved_must_answer > 0:
-            status = CertificationStatus.BLOCKED_EVIDENCE.value
+        if unresolved_must_answer > 0:
             reasons.append("MUST_ANSWER_EVIDENCE_REQUEST_UNRESOLVED")
-            analysis_status = AnalysisStatus.BLOCKED.value
-        elif debate_status == "DEADLOCK" or critical_open_issues > 0:
-            status = CertificationStatus.BLOCKED_DEBATE.value
-            reasons.append("DEBATE_DEADLOCK" if debate_status == "DEADLOCK" else "CRITICAL_ISSUE_UNRESOLVED")
-            analysis_status = AnalysisStatus.DEADLOCK.value if debate_status == "DEADLOCK" else AnalysisStatus.BLOCKED.value
-        elif debate_status not in {"CONSENSUS_REACHED", "FINAL_CONSENSUS"}:
-            status = CertificationStatus.BLOCKED_DEBATE.value
+        if debate_status == "DEADLOCK":
+            reasons.append("DEBATE_DEADLOCK")
+        if critical_open_issues > 0:
+            reasons.append("CRITICAL_ISSUE_UNRESOLVED")
+        if debate_status not in {"CONSENSUS_REACHED", "FINAL_CONSENSUS"} and debate_status != "DEADLOCK":
             reasons.append("FINAL_CONSENSUS_NOT_REACHED")
+
+        evidence_blocked = (not claim_validation_passed) or unresolved_must_answer > 0
+        debate_blocked = (
+            debate_status == "DEADLOCK"
+            or critical_open_issues > 0
+            or debate_status not in {"CONSENSUS_REACHED", "FINAL_CONSENSUS"}
+        )
+        status = self._primary_status(
+            system_integrity_ok=system_integrity_ok,
+            data_failures=data.failures,
+            evidence_blocked=evidence_blocked,
+            debate_blocked=debate_blocked,
+        )
+        certified = status == CertificationStatus.CERTIFIED.value
+
+        if certified:
+            analysis_status = AnalysisStatus.COMPLETED.value
+        elif debate_status == "DEADLOCK":
+            analysis_status = AnalysisStatus.DEADLOCK.value
+        else:
             analysis_status = AnalysisStatus.BLOCKED.value
 
-        certified = status == CertificationStatus.CERTIFIED.value
         return CertificationResult(
             run_id=run_id,
             execution_status=ExecutionStatus.SUCCESS.value,
             analysis_status=analysis_status,
             certification_status=status,
-            side_effect_status=(SideEffectStatus.AUTHORIZED_PENDING.value if certified and sizing_requested
-                                else SideEffectStatus.NOT_AUTHORIZED.value),
+            side_effect_status=(
+                SideEffectStatus.AUTHORIZED_PENDING.value
+                if certified and sizing_requested
+                else SideEffectStatus.NOT_AUTHORIZED.value
+            ),
             action="PENDING_CERTIFIED_DECISION" if certified else NO_CERTIFIED_ACTION,
             reason_codes=list(dict.fromkeys(reasons)),
             required_data_failures=data.failures,
