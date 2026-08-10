@@ -17,7 +17,7 @@ OUTPUT_TABLES = {"research_outputs", "critic_outputs", "risk_outputs", "chairman
 
 
 class Database:
-    SCHEMA_VERSION = 20
+    SCHEMA_VERSION = 21
 
     def __init__(self, path: str, busy_timeout_ms: int = 5000, wal: bool = True):
         self.path = Path(path)
@@ -154,6 +154,7 @@ class Database:
             self._migrate_v21_paper_policy(c)
             self._migrate_v21_telemetry(c)
             self._migrate_v21_account_identity_and_financial_cancellation(c)
+            self._migrate_v21_risk_provenance(c)
 
     @staticmethod
     def _ensure_run_columns(c: sqlite3.Connection) -> None:
@@ -311,7 +312,8 @@ class Database:
         self._ensure_columns(c, "portfolio_positions", {
             "account_id": "TEXT DEFAULT 'PAPER_DEFAULT'", "sector": "TEXT DEFAULT 'UNKNOWN'",
             "status": "TEXT DEFAULT 'OPEN'", "market_value": "REAL DEFAULT 0",
-            "unrealized_pnl": "REAL DEFAULT 0",
+            "unrealized_pnl": "REAL DEFAULT 0", "position_risk_usd": "REAL DEFAULT 0",
+            "risk_provenance_json": "TEXT NOT NULL DEFAULT '{}'", "risk_as_of": "TEXT",
         })
         self._ensure_columns(c, "report_artifacts", {
             "delivered_at": "TEXT", "next_retry_at": "TEXT",
@@ -581,16 +583,20 @@ class Database:
                 updated_at TEXT NOT NULL, mode TEXT NOT NULL DEFAULT 'PAPER',
                 account_id TEXT NOT NULL DEFAULT 'PAPER_DEFAULT', sector TEXT DEFAULT 'UNKNOWN',
                 status TEXT DEFAULT 'OPEN', market_value REAL DEFAULT 0,
-                unrealized_pnl REAL DEFAULT 0, latest_mark REAL, mark_timestamp TEXT,
+                unrealized_pnl REAL DEFAULT 0, position_risk_usd REAL DEFAULT 0,
+                risk_provenance_json TEXT NOT NULL DEFAULT '{}', risk_as_of TEXT,
+                latest_mark REAL, mark_timestamp TEXT,
                 mark_source TEXT, mark_status TEXT NOT NULL DEFAULT 'NO_MARK',
                 PRIMARY KEY(ticker,account_id)
             );
             INSERT INTO portfolio_positions_v21(
                 ticker,quantity,average_price,updated_at,mode,account_id,sector,status,
-                market_value,unrealized_pnl,latest_mark,mark_timestamp,mark_source,mark_status)
+                market_value,unrealized_pnl,position_risk_usd,risk_provenance_json,risk_as_of,
+                latest_mark,mark_timestamp,mark_source,mark_status)
             SELECT ticker,quantity,average_price,updated_at,mode,
                 COALESCE(account_id,'PAPER_DEFAULT'),COALESCE(sector,'UNKNOWN'),
                 COALESCE(status,'OPEN'),COALESCE(market_value,0),COALESCE(unrealized_pnl,0),
+                COALESCE(position_risk_usd,0),COALESCE(risk_provenance_json,'{}'),risk_as_of,
                 latest_mark,mark_timestamp,mark_source,COALESCE(mark_status,'NO_MARK')
             FROM portfolio_positions;
             DROP TABLE portfolio_positions;
@@ -610,6 +616,29 @@ class Database:
         c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
             self.SCHEMA_VERSION, now_iso(),
             "v2.1 composite PAPER account position identity and cancellation boundary"))
+
+    @staticmethod
+    def _migrate_v21_risk_provenance(c: sqlite3.Connection) -> None:
+        """Persist stop-based risk provenance instead of reconstructing risk ad hoc."""
+        Database._ensure_columns(c, "portfolio_positions", {
+            "position_risk_usd": "REAL DEFAULT 0",
+            "risk_provenance_json": "TEXT NOT NULL DEFAULT '{}'",
+            "risk_as_of": "TEXT",
+        })
+        Database._ensure_columns(c, "paper_orders", {
+            "risk_per_share": "REAL NOT NULL DEFAULT 0",
+            "risk_provenance_json": "TEXT NOT NULL DEFAULT '{}'",
+        })
+        c.execute("""UPDATE portfolio_positions
+            SET risk_provenance_json='{"status":"UNKNOWN_LEGACY"}'
+            WHERE status='OPEN' AND quantity>0
+              AND (risk_provenance_json IS NULL OR risk_provenance_json IN ('','{}'))""")
+        c.execute("""UPDATE paper_orders
+            SET risk_provenance_json='{"status":"UNKNOWN_LEGACY"}'
+            WHERE status IN ('PENDING','TRIGGERED','REVALIDATING')
+              AND (risk_provenance_json IS NULL OR risk_provenance_json IN ('','{}'))""")
+        c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
+            21, now_iso(), "v2.1 PAPER position and pending-order risk provenance"))
 
     def start_run(self, run_id: str, ticker: str, mode: str, request_id: str = "",
                   analysis_intensity: str = "NORMAL") -> str:
@@ -1161,17 +1190,13 @@ class Database:
             if not account:
                 raise ValueError(f"PAPER account not initialized: {account_id}")
             positions = c.execute("""SELECT ticker,quantity,average_price,sector,market_value,
-                latest_mark,mark_timestamp,mark_source,mark_status
+                position_risk_usd,risk_provenance_json,latest_mark,mark_timestamp,mark_source,mark_status
                 FROM portfolio_positions WHERE account_id=? AND status='OPEN'""",
                 (account_id,)).fetchall()
-            pending = c.execute("""SELECT COUNT(*) FROM paper_orders
-                WHERE account_id=? AND status IN ('PENDING','TRIGGERED','REVALIDATING')""",
-                (account_id,)).fetchone()[0]
-            pending_risk = c.execute("""SELECT COALESCE(SUM(MAX(0,
-                (COALESCE(limit_price,trigger_price)-COALESCE(invalidation_price,0))*quantity)),0)
+            pending_rows = c.execute("""SELECT quantity,risk_per_share,risk_provenance_json
                 FROM paper_orders WHERE account_id=?
                 AND status IN ('PENDING','TRIGGERED','REVALIDATING')""",
-                (account_id,)).fetchone()[0]
+                (account_id,)).fetchall()
         exposure = sum(float(row["market_value"] or 0)
                        for row in positions if row["mark_status"] in {"FRESH", "STALE_MARK"})
         sectors: dict[str, float] = {}
@@ -1182,12 +1207,44 @@ class Database:
             sectors[sector] = sectors.get(sector, 0.0) + float(row["market_value"] or 0)
         equity = float(account["cash"]) + exposure
         risk_budget = equity * float(account["risk_budget_pct"]) / 100
+        open_risk = 0.0
+        open_risk_complete = True
+        for row in positions:
+            try:
+                provenance = json.loads(row["risk_provenance_json"] or "{}")
+            except (TypeError, ValueError):
+                provenance = {}
+            if provenance.get("status") != "KNOWN" or row["position_risk_usd"] is None:
+                open_risk_complete = False
+                continue
+            open_risk += max(0.0, float(row["position_risk_usd"] or 0))
+        pending_risk = 0.0
+        pending_risk_complete = True
+        for row in pending_rows:
+            try:
+                provenance = json.loads(row["risk_provenance_json"] or "{}")
+            except (TypeError, ValueError):
+                provenance = {}
+            if provenance.get("status") != "KNOWN" or float(row["risk_per_share"] or 0) <= 0:
+                pending_risk_complete = False
+                continue
+            pending_risk += max(0.0, float(row["quantity"]) * float(row["risk_per_share"]))
+        if not open_risk_complete and positions:
+            open_risk = risk_budget
+        if not pending_risk_complete and pending_rows:
+            pending_risk = risk_budget
+        risk_complete = open_risk_complete and pending_risk_complete
+        portfolio_risk = min(risk_budget, open_risk + pending_risk)
         return {
             "account_id": account_id, "cash": float(account["cash"]), "equity": equity,
             "reserved_cash": float(account["reserved_cash"]), "current_exposure": exposure,
-            "sector_exposure": sectors, "risk_budget": risk_budget, "risk_budget_used": 0.0,
-            "pending_committed_risk": float(pending_risk or 0),
-            "open_positions": len(positions), "pending_conditional_orders": int(pending),
+            "sector_exposure": sectors, "risk_budget": risk_budget,
+            "risk_budget_used": round(open_risk, 2),
+            "open_position_risk_usd": round(open_risk, 2),
+            "pending_committed_risk": round(pending_risk, 2),
+            "portfolio_risk_used": round(portfolio_risk, 2),
+            "risk_provenance_complete": risk_complete,
+            "open_positions": len(positions), "pending_conditional_orders": len(pending_rows),
             "available_cash": max(0.0, float(account["cash"]) - float(account["reserved_cash"])),
             "position_marks": [{"ticker": row["ticker"], "mark": row["latest_mark"],
                 "timestamp": row["mark_timestamp"], "source": row["mark_source"],
@@ -1223,6 +1280,9 @@ class Database:
             "ticker": order["ticker"], "timestamp": timestamp,
             "sector": order["sector"] or "UNKNOWN", "quantity": order["quantity"],
             "price": float(current_price), "notional_usd": notional, "action": "BUY",
+            "stop_price": float(order["invalidation_price"]),
+            "risk_per_share": float(order["risk_per_share"]),
+            "risk_provenance": json.loads(order["risk_provenance_json"] or "{}"),
             "prediction": {"prediction_id": f"PRED_FILL_{order['order_id']}",
                 "run_id": order["run_id"], "ticker": order["ticker"], "decision": "BUY",
                 "confidence": 0, "reference_price": float(current_price),
@@ -1347,6 +1407,66 @@ class Database:
                       (certification.run_id, timestamp, request_id))
 
     @staticmethod
+    def _risk_provenance(effect: dict[str, Any]) -> dict[str, Any]:
+        quantity = float(effect.get("quantity", 0) or 0)
+        if effect.get("action") not in {"BUY", "CONDITIONAL_ORDER"} or quantity <= 0:
+            return {"status": "NOT_APPLICABLE", "components": []}
+        try:
+            risk_per_share = float(effect["risk_per_share"])
+            provenance = dict(effect["risk_provenance"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("PAPER entry requires persisted stop-based risk provenance") from exc
+        if risk_per_share <= 0 or provenance.get("status") != "KNOWN":
+            raise ValueError("PAPER entry risk provenance is incomplete")
+        component = {
+            "source_run_id": str(provenance.get("source_run_id") or effect.get("run_id", "")),
+            "source_operation_key": str(provenance.get("source_operation_key") or
+                                         effect.get("financial_operation_key", "")),
+            "entry_price": float(provenance.get("entry_price") or effect.get("price", 0)),
+            "stop_price": float(provenance.get("stop_price") or effect.get("stop_price", 0)),
+            "risk_per_share": risk_per_share,
+            "quantity": quantity,
+            "risk_usd": round(quantity * risk_per_share, 2),
+            "method": str(provenance.get("method") or "TRADE_PLAN_ENTRY_MINUS_STOP"),
+        }
+        return {"status": "KNOWN", "method": "SUM_ENTRY_TO_STOP_COMPONENTS",
+                "components": [component], "risk_usd": component["risk_usd"]}
+
+    @staticmethod
+    def _merge_position_risk(existing_json: str | None, new_provenance: dict[str, Any],
+                             existing_risk: float = 0.0) -> tuple[float, str]:
+        try:
+            existing = json.loads(existing_json or "{}")
+        except (TypeError, ValueError):
+            existing = {}
+        if existing.get("status") == "UNKNOWN_LEGACY":
+            return existing_risk, json.dumps(existing, ensure_ascii=False)
+        components = list(existing.get("components") or []) + list(new_provenance.get("components") or [])
+        total = round(sum(float(item.get("risk_usd", 0)) for item in components), 2)
+        return total, json.dumps({"status": "KNOWN", "method": "SUM_ENTRY_TO_STOP_COMPONENTS",
+                                  "components": components, "risk_usd": total}, ensure_ascii=False)
+
+    @staticmethod
+    def _reduce_position_risk(provenance_json: str | None,
+                              remaining_ratio: float) -> tuple[float, str]:
+        try:
+            provenance = json.loads(provenance_json or "{}")
+        except (TypeError, ValueError):
+            provenance = {}
+        if provenance.get("status") != "KNOWN":
+            return 0.0, json.dumps({"status": "UNKNOWN_LEGACY"}, ensure_ascii=False)
+        components = []
+        for item in provenance.get("components") or []:
+            value = dict(item)
+            value["quantity"] = round(float(value.get("quantity", 0)) * remaining_ratio, 8)
+            value["risk_usd"] = round(float(value.get("risk_usd", 0)) * remaining_ratio, 2)
+            if value["quantity"] > 0:
+                components.append(value)
+        total = round(sum(float(item["risk_usd"]) for item in components), 2)
+        return total, json.dumps({"status": "KNOWN", "method": "PRO_RATA_SELL_REDUCTION",
+                                  "components": components, "risk_usd": total}, ensure_ascii=False)
+
+    @staticmethod
     def _apply_paper_effect(c: sqlite3.Connection, effect: dict[str, Any]) -> bool:
         if not effect:
             return False
@@ -1381,6 +1501,7 @@ class Database:
             prediction["decision"], prediction["confidence"], prediction["reference_price"],
             prediction["horizon"], timestamp, json.dumps(prediction, ensure_ascii=False)))
         if action == "BUY":
+            risk_provenance = Database._risk_provenance(effect)
             notional = float(effect["notional_usd"])
             available = float(account["cash"]) - float(account["reserved_cash"])
             if notional > available + 0.01:
@@ -1399,22 +1520,38 @@ class Database:
                  cost_basis_method) VALUES(?,?,?,?,?,?,?,?,?)""",
                 (effect["run_id"], effect["ticker"], timestamp, "BUY", effect["quantity"],
                  effect["price"], "PAPER", operation_key, "WEIGHTED_AVERAGE"))
-            c.execute("""INSERT INTO portfolio_positions
-                (ticker,quantity,average_price,updated_at,mode,account_id,sector,status,market_value,
-                 latest_mark,mark_timestamp,mark_source,mark_status)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(ticker,account_id) DO UPDATE SET
-                quantity=portfolio_positions.quantity+excluded.quantity,
-                average_price=((portfolio_positions.quantity*portfolio_positions.average_price)+
-                (excluded.quantity*excluded.average_price))/(portfolio_positions.quantity+excluded.quantity),
-                updated_at=excluded.updated_at,sector=excluded.sector,status='OPEN',
-                market_value=(portfolio_positions.quantity+excluded.quantity)*excluded.average_price,
-                latest_mark=excluded.latest_mark,mark_timestamp=excluded.mark_timestamp,
-                mark_source=excluded.mark_source,mark_status=excluded.mark_status""",
-                (effect["ticker"], effect["quantity"], effect["price"], timestamp, "PAPER",
-                 account_id, effect.get("sector", "UNKNOWN"), "OPEN", notional,
-                 effect["price"], timestamp, "PAPER_FILL", "FRESH"))
+            existing = c.execute("""SELECT quantity,average_price,position_risk_usd,
+                risk_provenance_json FROM portfolio_positions
+                WHERE ticker=? AND account_id=?""", (effect["ticker"], account_id)).fetchone()
+            quantity = float(effect["quantity"])
+            if existing:
+                old_quantity = float(existing["quantity"])
+                new_quantity = old_quantity + quantity
+                average_price = ((old_quantity * float(existing["average_price"])) +
+                                 (quantity * float(effect["price"]))) / new_quantity
+                risk_usd, risk_json = Database._merge_position_risk(
+                    existing["risk_provenance_json"], risk_provenance,
+                    float(existing["position_risk_usd"] or 0))
+                c.execute("""UPDATE portfolio_positions SET quantity=?,average_price=?,updated_at=?,
+                    sector=?,status='OPEN',market_value=?,position_risk_usd=?,risk_provenance_json=?,
+                    risk_as_of=?,latest_mark=?,mark_timestamp=?,mark_source=?,mark_status='FRESH'
+                    WHERE ticker=? AND account_id=?""", (
+                    new_quantity, average_price, timestamp, effect.get("sector", "UNKNOWN"),
+                    new_quantity * float(effect["price"]), risk_usd, risk_json, timestamp,
+                    effect["price"], timestamp, "PAPER_FILL", effect["ticker"], account_id))
+            else:
+                risk_usd, risk_json = Database._merge_position_risk("{}", risk_provenance)
+                c.execute("""INSERT INTO portfolio_positions
+                    (ticker,quantity,average_price,updated_at,mode,account_id,sector,status,market_value,
+                     position_risk_usd,risk_provenance_json,risk_as_of,latest_mark,mark_timestamp,
+                     mark_source,mark_status)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                    effect["ticker"], quantity, effect["price"], timestamp, "PAPER", account_id,
+                    effect.get("sector", "UNKNOWN"), "OPEN", notional, risk_usd, risk_json, timestamp,
+                    effect["price"], timestamp, "PAPER_FILL", "FRESH"))
             Database._financial_fault(effect, "AFTER_POSITION_UPDATE")
         elif action == "CONDITIONAL_ORDER":
+            risk_provenance = Database._risk_provenance(effect)
             reserve = float(effect["notional_usd"])
             available = float(account["cash"]) - float(account["reserved_cash"])
             if reserve > available + 0.01:
@@ -1423,20 +1560,22 @@ class Database:
                       (reserve, timestamp, account_id))
             c.execute("""INSERT INTO paper_orders
                 (order_id,account_id,run_id,ticker,side,order_type,status,quantity,trigger_price,
-                 limit_price,reserved_cash,valid_until,invalidation_price,sector,created_at,updated_at,
-                 financial_operation_key)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+                limit_price,reserved_cash,valid_until,invalidation_price,sector,created_at,updated_at,
+                financial_operation_key,risk_per_share,risk_provenance_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
                 effect["order_id"], account_id, effect["run_id"], effect["ticker"], "BUY",
                 "CONDITIONAL", "PENDING", effect["quantity"], effect["trigger_price"],
                 effect["price"], reserve, effect["valid_until"], effect["invalidation_price"],
-                effect.get("sector", "UNKNOWN"), timestamp, timestamp, operation_key))
+                effect.get("sector", "UNKNOWN"), timestamp, timestamp, operation_key,
+                effect["risk_per_share"], json.dumps(risk_provenance, ensure_ascii=False)))
             c.execute("""INSERT INTO paper_reservations(
                 reservation_id,order_id,account_id,amount,status,created_at)
                 VALUES(?,?,?,?,?,?)""", (
                 f"RES_{effect['order_id']}", effect["order_id"], account_id,
                 reserve, "ACTIVE", timestamp))
         elif action in {"SELL", "TRIM"}:
-            row = c.execute("""SELECT quantity,average_price FROM portfolio_positions
+            row = c.execute("""SELECT quantity,average_price,position_risk_usd,risk_provenance_json
+                FROM portfolio_positions
                 WHERE ticker=? AND account_id=? AND status='OPEN'""",
                 (effect["ticker"], account_id)).fetchone()
             if not row or float(row["quantity"]) < float(effect["quantity"]):
@@ -1462,9 +1601,13 @@ class Database:
                 c.execute("DELETE FROM portfolio_positions WHERE ticker=? AND account_id=?",
                           (effect["ticker"], account_id))
             else:
+                risk_usd, risk_json = Database._reduce_position_risk(
+                    row["risk_provenance_json"], remaining / float(row["quantity"]))
                 c.execute("""UPDATE portfolio_positions SET quantity=?,updated_at=?,
-                    market_value=? WHERE ticker=? AND account_id=?""",
-                    (remaining, timestamp, remaining * float(effect["price"]),
+                    market_value=?,position_risk_usd=?,risk_provenance_json=?,risk_as_of=?
+                    WHERE ticker=? AND account_id=?""",
+                    (remaining, timestamp, remaining * float(effect["price"]), risk_usd, risk_json,
+                     timestamp,
                       effect["ticker"], account_id))
             Database._financial_fault(effect, "AFTER_POSITION_UPDATE")
         account_after = c.execute("SELECT cash FROM paper_accounts WHERE account_id=?",
@@ -1774,10 +1917,14 @@ class Database:
                 (run_id, run_id, now.isoformat(), now.isoformat(), owner, lease_until, job_id))
             return cursor.rowcount == 1
 
-    def heartbeat_job(self, job_id: str, run_id: str = "") -> None:
+    def heartbeat_job(self, job_id: str, run_id: str = "", lease_seconds: int = 900) -> None:
+        lease_until = (datetime.now(timezone.utc) +
+                       timedelta(seconds=max(30, int(lease_seconds)))).isoformat()
         with self.connect() as c:
-            c.execute("""UPDATE job_queue SET heartbeat_at=?,run_id=CASE WHEN ?='' THEN run_id ELSE ? END
-                WHERE job_id=?""", (now_iso(), run_id, run_id, job_id))
+            c.execute("""UPDATE job_queue SET heartbeat_at=?,lease_until=?,
+                run_id=CASE WHEN ?='' THEN run_id ELSE ? END
+                WHERE job_id=? AND status='RUNNING'""",
+                      (now_iso(), lease_until, run_id, run_id, job_id))
 
     def finish_job(self, job_id: str, status: str, error: str = "") -> None:
         with self.connect() as c:
@@ -1786,13 +1933,17 @@ class Database:
                       (status, now_iso(), error, job_id))
 
     def recoverable_jobs(self, max_attempts: int = 2) -> list[dict[str, Any]]:
+        now = now_iso()
         with self.connect() as c:
             c.execute("""UPDATE job_queue SET status='QUEUED',started_at=NULL,heartbeat_at=NULL,
-                lease_owner=NULL,lease_until=NULL WHERE status='RUNNING' AND attempt<?""",
-                (max_attempts,))
+                lease_owner=NULL,lease_until=NULL WHERE status='RUNNING' AND attempt<?
+                AND lease_until IS NOT NULL AND lease_until<=?""",
+                (max_attempts, now))
             c.execute("""UPDATE job_queue SET status='ABORTED',finished_at=?,
-                last_error='restart retry limit reached' WHERE status='RUNNING' AND attempt>=?""",
-                (now_iso(), max_attempts))
+                last_error='restart retry limit reached',lease_owner=NULL,lease_until=NULL
+                WHERE status='RUNNING' AND attempt>=?
+                AND lease_until IS NOT NULL AND lease_until<=?""",
+                (now, max_attempts, now))
             rows = c.execute("""SELECT * FROM job_queue WHERE status='QUEUED' AND cancel_requested=0
                 ORDER BY priority,created_at""").fetchall()
         return [dict(row) | {"payload": json.loads(row["payload_json"])} for row in rows]

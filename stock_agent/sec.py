@@ -7,6 +7,7 @@ import time
 import threading
 import urllib.error
 import urllib.request
+from datetime import date
 from typing import Any
 
 from .schemas import EvidenceItem
@@ -14,6 +15,42 @@ from .validation import validate_ticker
 
 
 def derive_standalone_quarter(ytd: dict[str, Any], q1: dict[str, Any]) -> dict[str, Any]:
+    failures: list[str] = []
+    if str(ytd.get("fp") or "").upper() != "Q2":
+        failures.append("YTD_NOT_Q2")
+    if str(q1.get("fp") or "").upper() != "Q1":
+        failures.append("Q1_NOT_Q1")
+    for field in ("concept", "unit", "form", "fy"):
+        if ytd.get(field) != q1.get(field):
+            failures.append(f"{field.upper()}_MISMATCH")
+    if str(ytd.get("form") or "").upper() != "10-Q":
+        failures.append("YTD_FORM_NOT_10Q")
+    if str(q1.get("form") or "").upper() != "10-Q":
+        failures.append("Q1_FORM_NOT_10Q")
+    if ytd.get("is_restatement") or q1.get("is_restatement"):
+        failures.append("RESTATEMENT_FLAG_PRESENT")
+    try:
+        ytd_start, ytd_end = date.fromisoformat(str(ytd["start"])), date.fromisoformat(str(ytd["end"]))
+        q1_start, q1_end = date.fromisoformat(str(q1["start"])), date.fromisoformat(str(q1["end"]))
+        if not (ytd_start == q1_start and q1_end < ytd_end):
+            failures.append("PERIOD_BOUNDARIES_NOT_NESTED")
+        if (ytd_end - ytd_start).days < (q1_end - q1_start).days:
+            failures.append("YTD_DURATION_SHORTER_THAN_Q1")
+    except (KeyError, TypeError, ValueError):
+        failures.append("PERIOD_METADATA_MISSING")
+    base = {
+        "value": None,
+        "status": "UNKNOWN_NOT_COMPARABLE" if failures else "KNOWN",
+        "derived": True,
+        "formula": "6M_YTD - Q1",
+        "source_fact_ids": [ytd.get("fact_id", ""), q1.get("fact_id", "")],
+        "as_of": ytd.get("end"),
+        "method": "DETERMINISTIC_PERIOD_SUBTRACTION",
+        "comparability": "FAILED" if failures else "PASSED",
+        "rejection_reasons": failures,
+    }
+    if failures:
+        return base
     return {
         "value": float(ytd["value"]) - float(q1["value"]),
         "status": "KNOWN",
@@ -22,6 +59,8 @@ def derive_standalone_quarter(ytd: dict[str, Any], q1: dict[str, Any]) -> dict[s
         "source_fact_ids": [ytd["fact_id"], q1["fact_id"]],
         "as_of": ytd.get("end"),
         "method": "DETERMINISTIC_PERIOD_SUBTRACTION",
+        "comparability": "PASSED",
+        "rejection_reasons": [],
     }
 
 

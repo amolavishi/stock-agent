@@ -337,6 +337,8 @@ class PositionSize:
     pending_committed_risk_usd: float = 0.0
     gross_exposure_usd: float = 0.0
     risk_rule_version: str = "portfolio_heat_v1"
+    portfolio_risk_used_usd: float = 0.0
+    risk_budget_remaining_usd: float = 0.0
 
 
 @dataclass

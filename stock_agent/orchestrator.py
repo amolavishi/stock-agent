@@ -4,7 +4,7 @@ import uuid
 import inspect
 import hashlib
 import json
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from datetime import datetime, timezone
 
 from .agents import MockCriticAgent, MockResearchAgent
@@ -414,6 +414,75 @@ class Orchestrator:
                 critical_capital_unknown, has_open_position)
             decision_name = "WAIT" if market.is_mock else final_guard["final_decision"]
             emit("FINAL_GUARD_COMPLETED", final_guard)
+            # Certification is a boundary decision, not a mutable pre-chairman label. Re-run
+            # the complete contract after Risk, Chairman, claims, sizing, and FinalGuard exist.
+            final_certification = self.certification.evaluate(
+                run_id=run_id,
+                debate_status=debate_state.status,
+                market=market,
+                evidence=evidence,
+                capital_structure=capital_payload,
+                live_mode=selected_edgar_mode == "live",
+                critical_open_issues=debate_state.critical_open_issue_count,
+                unresolved_must_answer=self.db.unresolved_must_answer_count(run_id),
+                claim_validation_passed=claim_guard["valid"],
+                system_integrity_ok=True,
+                sizing_requested=request.paper_action_enabled,
+                portfolio_state=account,
+                final_boundary_failures=final_guard["errors"],
+                final_decision=final_guard["final_decision"],
+                risk_hard_filter_pass=risk.hard_filter_pass,
+                risk_decision=risk.risk_decision,
+            )
+            certification = final_certification
+            emit("FINAL_CERTIFICATION_EVALUATED", asdict(certification))
+            if not certification.certified:
+                self._record_usage(run_id, ticker)
+                usage = self.db.usage_summary(run_id)
+                started_at = self.db.get_run(run_id)["started_at"]
+                manifest = RunManifest(
+                    run_id, ticker, market.snapshot_id,
+                    [item.evidence_id for item in evidence], state.last_updated,
+                    research.prompt_version, critic.prompt_version,
+                    getattr(self.chairman, "prompt_version", "unknown"), risk.rule_version,
+                    research.provider, research.model, started_at, now_iso(),
+                    certification.action, analysis_intensity=request.analysis_intensity,
+                    market_as_of=market.observed_at,
+                    evidence_cutoff=max((item.filed_at or item.published_at for item in evidence), default=""),
+                    companyfacts_as_of=state.companyfacts_as_of,
+                    debate_status=debate_state.status, round_count=debate_rounds,
+                    input_tokens=usage["input_tokens"], output_tokens=usage["output_tokens"],
+                    reasoning_tokens=usage["reasoning_tokens"],
+                    estimated_cost_usd=usage["estimated_cost_usd"],
+                    total_latency_ms=usage["latency_ms"], prompt_hashes=self._prompt_hashes(),
+                    risk_config_hash=hashlib.sha256(json.dumps(
+                        self.config["risk_rules"], sort_keys=True).encode()).hexdigest())
+                report = render_uncertified_report(
+                    run_id, ticker, certification, request_payload, market=market,
+                    debate_state=debate_state, evidence=evidence, usage=usage)
+                if self.config.get("report_dir"):
+                    report_path = write_run_report(self.config["report_dir"], report, ticker, run_id)
+                else:
+                    report_path = self.knowledge.write_report(ticker, run_id, report)
+                cancellation.check("BEFORE_FINAL_PERSIST")
+                self.db.finalize_uncertified_analysis(
+                    certification, manifest, research, critic, request.request_id, ticker,
+                    str(report_path), debate_state.status, debate_rounds, usage)
+                self.db.record_knowledge_sync(
+                    run_id, ticker, "BLOCKED_CERTIFICATION", str(self.knowledge.root),
+                    ",".join(certification.reason_codes))
+                emit("RUN_UNCERTIFIED", {"action": certification.action,
+                                          "certification_status": certification.certification_status,
+                                          "report": str(report_path)})
+                return {"run_id": run_id, "market": market, "state": state,
+                        "evidence": evidence, "research": research, "critic": critic,
+                        "risk": risk, "chairman": chairman_output, "position_size": None,
+                        "manifest": manifest, "decision": None, "report_path": report_path,
+                        "market_regime": market_regime.regime,
+                        "market_regime_context": market_regime, "debate_rounds": debate_rounds,
+                        "debate_state": debate_state, "consensus_result": consensus_result,
+                        "final_guard": final_guard, "certification": certification,
+                        "request": request}
             raw_confidence = max(0, min(100, round((research.confidence + critic.confidence) / 2
                                                    - len(risk.warnings) * 3)))
             confidence_cap = self._confidence_cap(
@@ -430,13 +499,6 @@ class Orchestrator:
                 state.known_risks[:3] + risk.warnings[:2], run_id)
             exported_position_size = (position_size
                                       if decision_name in {"BUY", "CONDITIONAL_BUY"} else None)
-            certification = replace(
-                certification, action=decision_name, decision_confidence=confidence,
-                trade_plan_status="READY",
-                position_sizing_status=("READY" if exported_position_size else "WITHHELD"),
-                side_effect_status=(SideEffectStatus.AUTHORIZED_PENDING.value
-                                    if request.paper_action_enabled
-                                    else SideEffectStatus.NOT_AUTHORIZED.value))
             started_at = self.db.get_run(run_id)["started_at"]
             self._record_usage(run_id, ticker)
             usage = self.db.usage_summary(run_id)

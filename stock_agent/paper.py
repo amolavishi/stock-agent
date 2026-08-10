@@ -30,6 +30,8 @@ class PaperPortfolio:
     def plan_effect(self, decision: InvestmentDecision, size: PositionSize,
                     sector: str = "UNKNOWN", horizon: str = "1-2M") -> dict:
         timestamp = now_iso()
+        risk_per_share = round(decision.trade_plan.risk_per_share, 4)
+        operation_key = f"paper:{decision.run_id}:{decision.decision}:{decision.ticker}"
         effect = {
             "account_id": size.account_id or "PAPER_DEFAULT", "run_id": decision.run_id,
             "ticker": decision.ticker, "timestamp": timestamp, "sector": sector or "UNKNOWN",
@@ -42,9 +44,20 @@ class PaperPortfolio:
                 "horizon": horizon,
             },
             "action": "PREDICTION_ONLY",
-            "financial_operation_key": (
-                f"paper:{decision.run_id}:{decision.decision}:{decision.ticker}"
-            ),
+            "financial_operation_key": operation_key,
+            "stop_price": decision.trade_plan.stop_price,
+            "risk_per_share": risk_per_share,
+            "risk_provenance": {
+                "status": "KNOWN",
+                "method": "TRADE_PLAN_ENTRY_MINUS_STOP",
+                "source_run_id": decision.run_id,
+                "source_operation_key": operation_key,
+                "entry_price": decision.trade_plan.entry_price,
+                "stop_price": decision.trade_plan.stop_price,
+                "risk_per_share": risk_per_share,
+                "quantity": size.quantity,
+                "risk_usd": round(max(0, size.quantity) * risk_per_share, 2),
+            },
         }
         if size.quantity <= 0:
             if decision.decision not in {"SELL", "TRIM"}:

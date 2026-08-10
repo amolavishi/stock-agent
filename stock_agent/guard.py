@@ -68,7 +68,9 @@ class FinalGuard:
             final = "WAIT"
             overridden = True
         elif proposed == "HOLD" and not has_open_position:
-            final = "WAIT"
+            # HOLD without an existing position is an invalid action, not a WAIT stance.
+            # Preserve the hard failure so the final certification boundary can withhold PAPER.
+            final = "EXCLUDE"
             overridden = True
         elif errors:
             final = "EXCLUDE"

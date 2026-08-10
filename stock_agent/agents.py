@@ -31,7 +31,8 @@ class MockResearchAgent:
             bull_case=[f"[MOCK] {x}" for x in state.catalysts[:3]],
             bear_case=[f"[MOCK] {x}" for x in state.known_risks[:3]],
             suggested_decision=proposed, confidence=confidence,
-            evidence_ids=[e.evidence_id for e in evidence], claims=claims)
+            evidence_ids=[e.evidence_id for e in evidence], claims=claims,
+            consensus_ready=True)
 
 
 class MockCriticAgent:
@@ -55,4 +56,4 @@ class MockCriticAgent:
             verdict="CHALLENGE" if challenge else "PASS", critical_flaws=flaws,
             failure_scenarios=scenarios, evidence_conflicts=[],
             critic_decision="WAIT" if challenge else research.suggested_decision,
-            confidence=65 if challenge else 60)
+            confidence=65 if challenge else 60, consensus_ready=True)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from .schemas import EvidenceItem
 from .validation import AnalysisIncompleteError
 
@@ -43,6 +45,38 @@ def _domain_compatible(expected: str, actual: set[str]) -> bool:
     return expected in actual
 
 
+_SEMANTIC_STOPWORDS = {
+    "about", "above", "against", "based", "company", "current", "does", "from",
+    "have", "into", "that", "the", "this", "with", "will", "would", "claim",
+}
+_DOMAIN_TERMS = {
+    "FINANCIAL_FACT": {"revenue", "gross", "margin", "cash", "debt", "income", "shares",
+                       "burn", "runway", "capex", "profit", "loss", "ebitda"},
+    "CAPITAL_STRUCTURE": {"atm", "warrant", "shelf", "convertible", "dilution", "offering",
+                          "outstanding", "authorized", "issuance"},
+    "MARKET_TECHNICAL": {"ma20", "ma50", "ma200", "moving", "average", "volume", "stage",
+                          "relative", "strength", "trend"},
+    "MARKET_PRICE": {"price", "quote", "close", "trade", "market"},
+}
+
+
+def _semantic_terms(value: str) -> set[str]:
+    return {term for term in re.findall(r"[a-z][a-z0-9_-]{2,}", value.lower())
+            if term not in _SEMANTIC_STOPWORDS}
+
+
+def _relevance_failure(claim: dict, item: EvidenceItem, expected_domain: str) -> bool:
+    explicit_terms = {str(term).lower() for term in (claim.get("semantic_keywords") or [])}
+    required = explicit_terms | _DOMAIN_TERMS.get(expected_domain, set())
+    if not required:
+        return False
+    evidence_text = " ".join(str(value or "") for value in (
+        item.title, item.summary, item.normalized_fact, item.category,
+        item.semantic_classification, str(item.facts)))
+    evidence_terms = _semantic_terms(evidence_text)
+    return not (required & evidence_terms)
+
+
 def validate_claim_evidence(claims: list[dict], evidence: list[EvidenceItem],
                             min_claims: int = 0,
                             additional_source_ids: set[str] | None = None) -> None:
@@ -67,6 +101,11 @@ def validate_claim_evidence(claims: list[dict], evidence: list[EvidenceItem],
             if incompatible:
                 raise AnalysisIncompleteError(
                     f"claim-evidence domain mismatch: expected={expected_domain}, ids={incompatible}")
+            relevant = [evidence_id for evidence_id in ids if evidence_id in by_id and
+                        _relevance_failure(claim, by_id[evidence_id], expected_domain)]
+            if relevant:
+                raise AnalysisIncompleteError(
+                    f"claim-evidence semantic relevance failed: expected={expected_domain}, ids={relevant}")
             minimum_grade = str(claim.get("minimum_evidence_grade") or "").upper()
             if minimum_grade:
                 rank = {"A": 4, "B": 3, "C": 2, "D": 1, "UNCLASSIFIED": 0}

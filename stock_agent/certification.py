@@ -110,8 +110,11 @@ class CertificationEngine:
         data_failures: list[str],
         evidence_blocked: bool,
         debate_blocked: bool,
+        final_boundary_blocked: bool,
     ) -> str:
         if not system_integrity_ok:
+            return CertificationStatus.BLOCKED_SYSTEM_INTEGRITY.value
+        if final_boundary_blocked:
             return CertificationStatus.BLOCKED_SYSTEM_INTEGRITY.value
         if any("CONFLICT" in item for item in data_failures):
             return CertificationStatus.BLOCKED_DATA_CONFLICT.value
@@ -140,6 +143,10 @@ class CertificationEngine:
         system_integrity_ok: bool = True,
         sizing_requested: bool = False,
         portfolio_state: dict[str, Any] | None = None,
+        final_boundary_failures: list[str] | None = None,
+        final_decision: str | None = None,
+        risk_hard_filter_pass: bool | None = None,
+        risk_decision: str | None = None,
     ) -> CertificationResult:
         data = RequiredDataContract.assess(
             market,
@@ -150,11 +157,17 @@ class CertificationEngine:
             portfolio_state=portfolio_state,
         )
 
+        final_failures = list(final_boundary_failures or [])
         reasons = list(data.failures)
         if not system_integrity_ok:
             reasons.append("SYSTEM_INTEGRITY_CHECK_FAILED")
         if not claim_validation_passed:
             reasons.append("CLAIM_EVIDENCE_VALIDATION_FAILED")
+        reasons.extend(final_failures)
+        if risk_hard_filter_pass is False:
+            reasons.append("RISK_HARD_FILTER_FAILED")
+        if risk_decision == "EXCLUDE":
+            reasons.append("RISK_EXCLUDED")
         if unresolved_must_answer > 0:
             reasons.append("MUST_ANSWER_EVIDENCE_REQUEST_UNRESOLVED")
         if debate_status == "DEADLOCK":
@@ -170,11 +183,14 @@ class CertificationEngine:
             or critical_open_issues > 0
             or debate_status not in {"CONSENSUS_REACHED", "FINAL_CONSENSUS"}
         )
+        final_boundary_blocked = bool(final_failures or risk_hard_filter_pass is False or
+                                      risk_decision == "EXCLUDE")
         status = self._primary_status(
             system_integrity_ok=system_integrity_ok,
             data_failures=data.failures,
             evidence_blocked=evidence_blocked,
             debate_blocked=debate_blocked,
+            final_boundary_blocked=final_boundary_blocked,
         )
         certified = status == CertificationStatus.CERTIFIED.value
 
@@ -195,11 +211,13 @@ class CertificationEngine:
                 if certified and sizing_requested
                 else SideEffectStatus.NOT_AUTHORIZED.value
             ),
-            action="PENDING_CERTIFIED_DECISION" if certified else NO_CERTIFIED_ACTION,
+            action=(final_decision if certified and final_decision else
+                    "PENDING_CERTIFIED_DECISION" if certified else NO_CERTIFIED_ACTION),
             reason_codes=list(dict.fromkeys(reasons)),
             required_data_failures=data.failures,
             important_data_warnings=data.warnings,
             decision_confidence=None,
-            trade_plan_status="PENDING" if certified else "WITHHELD",
-            position_sizing_status="PENDING" if certified and sizing_requested else "WITHHELD",
+            trade_plan_status="READY" if certified and final_decision else "PENDING" if certified else "WITHHELD",
+            position_sizing_status=("READY" if certified and sizing_requested and final_decision
+                                    else "PENDING" if certified and sizing_requested else "WITHHELD"),
         )

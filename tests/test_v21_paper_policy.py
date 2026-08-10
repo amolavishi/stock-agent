@@ -79,7 +79,7 @@ class PaperPolicyTests(unittest.TestCase):
     def test_hold_is_not_valid_without_existing_position(self):
         result = CanonicalPaperValidator(self.db).canonicalize_action(
             "HOLD", "INOD", account_id="PAPER_DEFAULT")
-        self.assertEqual(result.action, "WAIT")
+        self.assertEqual(result.action, "NO_CERTIFIED_ACTION")
         self.assertFalse(result.valid)
         self.assertIn("HOLD_REQUIRES_OPEN_POSITION", result.reason_codes)
 
@@ -94,6 +94,33 @@ class PaperPolicyTests(unittest.TestCase):
     def test_korean_company_alias_resolves_duol(self):
         request = CommandInterpreter().parse("듀오링고 분석 최대")
         self.assertEqual(request.tickers, ["DUOL"])
+
+
+    def test_open_and_pending_risk_are_provenanced_and_reduce_sizing_budget(self):
+        decision = InvestmentDecision("INOD", now_iso(), "BUY", 80, "READY",
+                                      plan(), [], [], "RUN-RISK-BUY")
+        with self.db.connect() as connection:
+            self.db._apply_paper_effect(
+                connection, self.paper.plan_effect(decision, PositionSize(5, 50, 75, 0.5, "TEST")))
+        pending = InvestmentDecision("IONQ", now_iso(), "CONDITIONAL_BUY", 80, "READY",
+                                     plan(), [], [], "RUN-RISK-PENDING")
+        with self.db.connect() as connection:
+            self.db._apply_paper_effect(
+                connection, self.paper.plan_effect(pending, PositionSize(5, 50, 75, 0.5, "TEST")))
+        account = self.db.paper_account_state()
+        self.assertEqual(account["risk_budget_used"], 10.0)
+        self.assertEqual(account["pending_committed_risk"], 10.0)
+        self.assertEqual(account["portfolio_risk_used"], 20.0)
+        self.assertTrue(account["risk_provenance_complete"])
+        with self.db.connect() as connection:
+            row = connection.execute(
+                "SELECT position_risk_usd,risk_provenance_json FROM portfolio_positions"
+            ).fetchone()
+        self.assertEqual(row["position_risk_usd"], 10.0)
+        self.assertIn("TRADE_PLAN_ENTRY_MINUS_STOP", row["risk_provenance_json"])
+        size = PositionSizingEngine().calculate_for_account(plan(), account, "UNKNOWN")
+        self.assertEqual(size.risk_budget_remaining_usd, 55.0)
+        self.assertEqual(size.portfolio_risk_used_usd, 20.0)
 
 
 class RiskMetricTests(unittest.TestCase):
@@ -114,11 +141,11 @@ class RiskMetricTests(unittest.TestCase):
         with self.assertRaises(PositionSizingError):
             PositionSizingEngine().calculate(plan(10, 10), 10_000, 10_000)
 
-    def test_final_guard_converts_hold_without_position_to_wait(self):
+    def test_final_guard_rejects_hold_without_position(self):
         risk = RiskResult("INOD", True, [], [], plan(), "BUY")
         result = FinalGuard.validate_final(
             {"decision": "HOLD"}, risk, True, True, has_open_position=False)
-        self.assertEqual(result["final_decision"], "WAIT")
+        self.assertEqual(result["final_decision"], "EXCLUDE")
         self.assertIn("HOLD_REQUIRES_OPEN_POSITION", result["errors"])
 
 

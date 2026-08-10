@@ -48,8 +48,11 @@ class PositionSizingEngine:
         risk_per_share = plan.entry_price - plan.stop_price
         if risk_per_share <= 0:
             raise PositionSizingError("stop price must be below entry price")
-        loss_budget = max(0.0, float(account.get("risk_budget", equity * self.max_loss_pct / 100))
-                          - float(account.get("risk_budget_used", 0)))
+        risk_budget = float(account.get("risk_budget", equity * self.max_loss_pct / 100))
+        open_risk = float(account.get("risk_budget_used", 0))
+        pending_risk = float(account.get("pending_committed_risk", 0))
+        portfolio_risk_used = open_risk + pending_risk
+        loss_budget = max(0.0, risk_budget - portfolio_risk_used)
         by_loss = math.floor(loss_budget / risk_per_share)
         single_cap = equity * self.max_position_pct / 100
         total_remaining = max(0.0, equity * self.max_total_exposure_pct / 100
@@ -76,7 +79,9 @@ class PositionSizingEngine:
                             initial_capital_at_risk_usd=round(quantity * risk_per_share, 2),
                             current_mark_to_stop_risk_usd=0.0,
                             pending_committed_risk_usd=round(
-                                float(account.get("pending_committed_risk", 0)), 2),
+                                pending_risk, 2),
                             gross_exposure_usd=round(
                                 float(account.get("current_exposure", 0)) + notional, 2),
-                            risk_rule_version="portfolio_heat_v1")
+                            risk_rule_version="portfolio_heat_v1",
+                            portfolio_risk_used_usd=round(portfolio_risk_used, 2),
+                            risk_budget_remaining_usd=round(loss_budget, 2))
