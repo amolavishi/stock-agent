@@ -51,6 +51,7 @@ class PaperPortfolio:
             "risk_provenance": {
                 "status": "KNOWN",
                 "method": "TRADE_PLAN_ENTRY_MINUS_STOP",
+                "sector_cap_pct": self.max_sector_exposure_pct,
                 "source_run_id": decision.run_id,
                 "source_operation_key": operation_key,
                 "entry_price": decision.trade_plan.entry_price,
@@ -59,6 +60,7 @@ class PaperPortfolio:
                 "quantity": size.quantity,
                 "risk_usd": round(max(0, size.quantity) * risk_per_share, 2),
             },
+            "max_sector_exposure_pct": self.max_sector_exposure_pct,
         }
         if size.quantity <= 0:
             if decision.decision not in {"SELL", "TRIM"}:

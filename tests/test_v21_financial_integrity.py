@@ -89,10 +89,10 @@ class FinancialIdempotencyTests(unittest.TestCase):
             "account_id": "PAPER_DEFAULT", "run_id": "R", "ticker": "INOD",
             "timestamp": now_iso(), "sector": "Technology", "quantity": 2,
             "price": 100.0, "notional_usd": 200.0, "action": "BUY",
-            "stop_price": 90.0, "risk_per_share": 10.0,
+            "stop_price": 99.0, "risk_per_share": 1.0,
             "risk_provenance": {"status": "KNOWN", "method": "TEST",
                                  "source_run_id": "R", "source_operation_key": "op:buy:INOD:1",
-                                 "entry_price": 100.0, "stop_price": 90.0},
+                                 "entry_price": 100.0, "stop_price": 99.0},
             "prediction": {"prediction_id": "P", "run_id": "R", "ticker": "INOD",
                            "decision": "BUY", "confidence": 80,
                            "reference_price": 100.0, "horizon": "1-2M"},
@@ -105,6 +105,9 @@ class FinancialIdempotencyTests(unittest.TestCase):
         )
         for index, point in enumerate(points):
             with self.subTest(point=point):
+                self.db = Database(str(Path(self.temp.name) / f"fault-{index}.sqlite"))
+                self.db.init()
+                self.db.initialize_paper_account(1000)
                 effect = self.buy_effect()
                 effect["financial_operation_key"] = f"op:fault:{index}"
                 effect["prediction"]["prediction_id"] = f"P{index}"

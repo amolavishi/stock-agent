@@ -2,3 +2,4 @@
 # Discord runtime:
 discord.py>=2.6,<3
 httpx>=0.27,<1
+tzdata>=2024.1

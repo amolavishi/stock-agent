@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .hermes import default_hermes_executable
+from .hermes import HermesError, default_hermes_executable
 
 
 def local_health(config: dict[str, Any], database) -> dict[str, Any]:
@@ -34,7 +34,11 @@ def local_health(config: dict[str, Any], database) -> dict[str, Any]:
                 checks[f"{name}_writable"] = True
         except OSError:
             checks[f"{name}_writable"] = False
-    checks["hermes_executable"] = Path(default_hermes_executable()).is_file()
+    try:
+        checks["hermes_executable"] = Path(default_hermes_executable()).is_file()
+    except (HermesError, OSError):
+        checks["hermes_executable"] = False
+        checks["hermes_error"] = "NOT_FOUND"
     credentials = config.get("credentials", {})
     checks["credentials_present"] = {
         "toss": bool(credentials.get("toss_app_key") and credentials.get("toss_app_secret")),
@@ -45,5 +49,6 @@ def local_health(config: dict[str, Any], database) -> dict[str, Any]:
     }
     checks["paper_only"] = config.get("mode") == "PAPER"
     checks["healthy"] = (checks.get("sqlite_integrity") == "ok" and checks.get("paper_only")
-                         and checks.get("report_dir_writable") and checks.get("vault_path_writable"))
+                         and checks.get("report_dir_writable") and checks.get("vault_path_writable")
+                         and checks.get("hermes_executable"))
     return checks

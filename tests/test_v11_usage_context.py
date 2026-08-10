@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -77,6 +78,7 @@ class UsageTelemetryTests(unittest.TestCase):
             self.assertEqual(records[0]["failed"], 1)
             self.assertEqual(records[0]["input_tokens"], 1000)
 
+    @unittest.skipUnless(os.name == "nt", "Windows-specific Hermes stdin bridge")
     def test_windows_long_prompt_uses_stdin_bridge_not_command_line(self):
         with tempfile.TemporaryDirectory() as tmp:
             scripts = Path(tmp) / "Scripts"

@@ -1340,10 +1340,13 @@ class Database:
             "account_id": order["account_id"], "run_id": order["run_id"],
             "ticker": order["ticker"], "timestamp": timestamp,
             "sector": order["sector"] or "UNKNOWN", "quantity": order["quantity"],
+            "order_id": order["order_id"],
             "price": float(current_price), "notional_usd": notional, "action": "BUY",
             "stop_price": float(order["invalidation_price"]),
             "risk_per_share": float(order["risk_per_share"]),
             "risk_provenance": json.loads(order["risk_provenance_json"] or "{}"),
+            "max_sector_exposure_pct": json.loads(
+                order["risk_provenance_json"] or "{}").get("sector_cap_pct", 25.0),
             "prediction": {"prediction_id": f"PRED_FILL_{order['order_id']}",
                 "run_id": order["run_id"], "ticker": order["ticker"], "decision": "BUY",
                 "confidence": 0, "reference_price": float(current_price),
@@ -1491,7 +1494,8 @@ class Database:
             "method": str(provenance.get("method") or "TRADE_PLAN_ENTRY_MINUS_STOP"),
         }
         return {"status": "KNOWN", "method": "SUM_ENTRY_TO_STOP_COMPONENTS",
-                "components": [component], "risk_usd": component["risk_usd"]}
+                "components": [component], "risk_usd": component["risk_usd"],
+                "sector_cap_pct": float(provenance.get("sector_cap_pct", 25.0))}
 
     @staticmethod
     def _merge_position_risk(existing_json: str | None, new_provenance: dict[str, Any],
@@ -1528,6 +1532,78 @@ class Database:
                                   "components": components, "risk_usd": total}, ensure_ascii=False)
 
     @staticmethod
+    def _validate_paper_commit_limits(c: sqlite3.Connection,
+                                       effect: dict[str, Any],
+                                       account: sqlite3.Row) -> None:
+        """Re-read authoritative portfolio limits inside the financial commit transaction."""
+        action = str(effect.get("action") or "")
+        if action not in {"BUY", "CONDITIONAL_ORDER"}:
+            return
+        quantity = float(effect.get("quantity", 0) or 0)
+        if quantity <= 0:
+            return
+
+        positions = c.execute("""SELECT ticker,sector,market_value,position_risk_usd,
+            risk_provenance_json,mark_status
+            FROM portfolio_positions WHERE account_id=? AND status='OPEN'""",
+            (account["account_id"],)).fetchall()
+        if any(row["mark_status"] not in {"FRESH", "STALE_MARK"} for row in positions):
+            raise ValueError("PAPER_SECTOR_EXPOSURE_UNKNOWN")
+        current_exposure = sum(float(row["market_value"] or 0) for row in positions)
+        equity = float(account["cash"]) + current_exposure
+        if equity <= 0:
+            raise ValueError("PAPER_ACCOUNT_EQUITY_INVALID")
+
+        sector = str(effect.get("sector") or "UNKNOWN")
+        open_sector = sum(float(row["market_value"] or 0) for row in positions
+                          if str(row["sector"] or "UNKNOWN") == sector)
+        pending_rows = c.execute("""SELECT order_id,sector,reserved_cash,risk_per_share,
+            quantity,risk_provenance_json
+            FROM paper_orders WHERE account_id=?
+            AND status IN ('PENDING','TRIGGERED','REVALIDATING')
+            AND reserved_cash > 0""",
+            (account["account_id"],)).fetchall()
+        pending = [row for row in pending_rows if row["order_id"] != effect.get("order_id")]
+        pending_sector = sum(float(row["reserved_cash"] or 0) for row in pending
+                             if str(row["sector"] or "UNKNOWN") == sector)
+        risk_metadata = dict(effect.get("risk_provenance") or {})
+        sector_cap_pct = float(effect.get("max_sector_exposure_pct") or
+                               risk_metadata.get("sector_cap_pct", 25.0))
+        projected_sector = open_sector + pending_sector + float(
+            effect.get("notional_usd", 0) or 0)
+        if projected_sector > equity * sector_cap_pct / 100 + 0.01:
+            raise ValueError("PAPER_SECTOR_EXPOSURE_LIMIT")
+
+        # Direct fills must be risk-budget safe at the financial commit boundary.
+        # Conditional intents are checked at canonical trigger revalidation.
+        if action != "BUY":
+            return
+        new_risk = Database._risk_provenance(effect)
+        if new_risk.get("status") != "KNOWN":
+            raise ValueError("PAPER_RISK_PROVENANCE_INCOMPLETE")
+        open_risk = 0.0
+        for row in positions:
+            try:
+                provenance = json.loads(row["risk_provenance_json"] or "{}")
+            except (TypeError, ValueError):
+                provenance = {}
+            if provenance.get("status") != "KNOWN" or row["position_risk_usd"] is None:
+                raise ValueError("PAPER_RISK_PROVENANCE_INCOMPLETE")
+            open_risk += max(0.0, float(row["position_risk_usd"] or 0))
+        pending_risk = 0.0
+        for row in pending:
+            try:
+                provenance = json.loads(row["risk_provenance_json"] or "{}")
+            except (TypeError, ValueError):
+                provenance = {}
+            if provenance.get("status") != "KNOWN" or float(row["risk_per_share"] or 0) <= 0:
+                raise ValueError("PAPER_RISK_PROVENANCE_INCOMPLETE")
+            pending_risk += max(0.0, float(row["quantity"]) * float(row["risk_per_share"]))
+        risk_budget = equity * float(account["risk_budget_pct"]) / 100
+        if open_risk + pending_risk + float(new_risk.get("risk_usd", 0)) > risk_budget + 0.01:
+            raise ValueError("PAPER_RISK_LIMIT")
+
+    @staticmethod
     def _apply_paper_effect(c: sqlite3.Connection, effect: dict[str, Any]) -> bool:
         if not effect:
             return False
@@ -1544,6 +1620,12 @@ class Database:
             WHERE financial_operation_key=?""", (operation_key,)).fetchone()
         if cancelled and cancelled["status"] == "CANCELLED_BEFORE_COMMIT":
             return False
+        existing_operation = c.execute(
+            "SELECT status FROM financial_operations WHERE operation_key=?",
+            (operation_key,)).fetchone()
+        if existing_operation:
+            return False
+        Database._validate_paper_commit_limits(c, effect, account)
         payload_hash = hashlib.sha256(
             json.dumps(effect, sort_keys=True, default=str).encode("utf-8")).hexdigest()
         claimed = c.execute("""INSERT INTO financial_operations(

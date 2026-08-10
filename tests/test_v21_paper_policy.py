@@ -33,7 +33,7 @@ class PaperPolicyTests(unittest.TestCase):
         decision = InvestmentDecision("INOD", now_iso(), "CONDITIONAL_BUY", 80, "READY",
                                       plan(), [], [], "RUN-COND")
         effect = self.paper.plan_effect(
-            decision, PositionSize(100, 1000, 200, 10, "CAP"), sector="Technology")
+            decision, PositionSize(37, 370, 75, 10, "CAP"), sector="Technology")
         with self.db.connect() as connection:
             self.assertTrue(self.db._apply_paper_effect(connection, effect))
 
@@ -165,7 +165,7 @@ class PaperPolicyTests(unittest.TestCase):
 
     def test_sector_cap_includes_pending_committed_exposure_on_creation_and_revalidation(self):
         open_decision = InvestmentDecision("INOD", now_iso(), "BUY", 80, "READY",
-                                           plan(), [], [], "RUN-SECTOR-OPEN")
+                                           plan(stop=9.7), [], [], "RUN-SECTOR-OPEN")
         with self.db.connect() as connection:
             self.db._apply_paper_effect(
                 connection, self.paper.plan_effect(
@@ -173,18 +173,18 @@ class PaperPolicyTests(unittest.TestCase):
                     sector="Technology"))
         pending_decision = InvestmentDecision(
             "IONQ", now_iso(), "CONDITIONAL_BUY", 80, "READY",
-            plan(), [], [], "RUN-SECTOR-PENDING")
+            plan(stop=9.9), [], [], "RUN-SECTOR-PENDING")
         pending_effect = self.paper.plan_effect(
-            pending_decision, PositionSize(40, 400, 75, 4, "TEST"),
+            pending_decision, PositionSize(37, 370, 75, 4, "TEST"),
             sector="Technology")
         self.assertEqual(pending_effect["action"], "CONDITIONAL_ORDER")
         with self.db.connect() as connection:
             self.db._apply_paper_effect(connection, pending_effect)
         account = self.db.paper_account_state()
         self.assertEqual(account["sector_exposure"]["Technology"], 2000.0)
-        self.assertEqual(account["pending_sector_committed_exposure"]["Technology"], 400.0)
+        self.assertEqual(account["pending_sector_committed_exposure"]["Technology"], 370.0)
         sizing = PositionSizingEngine().calculate_for_account(plan(), account, "Technology")
-        self.assertEqual(sizing.sector_committed_exposure_usd, 2400.0)
+        self.assertEqual(sizing.sector_committed_exposure_usd, 2370.0)
         self.assertEqual(sizing.sector_exposure_usd, 2000.0)
         rejected = self.paper.plan_effect(
             InvestmentDecision("AAPL", now_iso(), "CONDITIONAL_BUY", 80, "READY",

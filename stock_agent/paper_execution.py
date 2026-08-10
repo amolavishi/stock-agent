@@ -81,5 +81,15 @@ class CanonicalPaperValidator:
                             other_pending_sector + notional)
         if projected_sector > float(account["equity"]) * self.max_sector_exposure_pct / 100 + 0.01:
             reasons.append("SECTOR_EXPOSURE_LIMIT")
+        if not account.get("risk_provenance_complete", True):
+            reasons.append("PORTFOLIO_RISK_PROVENANCE_INCOMPLETE")
+        else:
+            risk_budget = float(account["risk_budget"])
+            open_risk = float(account.get("open_position_risk_usd", 0))
+            pending_risk = float(account.get("pending_committed_risk", 0))
+            own_risk = float(order["quantity"]) * float(order["risk_per_share"] or 0)
+            projected_risk = open_risk + max(0.0, pending_risk - own_risk) + own_risk
+            if projected_risk > risk_budget + 0.01:
+                reasons.append("PORTFOLIO_RISK_LIMIT")
         return PaperValidationResult(not reasons, "BUY" if not reasons else "NO_CERTIFIED_ACTION",
                                      reasons)
