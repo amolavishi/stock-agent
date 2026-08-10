@@ -31,6 +31,7 @@ jobs:
       - name: Full unit suite
         run: python -m unittest discover -s tests -v
       - name: Secret scan
+        if: always()
         shell: python
         run: |
           from stock_agent.secret_scan import scan_tree
