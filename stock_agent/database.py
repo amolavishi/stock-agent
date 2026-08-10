@@ -17,7 +17,7 @@ OUTPUT_TABLES = {"research_outputs", "critic_outputs", "risk_outputs", "chairman
 
 
 class Database:
-    SCHEMA_VERSION = 21
+    SCHEMA_VERSION = 22
 
     def __init__(self, path: str, busy_timeout_ms: int = 5000, wal: bool = True):
         self.path = Path(path)
@@ -154,7 +154,7 @@ class Database:
             self._migrate_v21_paper_policy(c)
             self._migrate_v21_telemetry(c)
             self._migrate_v21_account_identity_and_financial_cancellation(c)
-            self._migrate_v21_risk_provenance(c)
+            self._migrate_v22_risk_provenance(c)
 
     @staticmethod
     def _ensure_run_columns(c: sqlite3.Connection) -> None:
@@ -614,12 +614,12 @@ class Database:
         );
         """)
         c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
-            self.SCHEMA_VERSION, now_iso(),
+            21, now_iso(),
             "v2.1 composite PAPER account position identity and cancellation boundary"))
 
     @staticmethod
-    def _migrate_v21_risk_provenance(c: sqlite3.Connection) -> None:
-        """Persist stop-based risk provenance instead of reconstructing risk ad hoc."""
+    def _migrate_v22_risk_provenance(c: sqlite3.Connection) -> None:
+        """Persist stop-based risk provenance as an explicit schema migration."""
         Database._ensure_columns(c, "portfolio_positions", {
             "position_risk_usd": "REAL DEFAULT 0",
             "risk_provenance_json": "TEXT NOT NULL DEFAULT '{}'",
@@ -638,7 +638,7 @@ class Database:
             WHERE status IN ('PENDING','TRIGGERED','REVALIDATING')
               AND (risk_provenance_json IS NULL OR risk_provenance_json IN ('','{}'))""")
         c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
-            21, now_iso(), "v2.1 PAPER position and pending-order risk provenance"))
+            22, now_iso(), "v2.2 PAPER position and pending-order risk provenance"))
 
     def start_run(self, run_id: str, ticker: str, mode: str, request_id: str = "",
                   analysis_intensity: str = "NORMAL") -> str:

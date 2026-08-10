@@ -358,7 +358,7 @@ class RunManifest:
     finished_at: str = ""
     final_decision: str = ""
     code_version: str = "v1.1"
-    db_schema_version: int = 20
+    db_schema_version: int = 22
     prompt_hashes: dict[str, str] = field(default_factory=dict)
     risk_config_hash: str = ""
     analysis_intensity: str = "NORMAL"
