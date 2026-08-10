@@ -1,0 +1,38 @@
+{
+  "provenance": "analysis_runs persisted non-secret runtime metadata",
+  "run": [
+    {
+      "run_id": "20260810_031126_INOD_5c7a21",
+      "ticker": "INOD",
+      "requested_at": "2026-08-10T03:11:26.897840+00:00",
+      "status": "SUCCESS",
+      "mode": "PAPER",
+      "final_decision": "WAIT",
+      "final_confidence": 53,
+      "error_message": null,
+      "started_at": "2026-08-10T03:11:26.897840+00:00",
+      "finished_at": "2026-08-10T03:45:42.921898+00:00",
+      "research_provider": "deepseek",
+      "research_model": "deepseek-v4-flash",
+      "critic_provider": "deepseek",
+      "critic_model": "deepseek-v4-flash",
+      "input_tokens": 293518,
+      "output_tokens": 258971,
+      "estimated_cost": 0.1147290592,
+      "prompt_version": "research_v003|critic_v002",
+      "risk_rule_version": "risk_rules_v0.2",
+      "request_id": "63a6cfec-7b56-4b5a-9a80-7c5810321136",
+      "analysis_intensity": "MAXIMUM",
+      "debate_status": "DEADLOCK",
+      "round_count": 10,
+      "delivery_status": "PUBLISHED",
+      "cancellation_status": "ACTIVE",
+      "reasoning_tokens": 181602,
+      "cached_tokens": 401664,
+      "total_latency_ms": 2018695,
+      "llm_call_count": 21,
+      "delivered_at": "2026-08-10 03:45:43"
+    }
+  ],
+  "secret_values_included": false
+}

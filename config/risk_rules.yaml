@@ -1,0 +1,11 @@
+{
+  "minimum_price_usd": 3.0,
+  "minimum_market_cap_usd": 300000000,
+  "minimum_avg_volume_usd": 10000000,
+  "minimum_reward_risk": 2.0,
+  "stage_3_action": "WAIT",
+  "max_data_age_days": 3,
+  "high_volatility_atr_pct": 12.0,
+  "max_position_pct": 10.0,
+  "max_loss_pct": 0.75
+}
