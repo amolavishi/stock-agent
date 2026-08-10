@@ -23,7 +23,9 @@ class MockResearchAgent:
                 item = evidence[index % len(evidence)]
                 claims.append({"claim": f"[MOCK] {label}가 존재한다",
                                "evidence_id": item.evidence_id,
-                               "evidence_ids": [item.evidence_id], "confidence": 0.50})
+                               "evidence_ids": [item.evidence_id], "confidence": 0.50,
+                               "materiality": "MATERIAL", "domain": "SEC_FILING",
+                               "claim_type": "FACT", "minimum_evidence_grade": "UNCLASSIFIED"})
         return ResearchAnalysis(ticker=state.ticker, market_regime="MOCK risk-on / high volatility",
             sector=market.sector_name, signal_strength=signal, catalyst_quality=catalyst,
             expectation_gap=expectation, surge_elasticity=elasticity, entry_readiness=entry,

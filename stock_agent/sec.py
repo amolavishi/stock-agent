@@ -20,7 +20,7 @@ def derive_standalone_quarter(ytd: dict[str, Any], q1: dict[str, Any]) -> dict[s
         failures.append("YTD_NOT_Q2")
     if str(q1.get("fp") or "").upper() != "Q1":
         failures.append("Q1_NOT_Q1")
-    for field in ("concept", "unit", "form", "fy"):
+    for field in ("concept", "taxonomy", "unit", "form", "fy", "entity", "entity_id", "scope"):
         if ytd.get(field) != q1.get(field):
             failures.append(f"{field.upper()}_MISMATCH")
     if str(ytd.get("form") or "").upper() != "10-Q":
@@ -34,8 +34,14 @@ def derive_standalone_quarter(ytd: dict[str, Any], q1: dict[str, Any]) -> dict[s
         q1_start, q1_end = date.fromisoformat(str(q1["start"])), date.fromisoformat(str(q1["end"]))
         if not (ytd_start == q1_start and q1_end < ytd_end):
             failures.append("PERIOD_BOUNDARIES_NOT_NESTED")
-        if (ytd_end - ytd_start).days < (q1_end - q1_start).days:
+        ytd_duration = (ytd_end - ytd_start).days
+        q1_duration = (q1_end - q1_start).days
+        if ytd_duration < q1_duration:
             failures.append("YTD_DURATION_SHORTER_THAN_Q1")
+        if not 60 <= q1_duration <= 120:
+            failures.append("Q1_DURATION_NOT_QUARTERLIKE")
+        if not 120 <= ytd_duration <= 220:
+            failures.append("YTD_DURATION_NOT_SIX_MONTH_LIKE")
     except (KeyError, TypeError, ValueError):
         failures.append("PERIOD_METADATA_MISSING")
     base = {
@@ -197,6 +203,10 @@ class SECCompanyFactsProvider(EdgarMetadataCollector):
         "pension_obligations": ("PensionLiabilitiesNoncurrent",),
         "other_contractual_obligations": ("OtherLiabilitiesCurrent", "OtherLiabilitiesNoncurrent"),
     }
+    DURATION_METRICS = {
+        "revenue", "gross_profit", "operating_income", "net_income",
+        "operating_cash_flow", "stock_based_compensation", "capex",
+    }
 
     @staticmethod
     def _latest(units: dict[str, list[dict[str, Any]]]) -> dict[str, Any] | None:
@@ -220,6 +230,10 @@ class SECCompanyFactsProvider(EdgarMetadataCollector):
                 candidates = [row for row in normalized if row["concept"] == tag]
                 selected = self._select_period_aware(candidates)
                 if selected:
+                    if name in self.DURATION_METRICS:
+                        selected = self._resolve_duration_metric(candidates, selected)
+                    else:
+                        selected = self._direct_provenance(selected)
                     break
             output[name] = selected
         output["debt_ontology"] = self._debt_ontology(normalized)
@@ -252,6 +266,9 @@ class SECCompanyFactsProvider(EdgarMetadataCollector):
                             "start": start, "end": end, "filed": row.get("filed"),
                             "accn": row.get("accn"), "value": row.get("val"),
                             "frame": row.get("frame"), "period_type": period_type,
+                            "entity": row.get("entity"),
+                            "entity_id": row.get("entity_id"),
+                            "scope": row.get("scope"),
                         })
         return output
 
@@ -304,11 +321,93 @@ class SECCompanyFactsProvider(EdgarMetadataCollector):
         if instants:
             return max(instants, key=lambda row: (str(row.get("end") or ""),
                                                   str(row.get("filed") or "")))
-        quarterly = [row for row in rows if str(row.get("fp")) in {"Q1", "Q2", "Q3"}
-                     and str(row.get("frame") or "").startswith("CY")]
+        q2_direct = [row for row in rows
+                     if SECCompanyFactsProvider._is_standalone_quarter(row)
+                     and str(row.get("fp") or "").upper() == "Q2"]
+        if q2_direct:
+            return max(q2_direct, key=lambda row: (str(row.get("end") or ""),
+                                                   str(row.get("filed") or "")))
+        ytd_q2 = [row for row in rows if SECCompanyFactsProvider._is_q2_ytd(row)]
+        if ytd_q2:
+            return max(ytd_q2, key=lambda row: (str(row.get("end") or ""),
+                                                str(row.get("filed") or "")))
+        quarterly = [row for row in rows if SECCompanyFactsProvider._is_standalone_quarter(row)]
         candidates = quarterly or rows
         return max(candidates, key=lambda row: (str(row.get("end") or ""),
                                                 str(row.get("filed") or "")))
+
+    @staticmethod
+    def _period_days(row: dict[str, Any]) -> int | None:
+        try:
+            return (date.fromisoformat(str(row["end"])) -
+                    date.fromisoformat(str(row["start"]))).days
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _is_standalone_quarter(cls, row: dict[str, Any]) -> bool:
+        days = cls._period_days(row)
+        return (row.get("period_type") == "DURATION" and
+                str(row.get("form") or "").upper() == "10-Q" and
+                str(row.get("fp") or "").upper() in {"Q1", "Q2", "Q3"} and
+                days is not None and 60 <= days <= 120)
+
+    @classmethod
+    def _is_q2_ytd(cls, row: dict[str, Any]) -> bool:
+        days = cls._period_days(row)
+        return (row.get("period_type") == "DURATION" and
+                str(row.get("form") or "").upper() == "10-Q" and
+                str(row.get("fp") or "").upper() == "Q2" and
+                days is not None and 120 <= days <= 220)
+
+    @staticmethod
+    def _direct_provenance(row: dict[str, Any]) -> dict[str, Any]:
+        result = dict(row)
+        result.update({
+            "status": "KNOWN",
+            "derived": False,
+            "method": "SEC_XBRL_DIRECT_FACT",
+            "provenance": {
+                "status": "KNOWN",
+                "method": "SEC_XBRL_DIRECT_FACT",
+                "source_fact_ids": [row.get("fact_id", "")],
+                "source_accessions": [row.get("accn", "")] if row.get("accn") else [],
+                "as_of": row.get("end"),
+            },
+        })
+        return result
+
+    @classmethod
+    def _resolve_duration_metric(cls, candidates: list[dict[str, Any]],
+                                 selected: dict[str, Any]) -> dict[str, Any]:
+        if cls._is_standalone_quarter(selected):
+            return cls._direct_provenance(selected)
+        if not cls._is_q2_ytd(selected):
+            return cls._direct_provenance(selected)
+        q1_candidates = [row for row in candidates if cls._is_standalone_quarter(row)
+                         and str(row.get("fp") or "").upper() == "Q1"]
+        q1 = max(q1_candidates, key=lambda row: (str(row.get("end") or ""),
+                                                  str(row.get("filed") or "")),
+                 default={})
+        derived = derive_standalone_quarter(selected, q1)
+        source_ids = list(derived.get("source_fact_ids") or [])
+        provenance = {
+            "status": derived["status"],
+            "method": derived["method"],
+            "formula": derived["formula"],
+            "source_fact_ids": source_ids,
+            "source_accessions": [value for value in
+                                   (selected.get("accn"), q1.get("accn")) if value],
+            "as_of": derived.get("as_of"),
+            "comparability": derived["comparability"],
+            "rejection_reasons": list(derived.get("rejection_reasons") or []),
+        }
+        identity = "|".join(str(value) for value in source_ids)
+        result = dict(selected) | derived
+        result["fact_id"] = f"DERIVED_XBRL_{hashlib.sha256(identity.encode()).hexdigest()[:24]}"
+        result["provenance"] = provenance
+        result["source_fact_ids"] = source_ids
+        return result
 
     @staticmethod
     def _derive(output: dict[str, Any]) -> dict[str, Any]:

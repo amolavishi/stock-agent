@@ -30,7 +30,7 @@ class PaperLifecycleTests(unittest.TestCase):
             db = Database(str(Path(tmp) / "db.sqlite")); db.init(); db.initialize_paper_account(10_000)
             paper = PaperPortfolio(db)
             buy = InvestmentDecision("IONQ", now_iso(), "BUY", 80, "READY", plan(10), [], [], "BUYRUN")
-            buy_size = PositionSize(100, 1000, 100, 10, "CAP")
+            buy_size = PositionSize(35, 350, 100, 10, "CAP")
             with db.connect() as c:
                 db._apply_paper_effect(c, paper.plan_effect(buy, buy_size))
             sell = InvestmentDecision("IONQ", now_iso(), "SELL", 75, "NOT_READY", plan(12), [], [], "SELLRUN")
@@ -40,10 +40,10 @@ class PaperLifecycleTests(unittest.TestCase):
                 db._apply_paper_effect(c, effect)
             account = db.paper_account_state()
             self.assertEqual(account["open_positions"], 0)
-            self.assertEqual(account["cash"], 10_200)
+            self.assertEqual(account["cash"], 10_070)
             with db.connect() as c:
                 self.assertEqual(c.execute("SELECT COUNT(*) FROM paper_transactions").fetchone()[0], 2)
-                self.assertEqual(c.execute("SELECT realized_pnl FROM paper_accounts").fetchone()[0], 200)
+                self.assertEqual(c.execute("SELECT realized_pnl FROM paper_accounts").fetchone()[0], 70)
 
     def test_wait_creates_prediction_without_position(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -62,7 +62,7 @@ class PaperLifecycleTests(unittest.TestCase):
             paper = PaperPortfolio(db)
             decision = InvestmentDecision("IONQ", now_iso(), "CONDITIONAL_BUY", 70, "READY",
                                           plan(10), [], [], "R")
-            effect = paper.plan_effect(decision, PositionSize(100, 1000, 100, 10, "CAP"))
+            effect = paper.plan_effect(decision, PositionSize(35, 350, 100, 10, "CAP"))
             with db.connect() as c:
                 db._apply_paper_effect(c, effect)
             self.assertEqual(paper.evaluate_pending_orders("IONQ", 11), [])

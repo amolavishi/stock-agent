@@ -7,12 +7,33 @@ from stock_agent.analysis_context import DebateContextBuilder
 from stock_agent.claim_validation import validate_claim_evidence
 from stock_agent.database import Database
 from stock_agent.evidence import normalize_evidence_request
+from stock_agent.guard import FinalGuard
 from stock_agent.hermes_agents import _prompt
 from stock_agent.schemas import EvidenceItem
 from stock_agent.validation import AnalysisIncompleteError
 
 
 class ClaimEvidenceContractTests(unittest.TestCase):
+    def test_final_guard_rejects_material_claim_without_explicit_domain_contract(self):
+        evidence = [EvidenceItem(
+            "SEC_FACT", "INOD", "SEC", "10-Q", "2026-08-06", "Revenue", "u", "B",
+            "FINANCIAL", "revenue growth and gross margin facts",
+        )]
+        result = FinalGuard.validate_claims([{
+            "claim": "revenue growth is accelerating",
+            "evidence_ids": ["SEC_FACT"],
+            "claim_type": "FACT",
+            "minimum_evidence_grade": "B",
+        }], evidence)
+        self.assertFalse(result["valid"])
+        self.assertIn("domain", result["errors"][0])
+
+    def test_research_prompt_requires_claim_domain_type_and_minimum_grade(self):
+        prompt = _prompt("research_v003.md", {})
+        self.assertIn("domain", prompt)
+        self.assertIn("claim_type", prompt)
+        self.assertIn("minimum_evidence_grade", prompt)
+
     def test_sec_filing_cannot_support_ma50_claim(self):
         evidence = [EvidenceItem(
             "SEC_8K", "INOD", "SEC", "8-K", "2026-08-06", "8-K", "u", "B",

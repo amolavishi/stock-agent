@@ -17,7 +17,7 @@ OUTPUT_TABLES = {"research_outputs", "critic_outputs", "risk_outputs", "chairman
 
 
 class Database:
-    SCHEMA_VERSION = 21
+    SCHEMA_VERSION = 22
 
     def __init__(self, path: str, busy_timeout_ms: int = 5000, wal: bool = True):
         self.path = Path(path)
@@ -154,7 +154,7 @@ class Database:
             self._migrate_v21_paper_policy(c)
             self._migrate_v21_telemetry(c)
             self._migrate_v21_account_identity_and_financial_cancellation(c)
-            self._migrate_v21_risk_provenance(c)
+            self._migrate_v22_risk_provenance(c)
 
     @staticmethod
     def _ensure_run_columns(c: sqlite3.Connection) -> None:
@@ -614,12 +614,12 @@ class Database:
         );
         """)
         c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
-            self.SCHEMA_VERSION, now_iso(),
+            21, now_iso(),
             "v2.1 composite PAPER account position identity and cancellation boundary"))
 
     @staticmethod
-    def _migrate_v21_risk_provenance(c: sqlite3.Connection) -> None:
-        """Persist stop-based risk provenance instead of reconstructing risk ad hoc."""
+    def _migrate_v22_risk_provenance(c: sqlite3.Connection) -> None:
+        """Persist stop-based risk provenance as an explicit schema migration."""
         Database._ensure_columns(c, "portfolio_positions", {
             "position_risk_usd": "REAL DEFAULT 0",
             "risk_provenance_json": "TEXT NOT NULL DEFAULT '{}'",
@@ -638,7 +638,7 @@ class Database:
             WHERE status IN ('PENDING','TRIGGERED','REVALIDATING')
               AND (risk_provenance_json IS NULL OR risk_provenance_json IN ('','{}'))""")
         c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
-            21, now_iso(), "v2.1 PAPER position and pending-order risk provenance"))
+            22, now_iso(), "v2.2 PAPER position and pending-order risk provenance"))
 
     def start_run(self, run_id: str, ticker: str, mode: str, request_id: str = "",
                   analysis_intensity: str = "NORMAL") -> str:
@@ -1183,6 +1183,45 @@ class Database:
                     (account_id, "", timestamp, "INITIAL_DEPOSIT", initial_cash,
                      initial_cash, "Explicit PAPER account initialization"))
 
+    @staticmethod
+    def _current_mark_to_stop_risk(provenance_json: str | None,
+                                   mark: float | None) -> float | None:
+        if mark is None:
+            return None
+        try:
+            provenance = json.loads(provenance_json or "{}")
+        except (TypeError, ValueError):
+            return None
+        if provenance.get("status") != "KNOWN":
+            return None
+        try:
+            return round(sum(
+                max(0.0, float(mark) - float(component["stop_price"])) *
+                float(component["quantity"])
+                for component in provenance.get("components") or []
+            ), 2)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def update_position_mark(self, ticker: str, mark: float, source: str,
+                             observed_at: str = "", account_id: str = "PAPER_DEFAULT") -> bool:
+        """Persist the latest trusted mark used for exposure and mark-to-stop telemetry."""
+        if float(mark) <= 0:
+            raise ValueError("PAPER position mark must be positive")
+        timestamp = observed_at or now_iso()
+        with self.connect() as c:
+            row = c.execute("""SELECT quantity FROM portfolio_positions
+                WHERE ticker=? AND account_id=? AND status='OPEN'""",
+                            (ticker.upper(), account_id)).fetchone()
+            if row is None:
+                return False
+            c.execute("""UPDATE portfolio_positions SET market_value=?,latest_mark=?,
+                mark_timestamp=?,mark_source=?,mark_status='FRESH',updated_at=?
+                WHERE ticker=? AND account_id=? AND status='OPEN'""",
+                      (float(row["quantity"]) * float(mark), float(mark), timestamp,
+                       source or "UNKNOWN", timestamp, ticker.upper(), account_id))
+        return True
+
     def paper_account_state(self, account_id: str = "PAPER_DEFAULT") -> dict[str, Any]:
         with self.connect() as c:
             account = c.execute("SELECT * FROM paper_accounts WHERE account_id=?",
@@ -1193,7 +1232,8 @@ class Database:
                 position_risk_usd,risk_provenance_json,latest_mark,mark_timestamp,mark_source,mark_status
                 FROM portfolio_positions WHERE account_id=? AND status='OPEN'""",
                 (account_id,)).fetchall()
-            pending_rows = c.execute("""SELECT quantity,risk_per_share,risk_provenance_json
+            pending_rows = c.execute("""SELECT quantity,risk_per_share,risk_provenance_json,
+                sector,reserved_cash
                 FROM paper_orders WHERE account_id=?
                 AND status IN ('PENDING','TRIGGERED','REVALIDATING')""",
                 (account_id,)).fetchall()
@@ -1205,10 +1245,17 @@ class Database:
                 continue
             sector = row["sector"] or "UNKNOWN"
             sectors[sector] = sectors.get(sector, 0.0) + float(row["market_value"] or 0)
+        pending_sectors: dict[str, float] = {}
+        for row in pending_rows:
+            sector = row["sector"] or "UNKNOWN"
+            pending_sectors[sector] = pending_sectors.get(sector, 0.0) + float(
+                row["reserved_cash"] or 0)
         equity = float(account["cash"]) + exposure
         risk_budget = equity * float(account["risk_budget_pct"]) / 100
         open_risk = 0.0
         open_risk_complete = True
+        current_mark_risk = 0.0
+        current_mark_risk_complete = True
         for row in positions:
             try:
                 provenance = json.loads(row["risk_provenance_json"] or "{}")
@@ -1216,8 +1263,14 @@ class Database:
                 provenance = {}
             if provenance.get("status") != "KNOWN" or row["position_risk_usd"] is None:
                 open_risk_complete = False
-                continue
-            open_risk += max(0.0, float(row["position_risk_usd"] or 0))
+            else:
+                open_risk += max(0.0, float(row["position_risk_usd"] or 0))
+            mark_risk = self._current_mark_to_stop_risk(
+                row["risk_provenance_json"], row["latest_mark"])
+            if row["mark_status"] not in {"FRESH", "STALE_MARK"} or mark_risk is None:
+                current_mark_risk_complete = False
+            else:
+                current_mark_risk += mark_risk
         pending_risk = 0.0
         pending_risk_complete = True
         for row in pending_rows:
@@ -1243,7 +1296,15 @@ class Database:
             "open_position_risk_usd": round(open_risk, 2),
             "pending_committed_risk": round(pending_risk, 2),
             "portfolio_risk_used": round(portfolio_risk, 2),
+            "risk_budget_policy": "INITIAL_RISK_AT_ENTRY",
+            "current_mark_to_stop_risk_usd": round(current_mark_risk, 2),
+            "current_mark_to_stop_risk_complete": current_mark_risk_complete,
             "risk_provenance_complete": risk_complete,
+            "pending_sector_committed_exposure": pending_sectors,
+            "sector_committed_exposure": {
+                sector: sectors.get(sector, 0.0) + pending_sectors.get(sector, 0.0)
+                for sector in set(sectors) | set(pending_sectors)
+            },
             "open_positions": len(positions), "pending_conditional_orders": len(pending_rows),
             "available_cash": max(0.0, float(account["cash"]) - float(account["reserved_cash"])),
             "position_marks": [{"ticker": row["ticker"], "mark": row["latest_mark"],
@@ -1279,10 +1340,13 @@ class Database:
             "account_id": order["account_id"], "run_id": order["run_id"],
             "ticker": order["ticker"], "timestamp": timestamp,
             "sector": order["sector"] or "UNKNOWN", "quantity": order["quantity"],
+            "order_id": order["order_id"],
             "price": float(current_price), "notional_usd": notional, "action": "BUY",
             "stop_price": float(order["invalidation_price"]),
             "risk_per_share": float(order["risk_per_share"]),
             "risk_provenance": json.loads(order["risk_provenance_json"] or "{}"),
+            "max_sector_exposure_pct": json.loads(
+                order["risk_provenance_json"] or "{}").get("sector_cap_pct", 25.0),
             "prediction": {"prediction_id": f"PRED_FILL_{order['order_id']}",
                 "run_id": order["run_id"], "ticker": order["ticker"], "decision": "BUY",
                 "confidence": 0, "reference_price": float(current_price),
@@ -1430,7 +1494,8 @@ class Database:
             "method": str(provenance.get("method") or "TRADE_PLAN_ENTRY_MINUS_STOP"),
         }
         return {"status": "KNOWN", "method": "SUM_ENTRY_TO_STOP_COMPONENTS",
-                "components": [component], "risk_usd": component["risk_usd"]}
+                "components": [component], "risk_usd": component["risk_usd"],
+                "sector_cap_pct": float(provenance.get("sector_cap_pct", 25.0))}
 
     @staticmethod
     def _merge_position_risk(existing_json: str | None, new_provenance: dict[str, Any],
@@ -1467,6 +1532,78 @@ class Database:
                                   "components": components, "risk_usd": total}, ensure_ascii=False)
 
     @staticmethod
+    def _validate_paper_commit_limits(c: sqlite3.Connection,
+                                       effect: dict[str, Any],
+                                       account: sqlite3.Row) -> None:
+        """Re-read authoritative portfolio limits inside the financial commit transaction."""
+        action = str(effect.get("action") or "")
+        if action not in {"BUY", "CONDITIONAL_ORDER"}:
+            return
+        quantity = float(effect.get("quantity", 0) or 0)
+        if quantity <= 0:
+            return
+
+        positions = c.execute("""SELECT ticker,sector,market_value,position_risk_usd,
+            risk_provenance_json,mark_status
+            FROM portfolio_positions WHERE account_id=? AND status='OPEN'""",
+            (account["account_id"],)).fetchall()
+        if any(row["mark_status"] not in {"FRESH", "STALE_MARK"} for row in positions):
+            raise ValueError("PAPER_SECTOR_EXPOSURE_UNKNOWN")
+        current_exposure = sum(float(row["market_value"] or 0) for row in positions)
+        equity = float(account["cash"]) + current_exposure
+        if equity <= 0:
+            raise ValueError("PAPER_ACCOUNT_EQUITY_INVALID")
+
+        sector = str(effect.get("sector") or "UNKNOWN")
+        open_sector = sum(float(row["market_value"] or 0) for row in positions
+                          if str(row["sector"] or "UNKNOWN") == sector)
+        pending_rows = c.execute("""SELECT order_id,sector,reserved_cash,risk_per_share,
+            quantity,risk_provenance_json
+            FROM paper_orders WHERE account_id=?
+            AND status IN ('PENDING','TRIGGERED','REVALIDATING')
+            AND reserved_cash > 0""",
+            (account["account_id"],)).fetchall()
+        pending = [row for row in pending_rows if row["order_id"] != effect.get("order_id")]
+        pending_sector = sum(float(row["reserved_cash"] or 0) for row in pending
+                             if str(row["sector"] or "UNKNOWN") == sector)
+        risk_metadata = dict(effect.get("risk_provenance") or {})
+        sector_cap_pct = float(effect.get("max_sector_exposure_pct") or
+                               risk_metadata.get("sector_cap_pct", 25.0))
+        projected_sector = open_sector + pending_sector + float(
+            effect.get("notional_usd", 0) or 0)
+        if projected_sector > equity * sector_cap_pct / 100 + 0.01:
+            raise ValueError("PAPER_SECTOR_EXPOSURE_LIMIT")
+
+        # Direct fills must be risk-budget safe at the financial commit boundary.
+        # Conditional intents are checked at canonical trigger revalidation.
+        if action != "BUY":
+            return
+        new_risk = Database._risk_provenance(effect)
+        if new_risk.get("status") != "KNOWN":
+            raise ValueError("PAPER_RISK_PROVENANCE_INCOMPLETE")
+        open_risk = 0.0
+        for row in positions:
+            try:
+                provenance = json.loads(row["risk_provenance_json"] or "{}")
+            except (TypeError, ValueError):
+                provenance = {}
+            if provenance.get("status") != "KNOWN" or row["position_risk_usd"] is None:
+                raise ValueError("PAPER_RISK_PROVENANCE_INCOMPLETE")
+            open_risk += max(0.0, float(row["position_risk_usd"] or 0))
+        pending_risk = 0.0
+        for row in pending:
+            try:
+                provenance = json.loads(row["risk_provenance_json"] or "{}")
+            except (TypeError, ValueError):
+                provenance = {}
+            if provenance.get("status") != "KNOWN" or float(row["risk_per_share"] or 0) <= 0:
+                raise ValueError("PAPER_RISK_PROVENANCE_INCOMPLETE")
+            pending_risk += max(0.0, float(row["quantity"]) * float(row["risk_per_share"]))
+        risk_budget = equity * float(account["risk_budget_pct"]) / 100
+        if open_risk + pending_risk + float(new_risk.get("risk_usd", 0)) > risk_budget + 0.01:
+            raise ValueError("PAPER_RISK_LIMIT")
+
+    @staticmethod
     def _apply_paper_effect(c: sqlite3.Connection, effect: dict[str, Any]) -> bool:
         if not effect:
             return False
@@ -1483,6 +1620,12 @@ class Database:
             WHERE financial_operation_key=?""", (operation_key,)).fetchone()
         if cancelled and cancelled["status"] == "CANCELLED_BEFORE_COMMIT":
             return False
+        existing_operation = c.execute(
+            "SELECT status FROM financial_operations WHERE operation_key=?",
+            (operation_key,)).fetchone()
+        if existing_operation:
+            return False
+        Database._validate_paper_commit_limits(c, effect, account)
         payload_hash = hashlib.sha256(
             json.dumps(effect, sort_keys=True, default=str).encode("utf-8")).hexdigest()
         claimed = c.execute("""INSERT INTO financial_operations(

@@ -71,7 +71,9 @@ class ToolLayerTests(unittest.TestCase):
 
     def test_claim_guard_accepts_known_ids(self):
         evidence = MockEvidenceCollector().collect("IONQ")
-        claims = [{"claim": "x", "evidence_ids": [evidence[0].evidence_id]}]
+        claims = [{"claim": "x", "evidence_ids": [evidence[0].evidence_id],
+                   "materiality": "MATERIAL", "domain": "SEC_FILING",
+                   "claim_type": "FACT", "minimum_evidence_grade": "UNCLASSIFIED"}]
         self.assertTrue(FinalGuard.validate_claims(claims, evidence)["valid"])
 
     def test_paper_performance_update_requires_known_run(self):

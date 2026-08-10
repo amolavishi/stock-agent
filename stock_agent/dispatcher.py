@@ -210,6 +210,9 @@ class RequestDispatcher:
         plan = TradePlan(entry, old_plan.preferred_price_min, old_plan.preferred_price_max,
             old_plan.stop_price, old_plan.target_1, old_plan.target_2, reward, risk,
             round(reward / risk, 2), old_plan.heuristic)
+        self.orchestrator.db.update_position_mark(
+            ticker, snapshot.current, snapshot.source,
+            snapshot.observed_at or snapshot.timestamp, "PAPER_DEFAULT")
         account = self.orchestrator.db.paper_account_state("PAPER_DEFAULT")
         size = (PositionSizingEngine().calculate_for_account(plan, account, snapshot.sector_name)
                 if requested_action == "BUY" else PositionSize(0, 0, 0, 0, "NOT_APPLICABLE"))

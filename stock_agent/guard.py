@@ -51,7 +51,8 @@ class FinalGuard:
         if proposed not in allowed:
             errors.append(f"unsupported decision: {proposed}")
         if proposed == "HOLD" and not has_open_position:
-            errors.append("HOLD_REQUIRES_OPEN_POSITION")
+            errors.extend(("INVALID_ACTION_FOR_PORTFOLIO_STATE",
+                           "HOLD_REQUIRES_OPEN_POSITION"))
         if not claims_valid:
             errors.append("claim-evidence validation failed")
         if not trade_plan_valid:

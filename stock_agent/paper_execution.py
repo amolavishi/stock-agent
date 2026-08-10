@@ -41,7 +41,8 @@ class CanonicalPaperValidator:
         has_position = self.has_open_position(ticker, account_id)
         if action == "HOLD" and not has_position:
             return PaperValidationResult(False, "NO_CERTIFIED_ACTION",
-                                         ["HOLD_REQUIRES_OPEN_POSITION"])
+                                         ["INVALID_ACTION_FOR_PORTFOLIO_STATE",
+                                          "HOLD_REQUIRES_OPEN_POSITION"])
         if action in {"TRIM", "SELL"} and not has_position:
             return PaperValidationResult(False, "NO_CERTIFIED_ACTION",
                                          [f"{action}_REQUIRES_OPEN_POSITION"])
@@ -72,8 +73,23 @@ class CanonicalPaperValidator:
         if projected > float(account["equity"]) * self.max_total_exposure_pct / 100 + 0.01:
             reasons.append("TOTAL_EXPOSURE_LIMIT")
         sector = str(order["sector"] or "UNKNOWN")
-        projected_sector = float(account["sector_exposure"].get(sector, 0)) + notional
+        own_committed = float(order["reserved_cash"] or 0)
+        other_pending_sector = max(0.0, float(
+            account.get("pending_sector_committed_exposure", {}).get(sector, 0)) -
+            own_committed)
+        projected_sector = (float(account["sector_exposure"].get(sector, 0)) +
+                            other_pending_sector + notional)
         if projected_sector > float(account["equity"]) * self.max_sector_exposure_pct / 100 + 0.01:
             reasons.append("SECTOR_EXPOSURE_LIMIT")
+        if not account.get("risk_provenance_complete", True):
+            reasons.append("PORTFOLIO_RISK_PROVENANCE_INCOMPLETE")
+        else:
+            risk_budget = float(account["risk_budget"])
+            open_risk = float(account.get("open_position_risk_usd", 0))
+            pending_risk = float(account.get("pending_committed_risk", 0))
+            own_risk = float(order["quantity"]) * float(order["risk_per_share"] or 0)
+            projected_risk = open_risk + max(0.0, pending_risk - own_risk) + own_risk
+            if projected_risk > risk_budget + 0.01:
+                reasons.append("PORTFOLIO_RISK_LIMIT")
         return PaperValidationResult(not reasons, "BUY" if not reasons else "NO_CERTIFIED_ACTION",
                                      reasons)

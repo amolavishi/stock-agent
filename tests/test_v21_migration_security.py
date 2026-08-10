@@ -27,6 +27,28 @@ class MigrationTests(unittest.TestCase):
                 self.assertEqual(connection.execute(
                     "SELECT MAX(version) FROM schema_migrations").fetchone()[0],
                     Database.SCHEMA_VERSION)
+                self.assertEqual(Database.SCHEMA_VERSION, 22)
+                self.assertIsNotNone(connection.execute(
+                    "SELECT 1 FROM schema_migrations WHERE version=22").fetchone())
+
+    def test_risk_provenance_migration_marks_legacy_values_unknown(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = Database(str(Path(directory) / "source.sqlite"))
+            db.init()
+            db.initialize_paper_account(10_000)
+            with db.connect() as connection:
+                connection.execute("""INSERT INTO portfolio_positions(
+                    ticker,quantity,average_price,updated_at,mode,account_id,status,
+                    market_value,position_risk_usd,risk_provenance_json)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                    ("INOD", 10, 10, "2026-08-10T00:00:00+00:00", "PAPER",
+                     "PAPER_DEFAULT", "OPEN", 100, 0, "{}"))
+                connection.execute("UPDATE portfolio_positions SET risk_provenance_json='{}'")
+                Database._migrate_v22_risk_provenance(connection)
+                provenance = connection.execute(
+                    "SELECT risk_provenance_json FROM portfolio_positions"
+                ).fetchone()[0]
+            self.assertEqual(provenance, '{"status":"UNKNOWN_LEGACY"}')
 
     def test_shadow_activation_requires_explicit_permission(self):
         with tempfile.TemporaryDirectory() as directory:

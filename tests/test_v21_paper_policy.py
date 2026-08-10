@@ -33,7 +33,7 @@ class PaperPolicyTests(unittest.TestCase):
         decision = InvestmentDecision("INOD", now_iso(), "CONDITIONAL_BUY", 80, "READY",
                                       plan(), [], [], "RUN-COND")
         effect = self.paper.plan_effect(
-            decision, PositionSize(100, 1000, 200, 10, "CAP"), sector="Technology")
+            decision, PositionSize(37, 370, 75, 10, "CAP"), sector="Technology")
         with self.db.connect() as connection:
             self.assertTrue(self.db._apply_paper_effect(connection, effect))
 
@@ -121,6 +121,85 @@ class PaperPolicyTests(unittest.TestCase):
         size = PositionSizingEngine().calculate_for_account(plan(), account, "UNKNOWN")
         self.assertEqual(size.risk_budget_remaining_usd, 55.0)
         self.assertEqual(size.portfolio_risk_used_usd, 20.0)
+
+    def test_open_position_risk_budget_accumulates(self):
+        for ticker, run_id, quantity in (("INOD", "RUN-RISK-1", 3),
+                                         ("IONQ", "RUN-RISK-2", 4)):
+            decision = InvestmentDecision(ticker, now_iso(), "BUY", 80, "READY",
+                                          plan(), [], [], run_id)
+            with self.db.connect() as connection:
+                self.db._apply_paper_effect(
+                    connection, self.paper.plan_effect(
+                        decision, PositionSize(quantity, quantity * 10, 75, 0.5, "TEST")))
+        account = self.db.paper_account_state()
+        self.assertEqual(account["open_position_risk_usd"], 14.0)
+        self.assertEqual(account["portfolio_risk_used"], 14.0)
+
+    def test_two_positions_reduce_remaining_risk_budget(self):
+        self.test_open_position_risk_budget_accumulates()
+        account = self.db.paper_account_state()
+        size = PositionSizingEngine().calculate_for_account(plan(), account, "UNKNOWN")
+        self.assertEqual(size.portfolio_risk_used_usd, 14.0)
+        self.assertEqual(size.risk_budget_remaining_usd, 61.0)
+
+    def test_pending_plus_open_risk_limits_new_trade(self):
+        self.test_open_and_pending_risk_are_provenanced_and_reduce_sizing_budget()
+
+    def test_current_mark_to_stop_risk_is_calculated_and_kept_separate(self):
+        decision = InvestmentDecision("INOD", now_iso(), "BUY", 80, "READY",
+                                      plan(), [], [], "RUN-MARK")
+        with self.db.connect() as connection:
+            self.db._apply_paper_effect(
+                connection, self.paper.plan_effect(
+                    decision, PositionSize(5, 50, 75, 0.5, "TEST")))
+        self.assertTrue(self.db.update_position_mark("INOD", 9.0, "TOSS", "2026-08-10T12:00:00Z"))
+        account = self.db.paper_account_state()
+        self.assertEqual(account["open_position_risk_usd"], 10.0)
+        self.assertEqual(account["current_mark_to_stop_risk_usd"], 5.0)
+        self.assertTrue(account["current_mark_to_stop_risk_complete"])
+        size = PositionSizingEngine().calculate_for_account(plan(), account, "UNKNOWN")
+        self.assertEqual(size.initial_capital_at_risk_usd,
+                         round(size.quantity * (10 - 8), 2))
+        self.assertEqual(size.current_mark_to_stop_risk_usd, 5.0)
+        self.assertEqual(size.risk_budget_basis, "INITIAL_RISK_AT_ENTRY")
+
+    def test_sector_cap_includes_pending_committed_exposure_on_creation_and_revalidation(self):
+        open_decision = InvestmentDecision("INOD", now_iso(), "BUY", 80, "READY",
+                                           plan(stop=9.7), [], [], "RUN-SECTOR-OPEN")
+        with self.db.connect() as connection:
+            self.db._apply_paper_effect(
+                connection, self.paper.plan_effect(
+                    open_decision, PositionSize(200, 2000, 75, 20, "TEST"),
+                    sector="Technology"))
+        pending_decision = InvestmentDecision(
+            "IONQ", now_iso(), "CONDITIONAL_BUY", 80, "READY",
+            plan(stop=9.9), [], [], "RUN-SECTOR-PENDING")
+        pending_effect = self.paper.plan_effect(
+            pending_decision, PositionSize(37, 370, 75, 4, "TEST"),
+            sector="Technology")
+        self.assertEqual(pending_effect["action"], "CONDITIONAL_ORDER")
+        with self.db.connect() as connection:
+            self.db._apply_paper_effect(connection, pending_effect)
+        account = self.db.paper_account_state()
+        self.assertEqual(account["sector_exposure"]["Technology"], 2000.0)
+        self.assertEqual(account["pending_sector_committed_exposure"]["Technology"], 370.0)
+        sizing = PositionSizingEngine().calculate_for_account(plan(), account, "Technology")
+        self.assertEqual(sizing.sector_committed_exposure_usd, 2370.0)
+        self.assertEqual(sizing.sector_exposure_usd, 2000.0)
+        rejected = self.paper.plan_effect(
+            InvestmentDecision("AAPL", now_iso(), "CONDITIONAL_BUY", 80, "READY",
+                               plan(), [], [], "RUN-SECTOR-REJECT"),
+            PositionSize(20, 200, 75, 2, "TEST"), sector="Technology")
+        self.assertEqual(rejected["action"], "PREDICTION_ONLY")
+        self.assertEqual(rejected["reason_codes"], ["SECTOR_EXPOSURE_LIMIT"])
+        validator = CanonicalPaperValidator(self.db)
+        with self.db.connect() as connection:
+            order = connection.execute(
+                "SELECT * FROM paper_orders WHERE order_id='ORDER_RUN-SECTOR-PENDING'"
+            ).fetchone()
+        outcome = validator.validate_conditional(
+            order, 10.0, certification_status="CERTIFIED", price_status="FRESH")
+        self.assertTrue(outcome.valid, outcome.reason_codes)
 
 
 class RiskMetricTests(unittest.TestCase):
