@@ -122,6 +122,29 @@ class PaperPolicyTests(unittest.TestCase):
         self.assertEqual(size.risk_budget_remaining_usd, 55.0)
         self.assertEqual(size.portfolio_risk_used_usd, 20.0)
 
+    def test_open_position_risk_budget_accumulates(self):
+        for ticker, run_id, quantity in (("INOD", "RUN-RISK-1", 3),
+                                         ("IONQ", "RUN-RISK-2", 4)):
+            decision = InvestmentDecision(ticker, now_iso(), "BUY", 80, "READY",
+                                          plan(), [], [], run_id)
+            with self.db.connect() as connection:
+                self.db._apply_paper_effect(
+                    connection, self.paper.plan_effect(
+                        decision, PositionSize(quantity, quantity * 10, 75, 0.5, "TEST")))
+        account = self.db.paper_account_state()
+        self.assertEqual(account["open_position_risk_usd"], 14.0)
+        self.assertEqual(account["portfolio_risk_used"], 14.0)
+
+    def test_two_positions_reduce_remaining_risk_budget(self):
+        self.test_open_position_risk_budget_accumulates()
+        account = self.db.paper_account_state()
+        size = PositionSizingEngine().calculate_for_account(plan(), account, "UNKNOWN")
+        self.assertEqual(size.portfolio_risk_used_usd, 14.0)
+        self.assertEqual(size.risk_budget_remaining_usd, 61.0)
+
+    def test_pending_plus_open_risk_limits_new_trade(self):
+        self.test_open_and_pending_risk_are_provenanced_and_reduce_sizing_budget()
+
 
 class RiskMetricTests(unittest.TestCase):
     def test_sizing_records_distinct_risk_metrics_and_policy_version(self):

@@ -41,7 +41,8 @@ class CanonicalPaperValidator:
         has_position = self.has_open_position(ticker, account_id)
         if action == "HOLD" and not has_position:
             return PaperValidationResult(False, "NO_CERTIFIED_ACTION",
-                                         ["HOLD_REQUIRES_OPEN_POSITION"])
+                                         ["INVALID_ACTION_FOR_PORTFOLIO_STATE",
+                                          "HOLD_REQUIRES_OPEN_POSITION"])
         if action in {"TRIM", "SELL"} and not has_position:
             return PaperValidationResult(False, "NO_CERTIFIED_ACTION",
                                          [f"{action}_REQUIRES_OPEN_POSITION"])

@@ -20,7 +20,7 @@ def derive_standalone_quarter(ytd: dict[str, Any], q1: dict[str, Any]) -> dict[s
         failures.append("YTD_NOT_Q2")
     if str(q1.get("fp") or "").upper() != "Q1":
         failures.append("Q1_NOT_Q1")
-    for field in ("concept", "unit", "form", "fy"):
+    for field in ("concept", "taxonomy", "unit", "form", "fy", "entity", "entity_id", "scope"):
         if ytd.get(field) != q1.get(field):
             failures.append(f"{field.upper()}_MISMATCH")
     if str(ytd.get("form") or "").upper() != "10-Q":
@@ -34,8 +34,14 @@ def derive_standalone_quarter(ytd: dict[str, Any], q1: dict[str, Any]) -> dict[s
         q1_start, q1_end = date.fromisoformat(str(q1["start"])), date.fromisoformat(str(q1["end"]))
         if not (ytd_start == q1_start and q1_end < ytd_end):
             failures.append("PERIOD_BOUNDARIES_NOT_NESTED")
-        if (ytd_end - ytd_start).days < (q1_end - q1_start).days:
+        ytd_duration = (ytd_end - ytd_start).days
+        q1_duration = (q1_end - q1_start).days
+        if ytd_duration < q1_duration:
             failures.append("YTD_DURATION_SHORTER_THAN_Q1")
+        if not 60 <= q1_duration <= 120:
+            failures.append("Q1_DURATION_NOT_QUARTERLIKE")
+        if not 120 <= ytd_duration <= 220:
+            failures.append("YTD_DURATION_NOT_SIX_MONTH_LIKE")
     except (KeyError, TypeError, ValueError):
         failures.append("PERIOD_METADATA_MISSING")
     base = {

@@ -58,6 +58,28 @@ class FinancialOntologyTests(unittest.TestCase):
         self.assertIsNone(result["value"])
         self.assertIn("CONCEPT_MISMATCH", result["rejection_reasons"])
 
+    def test_q2_derivation_rejects_mismatched_unit(self):
+        ytd = {"value": 250, "fact_id": "YTD", "concept": "Revenue", "unit": "USD",
+               "form": "10-Q", "fy": 2026, "fp": "Q2", "start": "2026-01-01",
+               "end": "2026-06-30"}
+        q1 = {"value": 100, "fact_id": "Q1", "concept": "Revenue", "unit": "EUR",
+              "form": "10-Q", "fy": 2026, "fp": "Q1", "start": "2026-01-01",
+              "end": "2026-03-31"}
+        result = derive_standalone_quarter(ytd, q1)
+        self.assertIsNone(result["value"])
+        self.assertIn("UNIT_MISMATCH", result["rejection_reasons"])
+
+    def test_q2_derivation_rejects_mismatched_fiscal_year(self):
+        ytd = {"value": 250, "fact_id": "YTD", "concept": "Revenue", "unit": "USD",
+               "form": "10-Q", "fy": 2026, "fp": "Q2", "start": "2026-01-01",
+               "end": "2026-06-30"}
+        q1 = {"value": 100, "fact_id": "Q1", "concept": "Revenue", "unit": "USD",
+              "form": "10-Q", "fy": 2025, "fp": "Q1", "start": "2026-01-01",
+              "end": "2026-03-31"}
+        result = derive_standalone_quarter(ytd, q1)
+        self.assertIsNone(result["value"])
+        self.assertIn("FY_MISMATCH", result["rejection_reasons"])
+
 
 class CapitalOntologyTests(unittest.TestCase):
     def test_atm_capacity_is_not_usage(self):
@@ -93,6 +115,23 @@ class CapitalOntologyTests(unittest.TestCase):
         )]
         snapshot = build_capital_structure("INOD", {"normalized_facts": [], "derived": {}}, evidence)
         self.assertEqual(snapshot.warrant_outstanding.status, "UNKNOWN")
+
+    def test_zero_warrants_is_not_outstanding(self):
+        evidence = [EvidenceItem(
+            "S3_ZERO", "INOD", "SEC", "S-3", "2026-08-06", "Shelf", "u", "C",
+            "CAPITAL", "0 warrants outstanding", normalized_fact="0 warrants outstanding",
+        )]
+        snapshot = build_capital_structure("INOD", {"normalized_facts": [], "derived": {}}, evidence)
+        self.assertEqual(snapshot.warrant_outstanding.status, "UNKNOWN")
+
+    def test_unrelated_issued_word_does_not_create_convertible(self):
+        evidence = [EvidenceItem(
+            "S3_CONVERTIBLE", "INOD", "SEC", "S-3", "2026-08-06", "Shelf", "u", "C",
+            "CAPITAL", "common shares were issued; convertible notes are authorized",
+            normalized_fact="common shares were issued; convertible notes are authorized",
+        )]
+        snapshot = build_capital_structure("INOD", {"normalized_facts": [], "derived": {}}, evidence)
+        self.assertEqual(snapshot.convertible_outstanding.status, "UNKNOWN")
 
 
 if __name__ == "__main__":

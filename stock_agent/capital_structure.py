@@ -174,14 +174,20 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
             snapshot.evidence_ids.append(item.evidence_id)
         outstanding = re.search(r"(?<![\w-])([0-9,]+)\s+warrants?\s+(?:were\s+)?outstanding\b", text)
         outstanding_context = text[max(0, outstanding.start() - 100):outstanding.end()] if outstanding else ""
-        if outstanding and not re.search(
+        outstanding_count = (float(outstanding.group(1).replace(",", ""))
+                             if outstanding else 0.0)
+        if outstanding and outstanding_count > 0 and not re.search(
                 r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
                 outstanding_context, flags=re.I):
             snapshot.warrant_outstanding = _provenance(
                 item, float(outstanding.group(1).replace(",", "")), "KNOWN",
                 outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
-        if re.search(r"\bconvertible (?:notes?|debt)\b", text):
-            if re.search(r"\b(?:issued|outstanding)\b", text):
+        convertible = re.search(
+            r"\b(?:issued|outstanding)\s+convertible\s+(?:notes?|debt)\b|"
+            r"\bconvertible\s+(?:notes?|debt)\s+(?:(?:were|are|is|remain(?:s)?)\s+)?"
+            r"(?:issued|outstanding)\b", text)
+        if convertible:
+            if re.search(r"\b(?:issued|outstanding)\b", convertible.group(0)):
                 snapshot.convertible_outstanding = _provenance(
                     item, True, "KNOWN", text, "EXPLICIT_CONVERTIBLE_OUTSTANDING", 85)
             else:
