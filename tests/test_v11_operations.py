@@ -3,11 +3,13 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from stock_agent.cancellation import CancellationToken, RunCancelledError
 from stock_agent.database import Database
 from stock_agent.discord_runtime import DiscordPresenters
 from stock_agent.health import local_health
+from stock_agent.hermes import HermesError
 from stock_agent.schemas import UserRequest, now_iso
 
 
@@ -114,9 +116,26 @@ class OperationsV11Tests(unittest.TestCase):
                       "deepseek_api_key": "secret3", "sec_user_agent": "name email",
                       "discord_research_token": "a", "discord_critic_token": "b",
                       "discord_chairman_token": "c"}}
-        result = local_health(config, self.db)
-        self.assertTrue(result["healthy"])
+        with patch("stock_agent.health.default_hermes_executable",
+                   side_effect=HermesError("Hermes executable was not found")):
+            result = local_health(config, self.db)
+        self.assertFalse(result["healthy"])
+        self.assertFalse(result["hermes_executable"])
+        self.assertEqual(result["hermes_error"], "NOT_FOUND")
         self.assertNotIn("secret", str(result))
+
+    def test_local_health_is_healthy_when_hermes_executable_exists(self):
+        root = Path(self.tmp.name)
+        executable = root / "hermes.exe"
+        executable.write_bytes(b"hermes-test-fixture")
+        config = {"mode": "PAPER", "report_dir": str(root / "reports"),
+                  "vault_path": str(root / "vault"), "credentials": {}}
+        with patch("stock_agent.health.default_hermes_executable",
+                   return_value=str(executable)):
+            result = local_health(config, self.db)
+        self.assertTrue(result["healthy"])
+        self.assertTrue(result["hermes_executable"])
+        self.assertNotIn("hermes_error", result)
 
     def test_report_delivery_updates_both_delivery_records(self):
         request = self.request()
