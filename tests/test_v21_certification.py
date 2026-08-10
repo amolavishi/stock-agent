@@ -56,6 +56,37 @@ class CertificationContractTests(unittest.TestCase):
         self.assertNotEqual(result.certification_status, "CERTIFIED")
         self.assertIn("LATEST_MATERIAL_PERIODIC_FILING_NOT_READY", result.reason_codes)
 
+    def test_all_material_blockers_are_preserved_even_when_market_is_primary_status(self):
+        evidence = [EvidenceItem(
+            "SEC_INOD_Q2", "INOD", "SEC", "10-Q", "2026-08-06",
+            "Q2", "https://sec.gov/x", "UNCLASSIFIED", "UNCLASSIFIED",
+            "metadata only", is_mock=False, filed_at="2026-08-06",
+            lifecycle_status="DISCOVERED",
+        )]
+        result = CertificationEngine().evaluate(
+            run_id="inod", debate_status="DEADLOCK", market=market("LOW"), evidence=evidence,
+            capital_structure={
+                "shares_outstanding": 1,
+                "unknown_fields": [],
+                "integrity_conflicts": [{"field": "atm_active"}],
+            },
+            live_mode=True,
+            critical_open_issues=2,
+            unresolved_must_answer=1,
+            claim_validation_passed=False,
+        )
+        self.assertNotEqual(result.certification_status, "CERTIFIED")
+        expected = {
+            "LATEST_MATERIAL_PERIODIC_FILING_NOT_READY",
+            "MATERIAL_CAPITAL_STRUCTURE_CONFLICT",
+            "CLAIM_EVIDENCE_VALIDATION_FAILED",
+            "MUST_ANSWER_EVIDENCE_REQUEST_UNRESOLVED",
+            "DEBATE_DEADLOCK",
+            "CRITICAL_ISSUE_UNRESOLVED",
+        }
+        self.assertTrue(expected.issubset(set(result.reason_codes)))
+        self.assertEqual(result.analysis_status, "DEADLOCK")
+
     def test_uncertified_report_contract_withholds_trade_plan_and_sizing(self):
         result = CertificationEngine().evaluate(
             run_id="inod", debate_status="DEADLOCK", market=market(), evidence=[],
