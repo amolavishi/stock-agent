@@ -1,0 +1,11 @@
+{
+  "provenance": "exact pre-run state was not versioned by v1.1",
+  "status": "LEGACY_PROVENANCE_UNKNOWN",
+  "current_rows_for_diagnostics_only": [
+    {
+      "ticker": "INOD",
+      "updated_at": "2026-08-10T03:45:42.921898+00:00",
+      "payload_json": "{\"ticker\": \"INOD\", \"last_updated\": \"2026-08-10\", \"revenue_growth\": 0, \"gross_margin\": 0, \"market_cap_usd\": 2163700227.43, \"atm_active\": false, \"dilution_risk\": 0, \"catalysts\": [], \"known_risks\": [\"SEC CompanyFacts 통합 전 미확인\"], \"previous_decision\": \"WAIT\", \"cash_usd\": 240278000.0, \"debt_usd\": 877000.0, \"shares_outstanding\": 34382651.0, \"cash_burn_usd\": 0.0, \"runway_months\": null, \"sector\": \"Software/IT Services\", \"sic\": \"7374\", \"companyfacts_as_of\": \"2026-08-06\"}"
+    }
+  ]
+}

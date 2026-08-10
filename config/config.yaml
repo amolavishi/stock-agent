@@ -1,0 +1,24 @@
+{
+  "mode": "PAPER",
+  "database_path": "data/stock_agent.db",
+  "vault_path": "vault/Stock-AI-Vault",
+  "provider": "toss",
+  "agent_provider": "hermes",
+  "hermes_model": "deepseek-v4-flash",
+  "risk_rule_version": "risk_rules_v003",
+  "edgar_mode": "live",
+  "analysis": {"min_evidence": 3, "max_evidence_age_days": 30},
+  "report_dir": "data/reports",
+  "database": {"busy_timeout_ms": 5000, "wal": true},
+  "paper": {
+    "account_id": "PAPER_DEFAULT",
+    "initial_cash_usd": 100000,
+    "max_total_exposure_pct": 60,
+    "max_sector_exposure_pct": 25
+  },
+  "cost_guard": {
+    "mode": "WARN",
+    "soft_cost_limit_usd": 0,
+    "hard_cost_limit_usd": 0
+  }
+}
