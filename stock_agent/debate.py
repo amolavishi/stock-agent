@@ -15,6 +15,11 @@ class BudgetLimitError(AnalysisIncompleteError):
     pass
 
 
+UNRESOLVED_ISSUE_STATUSES = {"OPEN", "INSUFFICIENT_DATA", "DEFERRED"}
+VALID_ISSUE_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
+VALID_ISSUE_STATUSES = UNRESOLVED_ISSUE_STATUSES | {"RESOLVED"}
+
+
 @dataclass
 class DebateIssue:
     issue_id: str
@@ -69,44 +74,76 @@ class DebateState:
 
 class ConsensusEvaluator:
     @staticmethod
+    def _decision_pair(agent: Any, primary: str, secondary: str) -> tuple[str, bool]:
+        primary_value = str(getattr(agent, primary, "") or "").upper()
+        secondary_value = str(getattr(agent, secondary, "") or "").upper()
+        conflict = bool(primary_value and secondary_value and primary_value != secondary_value)
+        return primary_value or secondary_value, conflict
+
+    @staticmethod
     def evaluate(state: DebateState, research: Any, critic: Any) -> dict[str, Any]:
-        research_decision = str(getattr(research, "current_decision", "") or
-                                getattr(research, "suggested_decision", ""))
-        critic_decision = str(getattr(critic, "current_decision", "") or
-                              getattr(critic, "critic_decision", ""))
-        open_critical = [issue for issue in state.issue_ledger
-                         if issue.status == "OPEN" and issue.severity == "CRITICAL"]
-        open_high_conflict = [issue for issue in state.issue_ledger
-                              if issue.status == "OPEN" and issue.severity == "HIGH"
-                              and issue.research_position != issue.critic_position]
-        explicit_ready = bool(getattr(research, "consensus_ready", False)
-                              and getattr(critic, "consensus_ready", False))
-        structured = bool(getattr(research, "issue_updates", []) or getattr(critic, "issue_updates", [])
-                          or getattr(research, "accepted_points", []) or getattr(critic, "accepted_points", []))
-        legacy_ready = not structured and research_decision == critic_decision
+        research_decision, research_field_conflict = ConsensusEvaluator._decision_pair(
+            research, "current_decision", "suggested_decision")
+        critic_decision, critic_field_conflict = ConsensusEvaluator._decision_pair(
+            critic, "current_decision", "critic_decision")
+
+        unresolved = lambda issue: str(issue.status).upper() != "RESOLVED"
+        open_critical = [
+            issue for issue in state.issue_ledger
+            if unresolved(issue)
+            and str(issue.severity).upper() == "CRITICAL"
+            and str(issue.materiality).upper() == "MATERIAL"
+        ]
+        open_high_conflict = [
+            issue for issue in state.issue_ledger
+            if unresolved(issue)
+            and str(issue.severity).upper() == "HIGH"
+            and str(issue.materiality).upper() == "MATERIAL"
+            and issue.research_position != issue.critic_position
+        ]
+
+        explicit_ready = bool(
+            getattr(research, "consensus_ready", False)
+            and getattr(critic, "consensus_ready", False)
+        )
         same_decision = bool(research_decision and research_decision == critic_decision)
-        uncertainty_consensus = (same_decision and research_decision in {"WAIT", "EXCLUDE"}
-                                 and not open_critical)
-        ready = (explicit_ready or legacy_ready or uncertainty_consensus)
-        consensus = bool(same_decision and ready and not open_critical and not open_high_conflict)
-        reasons = []
+        decision_fields_consistent = not research_field_conflict and not critic_field_conflict
+        ready = explicit_ready and decision_fields_consistent
+        consensus = bool(
+            same_decision
+            and ready
+            and not open_critical
+            and not open_high_conflict
+            and not state.unresolved_must_answer_count
+            and not state.material_evidence_review_required
+        )
+
+        reasons: list[str] = []
         if not same_decision:
             reasons.append("FINAL_ACTION_MISMATCH")
+        if research_field_conflict:
+            reasons.append("RESEARCH_DECISION_FIELDS_CONFLICT")
+        if critic_field_conflict:
+            reasons.append("CRITIC_DECISION_FIELDS_CONFLICT")
         if open_critical:
-            reasons.append("CRITICAL_ISSUE_OPEN")
+            reasons.append("CRITICAL_ISSUE_UNRESOLVED")
         if open_high_conflict:
-            reasons.append("ACTION_CHANGING_HIGH_ISSUE_OPEN")
-        if not ready:
+            reasons.append("ACTION_CHANGING_HIGH_ISSUE_UNRESOLVED")
+        if not explicit_ready:
             reasons.append("AGENTS_NOT_READY")
         if state.unresolved_must_answer_count:
             reasons.append("MUST_ANSWER_UNRESOLVED")
         if state.material_evidence_review_required:
             reasons.append("MATERIAL_EVIDENCE_REVIEW_REQUIRED")
-        consensus = bool(consensus and not state.unresolved_must_answer_count
-                         and not state.material_evidence_review_required)
-        return {"consensus": consensus, "research_decision": research_decision,
-                "critic_decision": critic_decision, "reasons": reasons,
-                "critical_open": len(open_critical), "high_conflict_open": len(open_high_conflict)}
+
+        return {
+            "consensus": consensus,
+            "research_decision": research_decision,
+            "critic_decision": critic_decision,
+            "reasons": reasons,
+            "critical_open": len(open_critical),
+            "high_conflict_open": len(open_high_conflict),
+        }
 
 
 class DebateEngine:
@@ -136,6 +173,7 @@ class DebateEngine:
             prior_research_stance = state.research_stance
             prior_critic_stance = state.critic_stance
             prior_resolved = state.resolved_issue_count
+            review_required_at_round_start = state.material_evidence_review_required
             phase = "CONSENSUS_STRESS_TEST" if stress_phase else "DEBATE"
             research_payload = self.context_builder.round_payload(
                 analysis_context, [asdict(issue) for issue in state.issue_ledger],
@@ -156,6 +194,13 @@ class DebateEngine:
 
             self._update_state(state, research, critic, round_no)
             state.unresolved_must_answer_count = int(must_answer_check() if must_answer_check else 0)
+
+            # A refresh performed in the previous round may only be cleared after BOTH agents
+            # have completed one subsequent evaluation using the refreshed context.  Must-answer
+            # requests remain independently blocking through unresolved_must_answer_count.
+            if review_required_at_round_start:
+                state.material_evidence_review_required = False
+
             final_consensus = ConsensusEvaluator.evaluate(state, research, critic)
             if persist_call:
                 persist_call(state, research, critic, final_consensus, phase)
@@ -213,8 +258,6 @@ class DebateEngine:
                     break
 
             if round_no >= request.min_debate_rounds and final_consensus["consensus"]:
-                if state.material_evidence_review_required:
-                    state.material_evidence_review_required = False
                 if stress_phase:
                     state.stress_test_completed = True
                     state.status = DebateStatus.FINAL_CONSENSUS.value
@@ -289,9 +332,12 @@ class DebateEngine:
                                 "critic_position": flaw.get("issue", "")})
         self._merge_issues(state, updates, round_no)
         state.resolved_issue_count = sum(issue.status == "RESOLVED" for issue in state.issue_ledger)
-        state.open_issue_count = sum(issue.status == "OPEN" for issue in state.issue_ledger)
+        state.open_issue_count = sum(issue.status != "RESOLVED" for issue in state.issue_ledger)
         state.critical_open_issue_count = sum(
-            issue.status == "OPEN" and issue.severity == "CRITICAL" for issue in state.issue_ledger)
+            issue.status != "RESOLVED"
+            and issue.severity == "CRITICAL"
+            and issue.materiality == "MATERIAL"
+            for issue in state.issue_ledger)
 
     @staticmethod
     def _merge_issues(state: DebateState, updates: list[dict[str, Any]], round_no: int) -> None:
@@ -319,14 +365,20 @@ class DebateEngine:
                 if supplied_id:
                     by_id[supplied_id] = issue
                 by_semantic[semantic_key] = issue
-            issue.severity = str(raw.get("severity") or issue.severity).upper()
+
+            severity = str(raw.get("severity") or issue.severity).upper()
+            status = str(raw.get("status") or issue.status).upper()
+            materiality = str(raw.get("materiality") or issue.materiality).upper()
+            # Unknown lifecycle strings must fail closed rather than silently bypass blockers.
+            issue.severity = severity if severity in VALID_ISSUE_SEVERITIES else "CRITICAL"
+            issue.status = status if status in VALID_ISSUE_STATUSES else "OPEN"
+            issue.materiality = materiality if materiality in {"MATERIAL", "NON_MATERIAL"} else "MATERIAL"
             issue.research_position = str(raw.get("research_position") or issue.research_position)
             issue.critic_position = str(raw.get("critic_position") or issue.critic_position)
             issue.supporting_evidence_ids = list(raw.get("supporting_evidence_ids") or
                                                  issue.supporting_evidence_ids)
             issue.opposing_evidence_ids = list(raw.get("opposing_evidence_ids") or
                                                issue.opposing_evidence_ids)
-            issue.status = str(raw.get("status") or issue.status).upper()
             issue.resolution_basis = str(raw.get("resolution_basis") or issue.resolution_basis)
             issue.last_updated_round = round_no
 

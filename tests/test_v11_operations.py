@@ -40,9 +40,22 @@ class OperationsV11Tests(unittest.TestCase):
         self.db.save_user_request(request)
         job_id = self.db.enqueue_job(request)
         self.db.start_job(job_id)
+        with self.db.connect() as connection:
+            connection.execute("UPDATE job_queue SET lease_until=? WHERE job_id=?",
+                               ("2000-01-01T00:00:00+00:00", job_id))
         self.assertEqual(len(self.db.recoverable_jobs(max_attempts=2)), 1)
         self.db.start_job(job_id)
+        with self.db.connect() as connection:
+            connection.execute("UPDATE job_queue SET lease_until=? WHERE job_id=?",
+                               ("2000-01-01T00:00:00+00:00", job_id))
         self.assertEqual(self.db.recoverable_jobs(max_attempts=2), [])
+
+    def test_running_job_with_live_lease_is_not_recovered(self):
+        request = self.request()
+        self.db.save_user_request(request)
+        job_id = self.db.enqueue_job(request)
+        self.db.start_job(job_id)
+        self.assertEqual(self.db.recoverable_jobs(), [])
 
     def test_queued_ticker_cancellation_is_persistent(self):
         request = self.request()

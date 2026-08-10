@@ -37,12 +37,26 @@ class FinancialOntologyTests(unittest.TestCase):
 
     def test_q2_ytd_derivation_has_formula_and_sources(self):
         result = derive_standalone_quarter(
-            {"value": 250, "fact_id": "YTD"}, {"value": 100, "fact_id": "Q1"}
+            {"value": 250, "fact_id": "YTD", "concept": "Revenue", "unit": "USD",
+             "form": "10-Q", "fy": 2026, "fp": "Q2", "start": "2026-01-01", "end": "2026-06-30"},
+            {"value": 100, "fact_id": "Q1", "concept": "Revenue", "unit": "USD",
+             "form": "10-Q", "fy": 2026, "fp": "Q1", "start": "2026-01-01", "end": "2026-03-31"}
         )
         self.assertEqual(result["value"], 150)
         self.assertTrue(result["derived"])
         self.assertEqual(result["formula"], "6M_YTD - Q1")
         self.assertEqual(result["source_fact_ids"], ["YTD", "Q1"])
+        self.assertEqual(result["comparability"], "PASSED")
+
+    def test_standalone_quarter_rejects_noncomparable_facts(self):
+        result = derive_standalone_quarter(
+            {"value": 250, "fact_id": "YTD", "concept": "Revenue", "unit": "USD",
+             "form": "10-Q", "fy": 2026, "fp": "Q2", "start": "2026-01-01", "end": "2026-06-30"},
+            {"value": 100, "fact_id": "Q1", "concept": "GrossProfit", "unit": "USD",
+             "form": "10-Q", "fy": 2026, "fp": "Q1", "start": "2026-01-01", "end": "2026-03-31"}
+        )
+        self.assertIsNone(result["value"])
+        self.assertIn("CONCEPT_MISMATCH", result["rejection_reasons"])
 
 
 class CapitalOntologyTests(unittest.TestCase):
@@ -69,6 +83,15 @@ class CapitalOntologyTests(unittest.TestCase):
         snapshot = build_capital_structure("INOD", {"normalized_facts": [], "derived": {}}, evidence)
         self.assertEqual(snapshot.warrant_offerable.status, "KNOWN")
         self.assertTrue(snapshot.warrant_offerable.value)
+        self.assertEqual(snapshot.warrant_outstanding.status, "UNKNOWN")
+
+    def test_capital_regex_rejects_offerable_warrant_count_as_outstanding(self):
+        evidence = [EvidenceItem(
+            "S3", "INOD", "SEC", "S-3", "2026-08-06", "Shelf", "u", "C",
+            "OFFERING", "we may offer 100,000 warrants outstanding",
+            normalized_fact="we may offer 100,000 warrants outstanding",
+        )]
+        snapshot = build_capital_structure("INOD", {"normalized_facts": [], "derived": {}}, evidence)
         self.assertEqual(snapshot.warrant_outstanding.status, "UNKNOWN")
 
 

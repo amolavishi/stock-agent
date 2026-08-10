@@ -24,6 +24,17 @@ class ClaimEvidenceContractTests(unittest.TestCase):
                  "evidence_ids": ["SEC_8K"]}
             ], evidence)
 
+    def test_financial_claim_requires_semantically_relevant_evidence(self):
+        evidence = [EvidenceItem(
+            "SEC_EVENT", "INOD", "SEC", "8-K", "2026-08-06", "8-K", "u", "B",
+            "EVENT", "entered into a distribution agreement",
+        )]
+        with self.assertRaises(AnalysisIncompleteError):
+            validate_claim_evidence([{
+                "claim": "revenue growth is accelerating", "domain": "FINANCIAL_FACT",
+                "evidence_ids": ["SEC_EVENT"],
+            }], evidence)
+
 
 class ContextPriorityTests(unittest.TestCase):
     @staticmethod

@@ -108,8 +108,19 @@ def _money(text: str, pattern: str) -> float | None:
     match = re.search(pattern, text, flags=re.I | re.S)
     if not match:
         return None
+    context = text[max(0, match.start() - 80):match.end() + 40]
+    if re.search(r"(?:per\s+share|share\s+price|exercise\s+price|strike\s+price)",
+                 context, flags=re.I):
+        return None
+    if re.search(r"\d\s*%", context):
+        return None
     raw = match.group(1).replace(",", "")
-    value = float(raw)
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    if value < 0:
+        return None
     suffix = (match.group(2) or "").lower()
     return value * ({"b": 1e9, "m": 1e6, "k": 1e3}.get(suffix, 1))
 
@@ -161,8 +172,11 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
             snapshot.warrant_offerable = _provenance(
                 item, True, "KNOWN", text, "OFFERABLE_LANGUAGE", 90)
             snapshot.evidence_ids.append(item.evidence_id)
-        outstanding = re.search(r"([0-9,]+)\s+warrants?\s+(?:were\s+)?outstanding", text)
-        if outstanding:
+        outstanding = re.search(r"(?<![\w-])([0-9,]+)\s+warrants?\s+(?:were\s+)?outstanding\b", text)
+        outstanding_context = text[max(0, outstanding.start() - 100):outstanding.end()] if outstanding else ""
+        if outstanding and not re.search(
+                r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
+                outstanding_context, flags=re.I):
             snapshot.warrant_outstanding = _provenance(
                 item, float(outstanding.group(1).replace(",", "")), "KNOWN",
                 outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
