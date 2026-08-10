@@ -57,6 +57,38 @@ class OperationsV11Tests(unittest.TestCase):
         self.db.start_job(job_id)
         self.assertEqual(self.db.recoverable_jobs(), [])
 
+    def test_live_worker_lease_is_not_requeued(self):
+        request = self.request()
+        self.db.save_user_request(request)
+        job_id = self.db.enqueue_job(request)
+        self.db.start_job(job_id, lease_owner="worker-live")
+        self.assertEqual(self.db.recoverable_jobs(), [])
+
+    def test_expired_worker_lease_is_requeued(self):
+        request = self.request()
+        self.db.save_user_request(request)
+        job_id = self.db.enqueue_job(request)
+        self.db.start_job(job_id, lease_owner="worker-expired")
+        with self.db.connect() as connection:
+            connection.execute("UPDATE job_queue SET lease_until=? WHERE job_id=?",
+                               ("2000-01-01T00:00:00+00:00", job_id))
+        rows = self.db.recoverable_jobs(max_attempts=2)
+        self.assertEqual([row["job_id"] for row in rows], [job_id])
+
+    def test_max_attempts_aborts_expired_job(self):
+        request = self.request()
+        self.db.save_user_request(request)
+        job_id = self.db.enqueue_job(request)
+        self.db.start_job(job_id, lease_owner="worker-expired")
+        with self.db.connect() as connection:
+            connection.execute("UPDATE job_queue SET lease_until=?,attempt=? WHERE job_id=?",
+                               ("2000-01-01T00:00:00+00:00", 2, job_id))
+        self.assertEqual(self.db.recoverable_jobs(max_attempts=2), [])
+        with self.db.connect() as connection:
+            self.assertEqual(connection.execute(
+                "SELECT status FROM job_queue WHERE job_id=?", (job_id,)).fetchone()[0],
+                "ABORTED")
+
     def test_queued_ticker_cancellation_is_persistent(self):
         request = self.request()
         self.db.save_user_request(request)
