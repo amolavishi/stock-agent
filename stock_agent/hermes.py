@@ -113,8 +113,10 @@ def extract_role_json(text: str, role: str) -> dict[str, Any]:
     ranked = sorted(values, key=lambda value: len(required.intersection(value)), reverse=True)
     if required.issubset(ranked[0]):
         return ranked[0]
-    missing = sorted(required.difference(ranked[0]))
-    raise HermesError(f"Hermes {role} JSON missing required fields: {', '.join(missing)}")
+    # Let the typed role agent issue its bounded one-shot repair request.  The
+    # candidate is still validated before construction, and a failed repair
+    # remains fail-closed; rejecting here would bypass the existing repair path.
+    return ranked[0]
 
 
 def parse_usage_report(payload: dict[str, Any]) -> dict[str, Any]:
@@ -315,6 +317,12 @@ class HermesCLIAdapter(_TelemetryMixin):
                 except (OSError, json.JSONDecodeError):
                     error_type = error_type or "USAGE_FILE_INVALID"
             usage = parse_usage_report(usage_payload)
+            if not failure and usage["failed"]:
+                detail = stdout.strip()
+                failure = HermesError(redact_secrets(
+                    f"Hermes provider failed: {detail[-800:]}"
+                    if detail else "Hermes provider failed without a diagnostic"))
+                error_type = error_type or "PROVIDER_FAILURE"
             latency = round((time.perf_counter() - started) * 1000)
             response = HermesResponse(
                 {}, usage["provider"] or self.provider, usage["model"] or self.model,

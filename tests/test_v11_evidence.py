@@ -10,9 +10,10 @@ from unittest.mock import patch
 
 from stock_agent.capital_structure import build_capital_structure, sector_from_sic
 from stock_agent.edgar_documents import EvidenceClassifier
-from stock_agent.evidence import LiveEdgarEvidenceCollector, normalize_evidence_request
+from stock_agent.evidence import (LiveEdgarEvidenceCollector, company_facts_evidence,
+                                  market_snapshot_evidence, normalize_evidence_request)
 from stock_agent.hermes_agents import _normalize_debate_collections
-from stock_agent.schemas import EvidenceItem, now_iso
+from stock_agent.schemas import EvidenceItem, MarketSnapshot, now_iso
 from stock_agent.sec import EdgarError, EdgarMetadataCollector, SECCompanyFactsProvider
 
 
@@ -74,6 +75,68 @@ class EvidenceRequestTests(unittest.TestCase):
         classified = EvidenceClassifier().classify(item, "registration statement for an offering of securities")
         self.assertEqual(classified.evidence_grade, "C")
         self.assertTrue(classified.grade_reason)
+
+    def test_live_collector_classifies_substantive_transaction_exhibit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            collector = LiveEdgarEvidenceCollector(tmp, "Agent test@example.com")
+            item = EvidenceItem("E", "IONQ", "SEC", "EX-99", now_iso(),
+                                "IONQ Exhibit 99", "https://example.test/ex99",
+                                "UNCLASSIFIED", "EXHIBIT", "")
+            collector.metadata.collect = lambda ticker: [item]
+            collector.downloader.download = lambda value: (
+                b"<html><body>Transaction Details. Under the terms of the agreement, "
+                b"SkyWater shareholders are receiving cash and shares at close of the "
+                b"transaction.</body></html>")
+
+            result = collector.collect("IONQ")
+
+            self.assertEqual(result[0].evidence_grade, "B")
+            self.assertEqual(result[0].lifecycle_status, "READY_FOR_ANALYSIS")
+            self.assertIn("substantive transaction terms", result[0].grade_reason)
+
+    def test_market_snapshot_becomes_claim_addressable_evidence(self):
+        snapshot = MarketSnapshot(
+            ticker="IONQ", timestamp=now_iso(), current=40, change_1d_pct=1,
+            return_5d_pct=2, return_20d_pct=5, volume=1000, avg_20d_volume=900,
+            market_cap_usd=1_000_000, ma20=39, ma50=38, atr_14=2,
+            source="TOSS_OPEN_API", is_mock=False)
+
+        item = market_snapshot_evidence(snapshot)
+
+        self.assertEqual(item.source_type, "MARKET_DATA")
+        self.assertEqual(item.document_type, "MARKET_SNAPSHOT")
+        self.assertEqual(item.evidence_grade, "B")
+        self.assertEqual(item.facts["ma50"], 38)
+        self.assertEqual(item.lifecycle_status, "READY_FOR_ANALYSIS")
+
+    def test_partial_market_snapshot_is_not_promoted_to_grade_b(self):
+        snapshot = MarketSnapshot(
+            ticker="IONQ", timestamp=now_iso(), current=40, change_1d_pct=1,
+            return_5d_pct=2, return_20d_pct=5, volume=1000, avg_20d_volume=900,
+            market_cap_usd=1_000_000, ma20=39, ma50=38, atr_14=2,
+            source="TOSS_OPEN_API", data_quality="LOW", is_mock=False,
+            indicator_readiness="UNCERTIFIED", volume_validity="INVALID",
+            quote_freshness="FRESH", candle_freshness="FRESH")
+
+        item = market_snapshot_evidence(snapshot)
+
+        self.assertEqual(item.evidence_grade, "C")
+
+    def test_companyfacts_becomes_claim_addressable_xbrl_evidence(self):
+        item = company_facts_evidence("IONQ", {
+            "cik": "1824920",
+            "revenue": {"value": 100, "unit": "USD", "fact_id": "X1",
+                        "accn": "0001"},
+            "derived": {"gross_margin_pct": 42},
+            "normalized_facts": [{"fact_id": "X1", "filed": "2026-08-10",
+                                   "accn": "0001"}],
+        })
+
+        self.assertEqual(item.source_type, "XBRL_FACT")
+        self.assertEqual(item.document_type, "COMPANYFACTS")
+        self.assertEqual(item.evidence_grade, "B")
+        self.assertIn("revenue=100", item.normalized_fact)
+        self.assertIn("X1", item.facts["source_fact_ids"])
 
 
 class CompanyFactsCapitalTests(unittest.TestCase):

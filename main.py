@@ -26,6 +26,19 @@ def main() -> int:
     sub.add_parser("portfolio")
     sub.add_parser("system")
     sub.add_parser("doctor")
+    discover_market = sub.add_parser("discover-market")
+    discover_market.add_argument("--intensity", choices=("MINIMUM", "NORMAL", "MAXIMUM"), default="MINIMUM")
+    discover_market.add_argument("--shadow", action="store_true", default=False)
+    discover_sector = sub.add_parser("discover-sector")
+    discover_sector.add_argument("sector")
+    discover_sector.add_argument("--intensity", choices=("MINIMUM", "NORMAL", "MAXIMUM"), default="MINIMUM")
+    discover_sector.add_argument("--shadow", action="store_true", default=False)
+    report_discovery = sub.add_parser("discovery-report")
+    report_discovery.add_argument("run_id", nargs="?")
+    sub.add_parser("discovery-replay").add_argument("run_id")
+    sub.add_parser("discovery-bootstrap")
+    sub.add_parser("discovery-refresh")
+    sub.add_parser("discovery-health")
     sub.add_parser("discord")
     args = parser.parse_args()
 
@@ -73,6 +86,36 @@ def main() -> int:
         result = local_health(config, app.db)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result["healthy"] else 2
+    if args.command in {"discover-market", "discover-sector"}:
+        from stock_agent.schemas import UserRequest
+        request = UserRequest(
+            request_id=f"CLI_DISCOVERY_{args.command}", discord_message_id="CLI", discord_user_id="CLI",
+            received_at="", original_text=args.command, intent=("DISCOVER_SECTOR" if args.command == "discover-sector" else "DISCOVER_MARKET"),
+            tickers=[], analysis_intensity=args.intensity, intensity_explicit=True,
+            requested_sector=getattr(args, "sector", ""), discovery_mode=("SECTOR" if args.command == "discover-sector" else "MARKET"),
+            shadow=args.shadow)
+        result = app.discover_request(request)
+        print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+        return 0 if result.status in {"COMPLETED", "SHADOW_ONLY"} else 2
+    if args.command == "discovery-report":
+        payload = app.discovery.store.latest(args.run_id) if args.run_id else app.discovery.store.latest_any()
+        print(json.dumps(payload, ensure_ascii=False, indent=2) if payload else "Discovery report not found")
+        return 0 if payload else 1
+    if args.command == "discovery-replay":
+        payload = app.discovery.store.latest(args.run_id)
+        if not payload:
+            print("Discovery run not found")
+            return 1
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+    if args.command in {"discovery-bootstrap", "discovery-refresh", "discovery-health"}:
+        from stock_agent.discovery.health import bootstrap_health
+        health = bootstrap_health(app.db, app.discovery.security_master, app.discovery.market_data)
+        health["command"] = args.command
+        if args.command != "discovery-health" and health["status"] == "BOOTSTRAP_REQUIRED":
+            health["message"] = "A real SecurityMasterProvider and MarketDataProvider are required; no placeholder universe is used."
+        print(json.dumps(health, ensure_ascii=False, indent=2))
+        return 0 if health["status"] == "DISCOVERY_READY" else 2
     if args.command == "discord":
         run_chairman_bot(config, app)
         return 0

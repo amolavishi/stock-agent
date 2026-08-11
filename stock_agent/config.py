@@ -9,6 +9,30 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class DiscoveryConfigError(ValueError):
+    pass
+
+
+def validate_discovery_config(discovery: dict[str, Any]) -> None:
+    universe = discovery.get("universe", {})
+    coverage = discovery.get("coverage", {})
+    stage = discovery.get("stage", {})
+    if not isinstance(discovery.get("enabled", False), bool) or not isinstance(discovery.get("shadow_mode", True), bool):
+        raise DiscoveryConfigError("discovery.enabled and discovery.shadow_mode must be boolean")
+    for key in ("market_min_pct", "feature_min_pct"):
+        value = coverage.get(key, 0)
+        if not isinstance(value, (int, float)) or not 0 <= value <= 100:
+            raise DiscoveryConfigError(f"discovery.coverage.{key} must be between 0 and 100")
+    for key in ("min_price", "min_market_cap_usd", "min_adv20_usd"):
+        value = universe.get(key, 0)
+        if not isinstance(value, (int, float)) or value <= 0:
+            raise DiscoveryConfigError(f"discovery.universe.{key} must be positive")
+    for key in ("stage3_return_1d_pct", "stage3_return_5d_pct", "stage3_return_20d_pct", "stage3_distance_ma20_pct", "stage3_atr_multiple"):
+        value = stage.get(key, 0)
+        if not isinstance(value, (int, float)) or value <= 0:
+            raise DiscoveryConfigError(f"discovery.stage.{key} must be positive")
+
+
 def load_dotenv() -> None:
     """Load the local .env without adding a third-party dependency."""
     env_path = ROOT / ".env"
@@ -95,4 +119,10 @@ def load_config() -> dict[str, Any]:
     from .security import register_known_secrets
     register_known_secrets(config["credentials"])
     config["risk_rules"] = load_json_yaml(ROOT / "config" / "risk_rules.yaml")
+    discovery = config.get("discovery", {})
+    config["discovery"] = discovery | {
+        "enabled": os.getenv("DISCOVERY_ENABLED", str(discovery.get("enabled", False))).lower() in {"1", "true", "yes", "on"},
+        "shadow_mode": os.getenv("DISCOVERY_SHADOW_MODE", str(discovery.get("shadow_mode", True))).lower() in {"1", "true", "yes", "on"},
+    }
+    validate_discovery_config(config["discovery"])
     return config

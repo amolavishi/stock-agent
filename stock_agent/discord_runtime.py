@@ -99,6 +99,18 @@ class DiscordPresenters:
                 f"상태: `{payload.get('status', 'IN_PROGRESS')}` · "
                 f"미해결 핵심 이슈: `{payload.get('critical_open_issue_count', 0)}`")
 
+    def publish_discovery(self, result) -> None:
+        """Publish only deterministic Discovery status and artifact metadata."""
+        self.chairman.send(
+            f"**[Discovery 완료 | {result.run_id}]**\n"
+            f"Status: `{result.status}` / Certification: `{result.certification_status}`\n"
+            f"Coverage: `{result.coverage.market_coverage_pct:.2f}%` market, "
+            f"`{result.coverage.feature_coverage_pct:.2f}%` feature\n"
+            f"Regime: `{result.regime.get('regime', 'UNKNOWN')}`\n"
+            f"Shortlist: `{', '.join(item.security.ticker for item in result.candidates) or 'NONE'}`")
+        if result.report_path:
+            self.chairman.send_file(result.report_path, f"Discovery report `{result.run_id}`")
+
     def publish_final(self, result: dict[str, Any]) -> None:
         certification = result.get("certification")
         if certification is not None and not certification.certified:

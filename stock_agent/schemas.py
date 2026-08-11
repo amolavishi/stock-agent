@@ -121,6 +121,11 @@ class Intent(str, Enum):
     PAPER_BUY = "PAPER_BUY"
     PAPER_SELL = "PAPER_SELL"
     PAPER_TRIM = "PAPER_TRIM"
+    DISCOVER_MARKET = "DISCOVER_MARKET"
+    DISCOVER_SECTOR = "DISCOVER_SECTOR"
+    DISCOVERY_REPORT = "DISCOVERY_REPORT"
+    DISCOVERY_STATUS = "DISCOVERY_STATUS"
+    DISCOVERY_CANCEL = "DISCOVERY_CANCEL"
 
 
 class RequestStatus(str, Enum):
@@ -362,7 +367,7 @@ class RunManifest:
     finished_at: str = ""
     final_decision: str = ""
     code_version: str = "v1.1"
-    db_schema_version: int = 22
+    db_schema_version: int = 23
     prompt_hashes: dict[str, str] = field(default_factory=dict)
     risk_config_hash: str = ""
     analysis_intensity: str = "NORMAL"
@@ -468,6 +473,9 @@ class UserRequest:
     max_evidence_refreshes: int = 2
     consensus_stress_test_required: bool = False
     paper_action_enabled: bool = False
+    requested_sector: str = ""
+    discovery_mode: str = ""
+    shadow: bool = True
 
 
 @dataclass(frozen=True)

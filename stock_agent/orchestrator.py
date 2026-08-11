@@ -18,7 +18,9 @@ from .database import Database
 from .debate import DebateEngine
 from .delta import build_fresh_delta
 from .evidence import (LiveEdgarEvidenceCollector, MockEvidenceCollector,
-                       detect_evidence_conflicts, normalize_evidence_request)
+                       company_facts_evidence, detect_evidence_conflicts,
+                       market_snapshot_evidence,
+                       normalize_evidence_request)
 from .guard import FinalGuard
 from .hermes import (HermesCLIAdapter, HermesHTTPAdapter, HermesCancelledError,
                      default_hermes_executable)
@@ -39,6 +41,9 @@ from .security import redact_secrets
 from .toss import TossClient, TossMarketDataProvider
 from .trade_plan import build_heuristic_trade_plan
 from .validation import AnalysisIncompleteError, validate_ticker
+from .discovery.orchestrator import DiscoveryOrchestrator
+from .discovery.providers_live import (SECCompanyTickerSecurityMasterProvider,
+                                        TossDiscoveryMarketDataProvider)
 
 
 class Orchestrator:
@@ -46,7 +51,8 @@ class Orchestrator:
 
     def __init__(self, config: dict, market_provider=None, evidence_collector=None,
                  researcher=None, critic=None, notifier=None, database=None,
-                 knowledge=None, chairman=None):
+                 knowledge=None, chairman=None, discovery_security_master=None,
+                 discovery_market_data=None, discovery_fundamental_provider=None):
         self.config = config
         db_config = config.get("database", {})
         self.db = database or Database(config["database_path"],
@@ -73,6 +79,37 @@ class Orchestrator:
         self.cost_guard = CostGuard(config.get("cost_guard", {}))
         self.debate_engine = DebateEngine()
         self.certification = CertificationEngine()
+        if discovery_market_data is None and isinstance(self.market_provider, TossMarketDataProvider):
+            discovery_market_data = TossDiscoveryMarketDataProvider(self.market_provider.client)
+        if discovery_security_master is None and config.get("discovery", {}).get("enabled", False):
+            user_agent = config.get("credentials", {}).get("sec_user_agent", "")
+            if user_agent:
+                discovery_security_master = SECCompanyTickerSecurityMasterProvider(
+                    user_agent, self.knowledge.root / "99_Cache" / "discovery" / "company_tickers_exchange.json")
+        self.discovery = DiscoveryOrchestrator(
+            self.db, config, security_master=discovery_security_master,
+            market_data=discovery_market_data,
+            fundamental_provider=discovery_fundamental_provider,
+            handoff=self.analyze_request)
+
+    def discover_request(self, request: UserRequest):
+        """Run the additive deterministic Discovery layer.
+
+        Discovery is disabled by default and remains shadow/read-only until the
+        operator explicitly enables it in config.  It never mutates PAPER.
+        """
+        discovery_config = self.config.get("discovery", {})
+        if not discovery_config.get("enabled", False):
+            result = self.discovery._empty_result(
+                self.discovery._context_for_disabled(request), "BLOCKED_DATA", "DISCOVERY_DISABLED")
+            self.discovery.store.save_run(result, now_iso(), now_iso())
+            return result
+        mode = request.discovery_mode or ("SECTOR" if request.requested_sector else "MARKET")
+        return self.discovery.run(
+            mode=mode, requested_sector=request.requested_sector,
+            intensity=request.analysis_intensity,
+            shadow=bool(request.shadow or discovery_config.get("shadow_mode", True)),
+            request_id=request.request_id, request=request)
 
     def _build_market_provider(self):
         provider = self.config.get("market_data_provider", self.config.get("provider", "mock"))
@@ -186,6 +223,7 @@ class Orchestrator:
                         item.exhibits_resolved = True
                 self.db.save_company_facts(ticker, normalized_facts)
                 self.db.save_company_fact_bundle(run_id, ticker, facts)
+                evidence.append(company_facts_evidence(ticker, facts))
                 capital_structure = build_capital_structure(ticker, facts, evidence)
                 external_atm_active = capital_structure.atm_active.value is True
                 if prior_state is not None and prior_state.atm_active != external_atm_active:
@@ -197,6 +235,7 @@ class Orchestrator:
                     })
                 state.atm_active = external_atm_active
                 self.db.save_capital_structure(run_id, ticker, capital_structure.to_dict())
+                evidence.append(market_snapshot_evidence(market))
             self._validate_evidence(evidence)
             if market.is_mock and selected_edgar_mode == "live":
                 raise AnalysisIncompleteError("live PAPER run received mock market data")
@@ -208,507 +247,7 @@ class Orchestrator:
             prior_analysis = self.db.latest_certified_run(ticker)
             try:
                 persistent_knowledge = self.knowledge.load_context(ticker, request.focus)
-            except Exception as exc:
-                persistent_knowledge = {}
-                self.db.log(run_id, "WARNING", "KNOWLEDGE_CONTEXT_LOAD_FAILED",
-                            {"error": redact_secrets(exc)})
-            fresh_delta = build_fresh_delta(
-                prior_analysis, market, evidence, asdict(market_regime), state.companyfacts_as_of)
-            analysis_context = build_analysis_context(
-                request, market, state, evidence, market_regime,
-                persistent_knowledge=persistent_knowledge, fresh_delta=fresh_delta,
-                prior_analysis=prior_analysis or {})
-
-            context_box = {"value": analysis_context.to_dict()}
-
-            def context_evidence_ids(round_context: dict) -> list[str]:
-                canonical = round_context.get("canonical_analysis_context", {})
-                return [str(item.get("evidence_id")) for item in canonical.get("evidence_index", [])
-                        if item.get("evidence_id")]
-
-            def research_call(round_no: int, round_context: dict, phase: str):
-                cancellation.check("BEFORE_RESEARCH")
-                emit("RESEARCH_STARTED", {"round": round_no, "phase": phase})
-                self.db.mark_evidence_seen(run_id, context_evidence_ids(round_context),
-                                           "RESEARCH", round_no)
-                self._set_agent_context(self.researcher, run_id, request, ticker, round_no,
-                                        f"{phase}_RESEARCH", cancellation.requested)
-                output = self._run_research(state, market, evidence, request_payload,
-                                            context_box["value"], round_context)
-                validate_claim_evidence(output.claims, evidence, self._minimum_claims(request))
-                self.db.save_output("research_outputs", run_id, ticker, output)
-                self.db.save_stage_output(run_id, ticker, "research", round_no, phase, output)
-                emit("RESEARCH_COMPLETED", {"round": round_no, "phase": phase,
-                                             "output": asdict(output)})
-                cancellation.check("AFTER_RESEARCH")
-                return output
-
-            def critic_call(round_no: int, research_output, round_context: dict, phase: str):
-                cancellation.check("BEFORE_CRITIC")
-                emit("CRITIC_STARTED", {"round": round_no, "phase": phase})
-                self.db.mark_evidence_seen(run_id, context_evidence_ids(round_context),
-                                           "CRITIC", round_no)
-                self._set_agent_context(self.critic, run_id, request, ticker, round_no,
-                                        f"{phase}_CRITIC", cancellation.requested)
-                output = self._run_critic(research_output, state, market, evidence,
-                                          request_payload, context_box["value"], round_context)
-                self.db.save_output("critic_outputs", run_id, ticker, output)
-                self.db.save_stage_output(run_id, ticker, "critic", round_no, phase, output)
-                emit("CRITIC_COMPLETED", {"round": round_no, "phase": phase,
-                                           "output": asdict(output)})
-                cancellation.check("AFTER_CRITIC")
-                return output
-
-            def refresh_call(raw_requests: list[dict], round_no: int):
-                nonlocal evidence
-                cancellation.check("BEFORE_EVIDENCE_REFRESH")
-                emit("EVIDENCE_REFRESH", {"round": round_no, "requests": raw_requests[:5]})
-                refreshed = []
-                for raw_request in raw_requests[:5]:
-                    request_item = normalize_evidence_request(raw_request, round_no)
-                    self.db.save_evidence_request(run_id, request_item, "OPEN")
-                    self.db.save_evidence_request(run_id, request_item, "COLLECTING")
-                    try:
-                        if hasattr(collector, "collect_for_request"):
-                            collected = collector.collect_for_request(ticker, request_item)
-                        else:
-                            collected = collector.collect(ticker)
-                    except Exception:
-                        self.db.save_evidence_request(run_id, request_item, "FAILED")
-                        raise
-                    refreshed.extend(collected)
-                    self.db.save_evidence_request(run_id, request_item, "COLLECTED",
-                                                  [item.evidence_id for item in collected])
-                    self.db.save_evidence_request(run_id, request_item, "REVIEW_REQUIRED",
-                                                  [item.evidence_id for item in collected])
-                evidence = list({item.evidence_id: item for item in evidence + refreshed}.values())
-                self._validate_evidence(evidence)
-                self.db.save_evidence(evidence, run_id)
-                self.db.save_evidence_conflicts(run_id, detect_evidence_conflicts(evidence))
-                context_box["value"] = build_analysis_context(
-                    request, market, state, evidence, market_regime,
-                    persistent_knowledge=persistent_knowledge, fresh_delta=fresh_delta,
-                    prior_analysis=prior_analysis or {}).to_dict()
-                return context_box["value"]
-
-            def persist_debate(debate_state, research_output, critic_output,
-                               consensus, phase: str):
-                self.db.save_debate_round(debate_state, research_output, critic_output,
-                                          consensus, phase)
-
-            def debate_progress(stage: str, payload: dict):
-                emit(stage, payload)
-
-            def cost_check(round_no: int) -> str:
-                summary = self.db.usage_summary(run_id)
-                decision = self.cost_guard.evaluate(
-                    summary["estimated_cost_usd"], round_no >= request.min_debate_rounds)
-                if decision.action == "WARN":
-                    emit("COST_WARNING", asdict(decision))
-                return decision.action
-
-            research, critic, debate_state, consensus_result = self.debate_engine.run(
-                run_id, request, context_box["value"], research_call, critic_call,
-                refresh_call, persist_debate, debate_progress, cost_check,
-                lambda: self.db.unresolved_must_answer_count(run_id))
-            debate_rounds = debate_state.round_no
-
-            capital_payload = capital_structure.to_dict() if capital_structure else {}
-            certification = self.certification.evaluate(
-                run_id=run_id,
-                debate_status=debate_state.status,
-                market=market,
-                evidence=evidence,
-                capital_structure=capital_payload,
-                live_mode=selected_edgar_mode == "live",
-                critical_open_issues=debate_state.critical_open_issue_count,
-                unresolved_must_answer=self.db.unresolved_must_answer_count(run_id),
-                claim_validation_passed=True,
-                system_integrity_ok=True,
-                sizing_requested=False,
-            )
-            emit("CERTIFICATION_EVALUATED", asdict(certification))
-            if not certification.certified:
-                self._record_usage(run_id, ticker)
-                usage = self.db.usage_summary(run_id)
-                started_at = self.db.get_run(run_id)["started_at"]
-                manifest = RunManifest(
-                    run_id, ticker, market.snapshot_id,
-                    [item.evidence_id for item in evidence], state.last_updated,
-                    research.prompt_version, critic.prompt_version,
-                    getattr(self.chairman, "prompt_version", "unknown"),
-                    self.config["risk_rules"].get("version", "risk_rules_v0.2"),
-                    research.provider, research.model, started_at, now_iso(),
-                    certification.action, analysis_intensity=request.analysis_intensity,
-                    market_as_of=market.observed_at,
-                    evidence_cutoff=max((item.filed_at or item.published_at for item in evidence), default=""),
-                    companyfacts_as_of=state.companyfacts_as_of,
-                    debate_status=debate_state.status, round_count=debate_rounds,
-                    input_tokens=usage["input_tokens"], output_tokens=usage["output_tokens"],
-                    reasoning_tokens=usage["reasoning_tokens"],
-                    estimated_cost_usd=usage["estimated_cost_usd"],
-                    total_latency_ms=usage["latency_ms"], prompt_hashes=self._prompt_hashes(),
-                    risk_config_hash=hashlib.sha256(json.dumps(
-                        self.config["risk_rules"], sort_keys=True).encode()).hexdigest())
-                report = render_uncertified_report(
-                    run_id, ticker, certification, request_payload, market=market,
-                    debate_state=debate_state, evidence=evidence, usage=usage)
-                if self.config.get("report_dir"):
-                    report_path = write_run_report(self.config["report_dir"], report, ticker, run_id)
-                else:
-                    report_path = self.knowledge.write_report(ticker, run_id, report)
-                cancellation.check("BEFORE_FINAL_PERSIST")
-                self.db.finalize_uncertified_analysis(
-                    certification, manifest, research, critic, request.request_id, ticker,
-                    str(report_path), debate_state.status, debate_rounds, usage)
-                self.db.record_knowledge_sync(
-                    run_id, ticker, "BLOCKED_CERTIFICATION", str(self.knowledge.root),
-                    ",".join(certification.reason_codes))
-                emit("RUN_UNCERTIFIED", {
-                    "action": certification.action,
-                    "certification_status": certification.certification_status,
-                    "report": str(report_path),
-                })
-                self.notifier.send(
-                    f"[{certification.action}] {ticker} certification="
-                    f"{certification.certification_status} run_id={run_id}")
-                return {
-                    "run_id": run_id, "market": market, "state": state,
-                    "evidence": evidence, "research": research, "critic": critic,
-                    "risk": None, "chairman": None, "position_size": None,
-                    "manifest": manifest, "decision": None, "report_path": report_path,
-                    "market_regime": market_regime.regime,
-                    "market_regime_context": market_regime,
-                    "debate_rounds": debate_rounds, "debate_state": debate_state,
-                    "consensus_result": consensus_result, "final_guard": None,
-                    "certification": certification, "request": request,
-                }
-
-            trade_plan = build_heuristic_trade_plan(market)
-            risk = self.risk.evaluate(research, critic, state, market, trade_plan)
-            self.db.save_output("risk_outputs", run_id, ticker, risk)
-            emit("RISK_COMPLETED", asdict(risk))
-            account_id = str(self.config.get("paper", {}).get("account_id", "PAPER_DEFAULT"))
-            self.db.update_position_mark(
-                ticker, market.current, market.source,
-                market.observed_at or market.timestamp, account_id)
-            account = self.db.paper_account_state(account_id)
-            position_size = self.sizing.calculate_for_account(trade_plan, account, market.sector_name)
-            emit("POSITION_SIZING", asdict(position_size))
-
-            self._set_agent_context(self.chairman, run_id, request, ticker, debate_rounds,
-                                    "CHAIRMAN", cancellation.requested)
-            cancellation.check("BEFORE_CHAIRMAN")
-            chairman_output = self._run_chairman(research, critic, risk, request_payload, position_size)
-            self.db.mark_evidence_seen(run_id, list(dict.fromkeys(research.evidence_ids)),
-                                       "CHAIRMAN", debate_rounds)
-            self.db.save_output("chairman_outputs", run_id, ticker, chairman_output)
-            emit("CHAIRMAN_COMPLETED", chairman_output)
-            claim_guard = self.guard.validate_claims(research.claims, evidence)
-            plan_guard = self.guard.validate_trade_plan(trade_plan)
-            critical_capital_unknown = bool(capital_structure and
-                capital_structure.shares_outstanding is None)
-            with self.db.connect() as connection:
-                has_open_position = connection.execute("""SELECT 1 FROM portfolio_positions
-                    WHERE ticker=? AND account_id=? AND status='OPEN' AND quantity>0 LIMIT 1""",
-                    (ticker, account_id)).fetchone() is not None
-            final_guard = self.guard.validate_final(chairman_output, risk,
-                claim_guard["valid"], plan_guard["valid"], debate_state.status,
-                debate_state.critical_open_issue_count, market.data_quality,
-                critical_capital_unknown, has_open_position)
-            decision_name = "WAIT" if market.is_mock else final_guard["final_decision"]
-            emit("FINAL_GUARD_COMPLETED", final_guard)
-            # Certification is a boundary decision, not a mutable pre-chairman label. Re-run
-            # the complete contract after Risk, Chairman, claims, sizing, and FinalGuard exist.
-            final_certification = self.certification.evaluate(
-                run_id=run_id,
-                debate_status=debate_state.status,
-                market=market,
-                evidence=evidence,
-                capital_structure=capital_payload,
-                live_mode=selected_edgar_mode == "live",
-                critical_open_issues=debate_state.critical_open_issue_count,
-                unresolved_must_answer=self.db.unresolved_must_answer_count(run_id),
-                claim_validation_passed=claim_guard["valid"],
-                system_integrity_ok=True,
-                sizing_requested=request.paper_action_enabled,
-                portfolio_state=account,
-                final_boundary_failures=final_guard["errors"],
-                final_decision=final_guard["final_decision"],
-                risk_hard_filter_pass=risk.hard_filter_pass,
-                risk_decision=risk.risk_decision,
-            )
-            certification = final_certification
-            emit("FINAL_CERTIFICATION_EVALUATED", asdict(certification))
-            if not certification.certified:
-                self._record_usage(run_id, ticker)
-                usage = self.db.usage_summary(run_id)
-                started_at = self.db.get_run(run_id)["started_at"]
-                manifest = RunManifest(
-                    run_id, ticker, market.snapshot_id,
-                    [item.evidence_id for item in evidence], state.last_updated,
-                    research.prompt_version, critic.prompt_version,
-                    getattr(self.chairman, "prompt_version", "unknown"), risk.rule_version,
-                    research.provider, research.model, started_at, now_iso(),
-                    certification.action, analysis_intensity=request.analysis_intensity,
-                    market_as_of=market.observed_at,
-                    evidence_cutoff=max((item.filed_at or item.published_at for item in evidence), default=""),
-                    companyfacts_as_of=state.companyfacts_as_of,
-                    debate_status=debate_state.status, round_count=debate_rounds,
-                    input_tokens=usage["input_tokens"], output_tokens=usage["output_tokens"],
-                    reasoning_tokens=usage["reasoning_tokens"],
-                    estimated_cost_usd=usage["estimated_cost_usd"],
-                    total_latency_ms=usage["latency_ms"], prompt_hashes=self._prompt_hashes(),
-                    risk_config_hash=hashlib.sha256(json.dumps(
-                        self.config["risk_rules"], sort_keys=True).encode()).hexdigest())
-                report = render_uncertified_report(
-                    run_id, ticker, certification, request_payload, market=market,
-                    debate_state=debate_state, evidence=evidence, usage=usage)
-                if self.config.get("report_dir"):
-                    report_path = write_run_report(self.config["report_dir"], report, ticker, run_id)
-                else:
-                    report_path = self.knowledge.write_report(ticker, run_id, report)
-                cancellation.check("BEFORE_FINAL_PERSIST")
-                self.db.finalize_uncertified_analysis(
-                    certification, manifest, research, critic, request.request_id, ticker,
-                    str(report_path), debate_state.status, debate_rounds, usage)
-                self.db.record_knowledge_sync(
-                    run_id, ticker, "BLOCKED_CERTIFICATION", str(self.knowledge.root),
-                    ",".join(certification.reason_codes))
-                emit("RUN_UNCERTIFIED", {"action": certification.action,
-                                          "certification_status": certification.certification_status,
-                                          "report": str(report_path)})
-                return {"run_id": run_id, "market": market, "state": state,
-                        "evidence": evidence, "research": research, "critic": critic,
-                        "risk": risk, "chairman": chairman_output, "position_size": None,
-                        "manifest": manifest, "decision": None, "report_path": report_path,
-                        "market_regime": market_regime.regime,
-                        "market_regime_context": market_regime, "debate_rounds": debate_rounds,
-                        "debate_state": debate_state, "consensus_result": consensus_result,
-                        "final_guard": final_guard, "certification": certification,
-                        "request": request}
-            raw_confidence = max(0, min(100, round((research.confidence + critic.confidence) / 2
-                                                   - len(risk.warnings) * 3)))
-            confidence_cap = self._confidence_cap(
-                market.data_quality, market_regime.regime_confidence,
-                critical_capital_unknown, debate_state.status)
-            confidence = min(raw_confidence, confidence_cap)
-            decision = InvestmentDecision(
-                ticker, now_iso(), decision_name, confidence,
-                "READY" if decision_name in {"BUY", "CONDITIONAL_BUY"} else "NOT_READY",
-                trade_plan,
-                ["MOCK ì‹œë‚˜ë¦¬ì˜¤ ì‹ í˜¸" if market.is_mock else "ì‹¤ë°ì´í„°Â·ê·¼ê±° ê¸°ë°˜ ìµœê·¼ ì‚¬ì—… ì‹ í˜¸",
-                 f"20D ìˆ˜ìµë¥  {market.return_20d_pct:+.2f}% / ìƒëŒ€ê±°ëž˜ëŸ‰ {market.relative_volume:.2f}x",
-                 f"ì „ëžµ ì í•©ë„ {research.strategy_fit}/100"],
-                state.known_risks[:3] + risk.warnings[:2], run_id)
-            exported_position_size = (position_size
-                                      if decision_name in {"BUY", "CONDITIONAL_BUY"} else None)
-            started_at = self.db.get_run(run_id)["started_at"]
-            self._record_usage(run_id, ticker)
-            usage = self.db.usage_summary(run_id)
-            manifest = RunManifest(run_id, ticker, market.snapshot_id,
-                [item.evidence_id for item in evidence], state.last_updated,
-                research.prompt_version, critic.prompt_version,
-                getattr(self.chairman, "prompt_version", "unknown"), risk.rule_version,
-                research.provider, research.model, started_at, now_iso(), decision_name,
-                analysis_intensity=request.analysis_intensity,
-                market_as_of=market.observed_at,
-                evidence_cutoff=max((item.filed_at or item.published_at for item in evidence), default=""),
-                companyfacts_as_of=state.companyfacts_as_of,
-                debate_status=debate_state.status, round_count=debate_rounds,
-                input_tokens=usage["input_tokens"], output_tokens=usage["output_tokens"],
-                reasoning_tokens=usage["reasoning_tokens"],
-                estimated_cost_usd=usage["estimated_cost_usd"],
-                total_latency_ms=usage["latency_ms"],
-                prompt_hashes=self._prompt_hashes(),
-                risk_config_hash=hashlib.sha256(json.dumps(
-                    self.config["risk_rules"], sort_keys=True).encode()).hexdigest())
-            state.previous_decision = decision_name
-            state.last_updated = datetime.now(timezone.utc).date().isoformat()
-            report = render_report(run_id, market, state, evidence, research, critic, risk,
-                decision, request_payload, market_regime.regime, chairman_output,
-                exported_position_size,
-                debate_state=debate_state, usage=usage, fresh_delta=fresh_delta,
-                capital_structure=capital_structure.to_dict() if capital_structure else {},
-                certification=certification)
-            if self.config.get("report_dir"):
-                report_path = write_run_report(self.config["report_dir"], report, ticker, run_id)
-            else:
-                report_path = self.knowledge.write_report(ticker, run_id, report)
-            paper_effect = self.paper.plan_effect(
-                decision, position_size, market.sector_name, request.time_horizon)
-            if not request.paper_action_enabled:
-                paper_effect = {}
-            cancellation.check("BEFORE_FINAL_PERSIST")
-            self.db.finalize_analysis(decision, manifest, state, research, critic,
-                risk.rule_version, request.request_id, str(report_path), paper_effect,
-                debate_state.status, debate_rounds, usage, certification)
-            try:
-                self.knowledge.sync_run(ticker, run_id, state, evidence, research, decision,
-                                        debate_state, report_path,
-                                        certification_status=certification.certification_status)
-                self.db.record_knowledge_sync(run_id, ticker, "SUCCESS", str(self.knowledge.root))
-            except Exception as exc:
-                safe_knowledge_error = redact_secrets(exc)
-                self.db.record_knowledge_sync(run_id, ticker, "FAILED", str(self.knowledge.root),
-                                              safe_knowledge_error)
-                self.db.log(run_id, "WARNING", "KNOWLEDGE_SYNC_FAILED",
-                            {"error": safe_knowledge_error})
-            emit("RUN_SUCCESS", {"decision": decision_name, "report": str(report_path)})
-            self.notifier.send(f"[{decision_name}] {ticker} confidence={confidence}/100 run_id={run_id}")
-            return {"run_id": run_id, "market": market, "state": state, "evidence": evidence,
-                    "research": research, "critic": critic, "risk": risk,
-                    "chairman": chairman_output, "position_size": exported_position_size,
-                    "manifest": manifest, "decision": decision, "report_path": report_path,
-                    "market_regime": market_regime.regime, "market_regime_context": market_regime,
-                    "debate_rounds": debate_rounds, "debate_state": debate_state,
-                    "consensus_result": consensus_result,
-                    "final_guard": final_guard, "certification": certification,
-                    "request": request}
-        except (RunCancelledError, HermesCancelledError) as exc:
-            self.db.acknowledge_cancellation(run_id)
-            self.db.update_request_status(request.request_id, "CANCELLED", run_id)
-            self.db.log(run_id, "INFO", "RUN_CANCELLED", {"error": str(exc)})
-            if progress:
-                progress("RUN_CANCELLED", run_id, ticker, {"status": "CANCELLED"})
-            raise
-        except Exception as exc:
-            safe_error = redact_secrets(exc)
-            status = "DATA_INSUFFICIENT" if isinstance(exc, AnalysisIncompleteError) else "SYSTEM_ERROR"
-            self.db.fail_run(run_id, safe_error, status)
-            self.db.update_request_status(request.request_id, "FAILED", run_id)
-            self.db.log(run_id, "ERROR", "RUN_FAILED", {"error": safe_error, "status": status})
-            if progress:
-                progress("RUN_FAILED", run_id, ticker, {"status": status, "error": safe_error})
-            raise
-
-    def _market_regime(self, ticker_snapshot=None) -> MarketRegimeContext:
-        try:
-            snapshots = {ticker: self.market_provider.snapshot(ticker)
-                         for ticker in ("QQQ", "IWM", "SOXX")}
-            return MarketRegimeEngine().context(snapshots, ticker_snapshot)
-        except Exception:
-            return MarketRegimeContext("UNKNOWN", now_iso(),
-                {"QQQ": None, "IWM": None, "SOXX": None},
-                {"QQQ": None, "IWM": None, "SOXX": None}, "UNKNOWN", 0)
-
-    def _run_research(self, state, market, evidence, request, analysis_context=None, revision=None):
-        for args in ((state, market, evidence, request, revision, analysis_context),
-                     (state, market, evidence, request, revision),
-                     (state, market, evidence)):
-            try:
-                inspect.signature(self.researcher.run).bind(*args)
-            except TypeError:
-                continue
-            return self.researcher.run(*args)
-        raise TypeError("unsupported Research agent signature")
-
-    def _run_critic(self, research, state, market, evidence, request, analysis_context=None,
-                    debate_context=None):
-        for args in ((research, state, market, evidence, request, analysis_context, debate_context),
-                     (research, state, market, evidence, request, analysis_context),
-                     (research, state, market, evidence, request),
-                     (research, state, market)):
-            try:
-                inspect.signature(self.critic.run).bind(*args)
-            except TypeError:
-                continue
-            return self.critic.run(*args)
-        raise TypeError("unsupported Critic agent signature")
-
-    @staticmethod
-    def _minimum_claims(request: UserRequest) -> int:
-        return {"MINIMUM": 3, "NORMAL": 5, "MAXIMUM": 7}.get(
-            request.analysis_intensity, 5)
-
-    def _run_chairman(self, research, critic, risk, request, position_size):
-        try:
-            inspect.signature(self.chairman.run).bind(research, critic, risk, request, position_size)
-        except TypeError:
-            return self.chairman.run(research, critic, risk)
-        return self.chairman.run(research, critic, risk, request, position_size)
-
-    def _record_usage(self, run_id: str, ticker: str) -> None:
-        # Canonical Hermes adapters record every invocation (including repairs) immediately.
-        # Kept as a compatibility hook for non-Hermes test agents.
-        return None
-
-    @staticmethod
-    def _prompt_hashes() -> dict[str, str]:
-        root = __import__("pathlib").Path(__file__).resolve().parents[1] / "prompts"
-        result = {}
-        for path in sorted(root.glob("*.md")):
-            result[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
-        return result
-
-    @staticmethod
-    def _set_agent_context(agent, run_id: str, request: UserRequest, ticker: str,
-                           round_no: int, phase: str, cancellation_check=None) -> None:
-        adapter = getattr(agent, "adapter", None)
-        setter = getattr(adapter, "set_call_context", None)
-        if setter:
-            setter(run_id=run_id, request_id=request.request_id, ticker=ticker,
-                   round_no=round_no, phase=phase,
-                   reasoning_effort=request.reasoning_profile, repair_attempt=False,
-                   cancellation_check=cancellation_check)
-
-    def _validate_evidence(self, evidence: list[EvidenceItem]) -> None:
-        max_age = self.config["analysis"]["max_evidence_age_days"]
-        now = datetime.now(timezone.utc)
-        usable = 0
-        for item in evidence:
-            published = datetime.fromisoformat(item.published_at.replace("Z", "+00:00"))
-            if published.tzinfo is None:
-                published = published.replace(tzinfo=timezone.utc)
-            if (now - published.astimezone(timezone.utc)).days > max_age:
-                item.data_quality = "STALE"
-            else:
-                usable += 1
-        required = self.config["analysis"]["min_evidence"]
-        if usable < required:
-            raise AnalysisIncompleteError(f"usable evidence {usable} is below minimum {required}")
-
-    @staticmethod
-    def _market_cap_from_facts(facts: dict, price: float) -> float:
-        row = facts.get("shares_outstanding") or {}
-        try:
-            return float(row.get("value", row.get("val", 0))) * price
-        except (TypeError, ValueError):
-            return 0.0
-
-    @staticmethod
-    def _fact_value(facts: dict, name: str) -> float | None:
-        row = facts.get(name) or {}
-        try:
-            value = row.get("value", row.get("val"))
-            return float(value) if value is not None else None
-        except (TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def _confidence_cap(data_quality: str, regime_confidence: int,
-                        critical_capital_unknown: bool, debate_status: str) -> int:
-        cap = 100
-        if data_quality == "PARTIAL":
-            cap = min(cap, 80)
-        elif data_quality != "OK":
-            cap = min(cap, 55)
-        if regime_confidence < 50:
-            cap = min(cap, 80)
-        if critical_capital_unknown:
-            cap = min(cap, 70)
-        if debate_status == "DEADLOCK":
-            cap = min(cap, 65)
-        return cap
-
-    @staticmethod
-    def _final_decision(research, critic, risk, is_mock: bool, chairman: dict | None = None) -> str:
-        if not risk.hard_filter_pass:
-            return "EXCLUDE"
-        if risk.risk_decision in {"WAIT", "EXCLUDE"} or critic.critic_decision == "WAIT":
-            return risk.risk_decision if risk.risk_decision == "EXCLUDE" else "WAIT"
-        if is_mock:
-            return "WAIT"
-        proposed = (chairman or {}).get("decision", research.suggested_decision)
-        allowed = {item.value for item in Decision}
-        return proposed if proposed in allowed else "WAIT"
+            except Exception as exc:ço9¶‰žËkºwµç}Ñ½­•¹ÌõÕÍ…•l‰½ÕÑÁÕÑ}Ñ½­•¹Ì‰t°(€€€€€€€€€€€€€€€€€€€É•…Í½¹¥¹}Ñ½­•¹ÌõÕÍ…•l‰É•…Í½¹¥¹}Ñ½­•¹Ì‰t°(€€€€€€€€€€€€€€€€€€€•ÍÑ¥µ…Ñ•‘}½ÍÑ}ÕÍõÕÍ…•l‰•ÍÑ¥µ…Ñ•‘}½ÍÑ}ÕÍ‰t°(€€€€€€€€€€€€€€€€€€€Ñ½Ñ…±}±…Ñ•¹å}µÌõÕÍ…•l‰±…Ñ•¹å}µÌ‰t°ÁÉ½µÁÑ}¡…Í¡•ÌõÍ•±˜¹}ÁÉ½µÁÑ}¡…Í¡•Ì ¤°(€€€€€€€€€€€€€€€€€€€É¥Í­}½¹™¥}¡…Í õ¡…Í¡±¥ˆ¹Í¡„ÈÔØ¡©Í½¸¹‘ÕµÁÌ (€€€€€€€€€€€€€€€€€€€€€€€Í•±˜¹½¹™¥l‰É¥Í­}ÉÕ±•Ì‰t°Í½ÉÑ}­•åÌõQÉÕ”¤¹•¹½‘” ¤¤¹¡•á‘¥•ÍÐ ¤¤(€€€€€€€€€€€€€€€É•Á½ÉÐ€ôÉ•¹‘•É}Õ¹•ÉÑ¥™¥•‘}É•Á½ÉÐ (€€€€€€€€€€€€€€€€€€€ÉÕ¹}¥°Ñ¥­•È°•ÉÑ¥™¥…Ñ¥½¸°É•ÅÕ•ÍÑ}Á…å±½…°µ…É­•Ðõµ…É­•Ð°(€€€€€€€€€€€€€€€€€€€‘•‰…Ñ•}ÍÑ…Ñ”õ‘•‰…Ñ•}ÍÑ…Ñ”°•Ù¥‘•¹”õ•Ù¥‘•¹”°ÕÍ…”õÕÍ…”¤(€€€€€€€€€€€€€€€¥˜Í•±˜¹½¹™¥œ¹•Ð ‰É•Á½ÉÑ}‘¥Èˆ¤è(€€€€€€€€€€€€€€€€€€€É•Á½ÉÑ}Á…Ñ €ôÝÉ¥Ñ•}ÉÕ¹}É•Á½ÉÐ¡Í•±˜¹½¹™¥l‰É•Á½ÉÑ}‘¥È‰t°É•Á½ÉÐ°Ñ¥­•È°ÉÕ¹}¥¤(€€€€€€€€€€€€€€€•±Í”è(€€€€€€€€€€€€€€€€€€€É•Á½ÉÑ}Á…Ñ €ôÍ•±˜¹­¹½Ý±•‘”¹ÝÉ¥Ñ•}É•Á½ÉÐ¡Ñ¥­•È°ÉÕ¹}¥°É•Á½ÉÐ¤(€€€€€€€€€€€€€€€…¹•±±…Ñ¥½¸¹¡•¬ ‰	=I}%91}AIM%MPˆ¤(€€€€€€€€€€€€€€€Í•±˜¹‘ˆ¹™¥¹…±¥é•}Õ¹•ÉÑ¥™¥•‘}…¹…±åÍ¥Ì (€€€€€€€€€€€€€€€€€€€•ÉÑ¥™¥…Ñ¥½¸°µ…¹¥™•ÍÐ°É•Í•…É °É¥Ñ¥Œ°É•ÅÕ•ÍÐ¹É•ÅÕ•ÍÑ}¥°Ñ¥­•È°(€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É•Á½ÉÑ}Á…Ñ ¤°‘•‰…Ñ•}ÍÑ…Ñ”¹ÍÑ…ÑÕÌ°‘•‰…Ñ•}É½Õ¹‘Ì°ÕÍ…”¤(€€€€€€€€€€€€€€€Í•±˜¹‘ˆ¹É•½É‘}­¹½Ý±•‘•}Íå¹Œ (€€€€€€€€€€€€€€€€€€€ÉÕ¹}¥°Ñ¥­•È°€‰	1=-}IQ%%Q%=8ˆ°ÍÑÈ¡Í•±˜¹­¹½Ý±•‘”¹É½½Ð¤°(€€€€€€€€€€€€€€€€€€€€ˆ°ˆ¹©½¥¸¡•ÉÑ¥™¥…Ñ¥½¸¹É•…Í½¹}½‘•Ì¤¤(€€€€€€€€€€€€€€€•µ¥Ð ‰IU9}U9IQ%%ˆ°ì‰…Ñ¥½¸ˆè•ÉÑ¥™¥…Ñ¥½¸¹…Ñ¥½¸°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰•ÉÑ¥™¥…Ñ¥½¹}ÍÑ…ÑÕÌˆè•ÉÑ¥™¥…Ñ¥½¸¹•ÉÑ¥™¥…Ñ¥½¹}ÍÑ…ÑÕÌ°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰É•Á½ÉÐˆèÍÑÈ¡É•Á½ÉÑ}Á…Ñ ¥ô¤(€€€€€€€€€€€€€€€É•ÑÕÉ¸ì‰ÉÕ¹}¥ˆèÉÕ¹}¥°€‰µ…É­•Ðˆèµ…É­•Ð°€‰ÍÑ…Ñ”ˆèÍÑ…Ñ”°(€€€€€€€€€€€€€€€€€€€€€€€€‰•Ù¥‘•¹”ˆè•Ù¥‘•¹”°€‰É•Í•…É ˆèÉ•Í•…É °€‰É¥Ñ¥ŒˆèÉ¥Ñ¥Œ°(€€€€€€€€€€€€€€€€€€€€€€€€‰É¥Í¬ˆèÉ¥Í¬°€‰¡…¥Éµ…¸ˆè¡…¥Éµ…¹}½ÕÑÁÕÐ°€‰Á½Í¥Ñ¥½¹}Í¥é”ˆè9½¹”°(€€€€€€€€€€€€€€€€€€€€€€€€‰µ…¹¥™•ÍÐˆèµ…¹¥™•ÍÐ°€‰‘•¥Í¥½¸ˆè9½¹”°€‰É•Á½ÉÑ}Á…Ñ ˆèÉ•Á½ÉÑ}Á…Ñ °(€€€€€€€€€€€€€€€€€€€€€€€€‰µ…É­•Ñ}É•¥µ”ˆèµ…É­•Ñ}É•¥µ”¹É•¥µ”°(€€€€€€€€€€€€€€€€€€€€€€€€‰µ…É­•Ñ}É•¥µ•}½¹Ñ•áÐˆèµ…É­•Ñ}É•¥µ”°€‰‘•‰…Ñ•}É½Õ¹‘Ìˆè‘•‰…Ñ•}É½Õ¹‘Ì°(€€€€€€€€€€€€€€€€€€€€€€€€‰‘•‰…Ñ•}ÍÑ…Ñ”ˆè‘•‰…Ñ•}ÍÑ…Ñ”°€‰½¹Í•¹ÍÕÍ}É•ÍÕ±Ðˆè½¹Í•¹ÍÕÍ}É•ÍÕ±Ð°(€€€€€€€€€€€€€€€€€€€€€€€€‰™¥¹…±}Õ…Éˆè™¥¹…±}Õ…É°€‰•ÉÑ¥™¥…Ñ¥½¸ˆè•ÉÑ¥™¥…Ñ¥½¸°(€€€€€€€€€€€€€€€€€€€€€€€€‰É•ÅÕ•ÍÐˆèÉ•ÅÕ•ÍÑô(€€€€€€€€€€€É…Ý}½¹™¥‘•¹”€ôµ…à À°µ¥¸ ÄÀÀ°É½Õ¹ ¡É•Í•…É ¹½¹™¥‘•¹”€¬É¥Ñ¥Œ¹½¹™¥‘•¹”¤€¼€È(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€´±•¸¡É¥Í¬¹Ý…É¹¥¹Ì¤€¨€Ì¤¤¤(€€€€€€€€€€€½¹™¥‘•¹•}…À€ôÍ•±˜¹}½¹™¥‘•¹•}…À 4(€€€€€€€€€€€€€€€µ…É­•Ð¹‘…Ñ…}ÅÕ…±¥Ñä°µ…É­•Ñ}É•¥µ”¹É•¥µ•}½¹™¥‘•¹”°4(€€€€€€€€€€€€€€€É¥Ñ¥…±}…Á¥Ñ…±}Õ¹­¹½Ý¸°‘•‰…Ñ•}ÍÑ…Ñ”¹ÍÑ…ÑÕÌ¤4(€€€€€€€€€€€½¹™¥‘•¹”€ôµ¥¸¡É…Ý}½¹™¥‘•¹”°½¹™¥‘•¹•}…À¤4(€€€€€€€€€€€‘•¥Í¥½¸€ô%¹Ù•ÍÑµ•¹Ñ•¥Í¥½¸ 4(€€€€€€€€€€€€€€€Ñ¥­•È°¹½Ý}¥Í¼ ¤°‘•¥Í¥½¹}¹…µ”°½¹™¥‘•¹”°4(€€€€€€€€€€€€€€€€‰Idˆ¥˜‘•¥Í¥½¹}¹…µ”¥¸ì‰	Udˆ°€‰=9%Q%=91}	Ud‰ô•±Í”€‰9=Q}Idˆ°4(€€€€€€€€€€€€€€€ÑÉ…‘•}Á±…¸°4(€€€€€€€€€€€€€€€l‰5=,ƒ².s®
+c®š³²bƒ².ƒ¶bàˆ¥˜µ…É­•Ð¹¥Í}µ½¬•±Í”€‹².“®6Ã²vÓ¶Ã
+ßªÞóªÆÀƒªâÃ®Â`ƒ²ÖsªÞðƒ²
+³²^ƒ².ƒ¶bàˆ°4(€€€€€€€€€€€€€€€€˜ˆÈÁƒ²"c²v×®–€íµ…É­•Ð¹É•ÑÕÉ¹|ÈÁ‘}ÁÐè¬¸É™ô”€¼ƒ²®2ªÆÃ®zc®~$íµ…É­•Ð¹É•±…Ñ¥Ù•}Ù½±Õµ”è¸É™õàˆ°4(€€€€€€€€€€€€€€€€˜‹²‚®zÔƒ²‚¶V§®>íÉ•Í•…É ¹ÍÑÉ…Ñ•å}™¥Ñô¼ÄÀÀ‰t°4(€€€€€€€€€€€€€€€ÍÑ…Ñ”¹­¹½Ý¹}É¥Í­ÍlèÍt€¬É¥Í¬¹Ý…É¹¥¹ÍlèÉt°ÉÕ¹}¥¤4(€€€€€€€€€€€•áÁ½ÉÑ•‘}Á½Í¥Ñ¥½¹}Í¥é”€ô€¡Á½Í¥Ñ¥½¹}Í¥é”4(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¥˜‘•¥Í¥½¹}¹…µ”¥¸ì‰	Udˆ°€‰=9%Q%=91}	Ud‰ô•±Í”9½¹”¤4(€€€€€€€€€€€ÍÑ…ÉÑ•‘}…Ð€ôÍ•±˜¹‘ˆ¹•Ñ}ÉÕ¸¡ÉÕ¹}¥¥l‰ÍÑ…ÉÑ•‘}…Ð‰t(€€€€€€€€€€€Í•±˜¹}É•½É‘}ÕÍ…”¡ÉÕ¹}¥°Ñ¥­•È¤4(€€€€€€€€€€€ÕÍ…”€ôÍ•±˜¹‘ˆ¹ÕÍ…•}ÍÕµµ…Éä¡ÉÕ¹}¥¤4(€€€€€€€€€€€µ…¹¥™•ÍÐ€ôIÕ¹5…¹¥™•ÍÐ¡ÉÕ¹}¥°Ñ¥­•È°µ…É­•Ð¹Í¹…ÁÍ¡½Ñ}¥°4(€€€€€€€€€€€€€€€m¥Ñ•´¹•Ù¥‘•¹•}¥™½È¥Ñ•´¥¸•Ù¥‘•¹•t°ÍÑ…Ñ”¹±…ÍÑ}ÕÁ‘…Ñ•°4(€€€€€€€€€€€€€€€É•Í•…É ¹ÁÉ½µÁÑ}Ù•ÉÍ¥½¸°É¥Ñ¥Œ¹ÁÉ½µÁÑ}Ù•ÉÍ¥½¸°4(€€€€€€€€€€€€€€€•Ñ…ÑÑÈ¡Í•±˜¹¡…¥Éµ…¸°€‰ÁÉ½µÁÑ}Ù•ÉÍ¥½¸ˆ°€‰Õ¹­¹½Ý¸ˆ¤°É¥Í¬¹ÉÕ±•}Ù•ÉÍ¥½¸°4(€€€€€€€€€€€€€€€É•Í•…É ¹ÁÉ½Ù¥‘•È°É•Í•…É ¹µ½‘•°°ÍÑ…ÉÑ•‘}…Ð°¹½Ý}¥Í¼ ¤°‘•¥Í¥½¹}¹…µ”°4(€€€€€€€€€€€€€€€…¹…±åÍ¥Í}¥¹Ñ•¹Í¥ÑäõÉ•ÅÕ•ÍÐ¹…¹…±åÍ¥Í}¥¹Ñ•¹Í¥Ñä°4(€€€€€€€€€€€€€€€µ…É­•Ñ}…Í}½˜õµ…É­•Ð¹½‰Í•ÉÙ•‘}…Ð°4(€€€€€€€€€€€€€€€•Ù¥‘•¹•}ÕÑ½™˜õµ…à ¡¥Ñ•´¹™¥±•‘}…Ð½È¥Ñ•´¹ÁÕ‰±¥Í¡•‘}…Ð™½È¥Ñ•´¥¸•Ù¥‘•¹”¤°‘•™…Õ±Ðôˆˆ¤°4(€€€€€€€€€€€€€€€½µÁ…¹å™…ÑÍ}…Í}½˜õÍÑ…Ñ”¹½µÁ…¹å™…ÑÍ}…Í}½˜°4(€€€€€€€€€€€€€€€‘•‰…Ñ•}ÍÑ…ÑÕÌõ‘•‰…Ñ•}ÍÑ…Ñ”¹ÍÑ…ÑÕÌ°É½Õ¹‘}½Õ¹Ðõ‘•‰…Ñ•}É½Õ¹‘Ì°4(€€€€€€€€€€€€€€€¥¹ÁÕÑ}Ñ½­•¹ÌõÕÍ…•l‰¥¹ÁÕÑ}Ñ½­•¹Ì‰t°½ÕÑÁÕÑ}Ñ½­•¹ÌõÕÍ…•l‰½ÕÑÁÕÑ}Ñ½­•¹Ì‰t°4(€€€€€€€€€€€€€€€É•…Í½¹¥¹}Ñ½­•¹ÌõÕÍ…•l‰É•…Í½¹¥¹}Ñ½­•¹Ì‰t°4(€€€€€€€€€€€€€€€•ÍÑ¥µ…Ñ•‘}½ÍÑ}ÕÍõÕÍ…•l‰•ÍÑ¥µ…Ñ•‘}½ÍÑ}ÕÍ‰t°4(€€€€€€€€€€€€€€€Ñ½Ñ…±}±…Ñ•¹å}µÌõÕÍ…•l‰±…Ñ•¹å}µÌ‰t°4(€€€€€€€€€€€€€€€ÁÉ½µÁÑ}¡…Í¡•ÌõÍ•±˜¹}ÁÉ½µÁÑ}¡…Í¡•Ì ¤°4(€€€€€€€€€€€€€€€É¥Í­}½¹™¥}¡…Í õ¡…Í¡±¥ˆ¹Í¡„ÈÔØ¡©Í½¸¹‘ÕµÁÌ 4(€€€€€€€€€€€€€€€€€€€Í•±˜¹½¹™¥l‰É¥Í­}ÉÕ±•Ì‰t°Í½ÉÑ}­•åÌõQÉÕ”¤¹•¹½‘” ¤¤¹¡•á‘¥•ÍÐ ¤¤4(€€€€€€€€€€€ÍÑ…Ñ”¹ÁÉ•Ù¥½ÕÍ}‘•¥Í¥½¸€ô‘•¥Í¥½¹}¹…µ”4(€€€€€€€€€€€ÍÑ…Ñ”¹±…ÍÑ}ÕÁ‘…Ñ•€ô‘…Ñ•Ñ¥µ”¹¹½Ü¡Ñ¥µ•é½¹”¹ÕÑŒ¤¹‘…Ñ” ¤¹¥Í½™½Éµ…Ð ¤4(€€€€€€€€€€€É•Á½ÉÐ€ôÉ•¹‘•É}É•Á½ÉÐ¡ÉÕ¹}¥°µ…É­•Ð°ÍÑ…Ñ”°•Ù¥‘•¹”°É•Í•…É °É¥Ñ¥Œ°É¥Í¬°4(€€€€€€€€€€€€€€€‘•¥Í¥½¸°É•ÅÕ•ÍÑ}Á…å±½…°µ…É­•Ñ}É•¥µ”¹É•¥µ”°¡…¥Éµ…¹}½ÕÑÁÕÐ°4(€€€€€€€€€€€€€€€•áÁ½ÉÑ•‘}Á½Í¥Ñ¥½¹}Í¥é”°4(€€€€€€€€€€€€€€€‘•‰…Ñ•}ÍÑ…Ñ”õ‘•‰…Ñ•}ÍÑ…Ñ”°ÕÍ…”õÕÍ…”°™É•Í¡}‘•±Ñ„õ™É•Í¡}‘•±Ñ„°4(€€€€€€€€€€€€€€€…Á¥Ñ…±}ÍÑÉÕÑÕÉ”õ…Á¥Ñ…±}ÍÑÉÕÑÕÉ”¹Ñ½}‘¥Ð ¤¥˜…Á¥Ñ…±}ÍÑÉÕÑÕÉ”•±Í”íô°4(€€€€€€€€€€€€€€€•ÉÑ¥™¥…Ñ¥½¸õ•ÉÑ¥™¥…Ñ¥½¸¤4(€€€€€€€€€€€¥˜Í•±˜¹½¹™¥œ¹•Ð ‰É•Á½ÉÑ}‘¥Èˆ¤è4(€€€€€€€€€€€€€€€É•Á½ÉÑ}Á…Ñ €ôÝÉ¥Ñ•}ÉÕ¹}É•Á½ÉÐ¡Í•±˜¹½¹™¥l‰É•Á½ÉÑ}‘¥È‰t°É•Á½ÉÐ°Ñ¥­•È°ÉÕ¹}¥¤4(€€€€€€€€€€€•±Í”è4(€€€€€€€€€€€€€€€É•Á½ÉÑ}Á…Ñ €ôÍ•±˜¹­¹½Ý±•‘”¹ÝÉ¥Ñ•}É•Á½ÉÐ¡Ñ¥­•È°ÉÕ¹}¥°É•Á½ÉÐ¤4(€€€€€€€€€€€Á…Á•É}•™™•Ð€ôÍ•±˜¹Á…Á•È¹Á±…¹}•™™•Ð 4(€€€€€€€€€€€€€€€‘•¥Í¥½¸°Á½Í¥Ñ¥½¹}Í¥é”°µ…É­•Ð¹Í•Ñ½É}¹…µ”°É•ÅÕ•ÍÐ¹Ñ¥µ•}¡½É¥é½¸¤4(€€€€€€€€€€€¥˜¹½ÐÉ•ÅÕ•ÍÐ¹Á…Á•É}…Ñ¥½¹}•¹…‰±•è4(€€€€€€€€€€€€€€€Á…Á•É}•™™•Ð€ôíô4(€€€€€€€€€€€…¹•±±…Ñ¥½¸¹¡•¬ ‰	=I}%91}AIM%MPˆ¤4(€€€€€€€€€€€Í•±˜¹‘ˆ¹™¥¹…±¥é•}…¹…±åÍ¥Ì¡‘•¥Í¥½¸°µ…¹¥™•ÍÐ°ÍÑ…Ñ”°É•Í•…É °É¥Ñ¥Œ°4(€€€€€€€€€€€€€€€É¥Í¬¹ÉÕ±•}Ù•ÉÍ¥½¸°É•ÅÕ•ÍÐ¹É•ÅÕ•ÍÑ}¥°ÍÑÈ¡É•Á½ÉÑ}Á…Ñ ¤°Á…Á•É}•™™•Ð°4(€€€€€€€€€€€€€€€‘•‰…Ñ•}ÍÑ…Ñ”¹ÍÑ…ÑÕÌ°‘•‰…Ñ•}É½Õ¹‘Ì°ÕÍ…”°•ÉÑ¥™¥…Ñ¥½¸¤4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€Í•±˜¹­¹½Ý±•‘”¹Íå¹}ÉÕ¸¡Ñ¥­•È°ÉÕ¹}¥°ÍÑ…Ñ”°•Ù¥‘•¹”°É•Í•…É °‘•¥Í¥½¸°4(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‘•‰…Ñ•}ÍÑ…Ñ”°É•Á½ÉÑ}Á…Ñ °4(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€•ÉÑ¥™¥…Ñ¥½¹}ÍÑ…ÑÕÌõ•ÉÑ¥™¥…Ñ¥½¸¹•ÉÑ¥™¥…Ñ¥½¹}ÍÑ…ÑÕÌ¤4(€€€€€€€€€€€€€€€Í•±˜¹‘ˆ¹É•½É‘}­¹½Ý±•‘•}Íå¹Œ¡ÉÕ¹}¥°Ñ¥­•È°€‰MUMLˆ°ÍÑÈ¡Í•±˜¹­¹½Ý±•‘”¹É½½Ð¤¤4(€€€€€€€€€€€•á•ÁÐá•ÁÑ¥½¸…Ì•áŒè4(€€€€€€€€€€€€€€€Í…™•}­¹½Ý±•‘•}•ÉÉ½È€ôÉ•‘…Ñ}Í•É•ÑÌ¡•áŒ¤4(€€€€€€€€€€€€€€€Í•±˜¹‘ˆ¹É•½É‘}­¹½Ý±•‘•}Íå¹Œ¡ÉÕ¹}¥°Ñ¥­•È°€‰%1ˆ°ÍÑÈ¡Í•±˜¹­¹½Ý±•‘”¹É½½Ð¤°4(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€Í…™•}­¹½Ý±•‘•}•ÉÉ½È¤4(€€€€€€€€€€€€€€€Í•±˜¹‘ˆ¹±½œ¡ÉÕ¹}¥°€‰]I9%9ˆ°€‰-9=]1}Me9}%1ˆ°4(€€€€€€€€€€€€€€€€€€€€€€€€€€€ì‰•ÉÉ½ÈˆèÍ…™•}­¹½Ý±•‘•}•ÉÉ½Éô¤4(€€€€€€€€€€€•µ¥Ð ‰IU9}MUMLˆ°ì‰‘•¥Í¥½¸ˆè‘•¥Í¥½¹}¹…µ”°€‰É•Á½ÉÐˆèÍÑÈ¡É•Á½ÉÑ}Á…Ñ ¥ô¤4(€€€€€€€€€€€Í•±˜¹¹½Ñ¥™¥•È¹Í•¹¡˜‰mí‘•¥Í¥½¹}¹…µ•õtíÑ¥­•Éô½¹™¥‘•¹”õí½¹™¥‘•¹•ô¼ÄÀÀÉÕ¹}¥õíÉÕ¹}¥‘ôˆ¤4(€€€€€€€€€€€É•ÑÕÉ¸ì‰ÉÕ¹}¥ˆèÉÕ¹}¥°€‰µ…É­•Ðˆèµ…É­•Ð°€‰ÍÑ…Ñ”ˆèÍÑ…Ñ”°€‰•Ù¥‘•¹”ˆè•Ù¥‘•¹”°4(€€€€€€€€€€€€€€€€€€€€‰É•Í•…É ˆèÉ•Í•…É °€‰É¥Ñ¥ŒˆèÉ¥Ñ¥Œ°€‰É¥Í¬ˆèÉ¥Í¬°4(€€€€€€€€€€€€€€€€€€€€‰¡…¥Éµ…¸ˆè¡…¥Éµ…¹}½ÕÑÁÕÐ°€‰Á½Í¥Ñ¥½¹}Í¥é”ˆè•áÁ½ÉÑ•‘}Á½Í¥Ñ¥½¹}Í¥é”°4(€€€€€€€€€€€€€€€€€€€€‰µ…¹¥™•ÍÐˆèµ…¹¥™•ÍÐ°€‰‘•¥Í¥½¸ˆè‘•¥Í¥½¸°€‰É•Á½ÉÑ}Á…Ñ ˆèÉ•Á½ÉÑ}Á…Ñ °4(€€€€€€€€€€€€€€€€€€€€‰µ…É­•Ñ}É•¥µ”ˆèµ…É­•Ñ}É•¥µ”¹É•¥µ”°€‰µ…É­•Ñ}É•¥µ•}½¹Ñ•áÐˆèµ…É­•Ñ}É•¥µ”°4(€€€€€€€€€€€€€€€€€€€€‰‘•‰…Ñ•}É½Õ¹‘Ìˆè‘•‰…Ñ•}É½Õ¹‘Ì°€‰‘•‰…Ñ•}ÍÑ…Ñ”ˆè‘•‰…Ñ•}ÍÑ…Ñ”°4(€€€€€€€€€€€€€€€€€€€€‰½¹Í•¹ÍÕÍ}É•ÍÕ±Ðˆè½¹Í•¹ÍÕÍ}É•ÍÕ±Ð°4(€€€€€€€€€€€€€€€€€€€€‰™¥¹…±}Õ…Éˆè™¥¹…±}Õ…É°€‰•ÉÑ¥™¥…Ñ¥½¸ˆè•ÉÑ¥™¥…Ñ¥½¸°4(€€€€€€€€€€€€€€€€€€€€‰É•ÅÕ•ÍÐˆèÉ•ÅÕ•ÍÑô4(€€€€€€€•á•ÁÐ€¡IÕ¹…¹•±±•‘ÉÉ½È°!•Éµ•Í…¹•±±•‘ÉÉ½È¤…Ì•áŒè4(€€€€€€€€€€€Í•±˜¹‘ˆ¹…­¹½Ý±•‘•}…¹•±±…Ñ¥½¸¡ÉÕ¹}¥¤4(€€€€€€€€€€€Í•±˜¹‘ˆ¹ÕÁ‘…Ñ•}É•ÅÕ•ÍÑ}ÍÑ…ÑÕÌ¡É•ÅÕ•ÍÐ¹É•ÅÕ•ÍÑ}¥°€‰911ˆ°ÉÕ¹}¥¤4(€€€€€€€€€€€Í•±˜¹‘ˆ¹±½œ¡ÉÕ¹}¥°€‰%9<ˆ°€‰IU9}911ˆ°ì‰•ÉÉ½ÈˆèÍÑÈ¡•áŒ¥ô¤4(€€€€€€€€€€€¥˜ÁÉ½É•ÍÌè4(€€€€€€€€€€€€€€€ÁÉ½É•ÍÌ ‰IU9}911ˆ°ÉÕ¹}¥°Ñ¥­•È°ì‰ÍÑ…ÑÕÌˆè€‰911‰ô¤4(€€€€€€€€€€€É…¥Í”4(€€€€€€€•á•ÁÐá•ÁÑ¥½¸…Ì•áŒè4(€€€€€€€€€€€Í…™•}•ÉÉ½È€ôÉ•‘…Ñ}Í•É•ÑÌ¡•áŒ¤4(€€€€€€€€€€€ÍÑ…ÑÕÌ€ô€‰Q}%9MU%%9Pˆ¥˜¥Í¥¹ÍÑ…¹”¡•áŒ°¹…±åÍ¥Í%¹½µÁ±•Ñ•ÉÉ½È¤•±Í”€‰MeMQ5}II=Hˆ4(€€€€€€€€€€€Í•±˜¹‘ˆ¹™…¥±}ÉÕ¸¡ÉÕ¹}¥°Í…™•}•ÉÉ½È°ÍÑ…ÑÕÌ¤4(€€€€€€€€€€€Í•±˜¹‘ˆ¹ÕÁ‘…Ñ•}É•ÅÕ•ÍÑ}ÍÑ…ÑÕÌ¡É•ÅÕ•ÍÐ¹É•ÅÕ•ÍÑ}¥°€‰%1ˆ°ÉÕ¹}¥¤4(€€€€€€€€€€€Í•±˜¹‘ˆ¹±½œ¡ÉÕ¹}¥°€‰II=Hˆ°€‰IU9}%1ˆ°ì‰•ÉÉ½ÈˆèÍ…™•}•ÉÉ½È°€‰ÍÑ…ÑÕÌˆèÍÑ…ÑÕÍô¤4(€€€€€€€€€€€¥˜ÁÉ½É•ÍÌè4(€€€€€€€€€€€€€€€ÁÉ½É•ÍÌ ‰IU9}%1ˆ°ÉÕ¹}¥°Ñ¥­•È°ì‰ÍÑ…ÑÕÌˆèÍÑ…ÑÕÌ°€‰•ÉÉ½ÈˆèÍ…™•}•ÉÉ½Éô¤4(€€€€€€€€€€€É…¥Í”4(4(€€€‘•˜}µ…É­•Ñ}É•¥µ”¡Í•±˜°Ñ¥­•É}Í¹…ÁÍ¡½Ðõ9½¹”¤€´ø5…É­•ÑI•¥µ•½¹Ñ•áÐè4(€€€€€€€ÑÉäè4(€€€€€€€€€€€Í¹…ÁÍ¡½ÑÌ€ôíÑ¥­•ÈèÍ•±˜¹µ…É­•Ñ}ÁÉ½Ù¥‘•È¹Í¹…ÁÍ¡½Ð¡Ñ¥­•È¤4(€€€€€€€€€€€€€€€€€€€€€€€€™½ÈÑ¥­•È¥¸€ ‰EEDˆ°€‰%]4ˆ°€‰M=a`ˆ¥ô4(€€€€€€€€€€€É•ÑÕÉ¸5…É­•ÑI•¥µ•¹¥¹” ¤¹½¹Ñ•áÐ¡Í¹…ÁÍ¡½ÑÌ°Ñ¥­•É}Í¹…ÁÍ¡½Ð¤4(€€€€€€€•á•ÁÐá•ÁÑ¥½¸è4(€€€€€€€€€€€É•ÑÕÉ¸5…É­•ÑI•¥µ•½¹Ñ•áÐ ‰U9-9=]8ˆ°¹½Ý}¥Í¼ ¤°4(€€€€€€€€€€€€€€€ì‰EEDˆè9½¹”°€‰%]4ˆè9½¹”°€‰M=a`ˆè9½¹•ô°4(€€€€€€€€€€€€€€€ì‰EEDˆè9½¹”°€‰%]4ˆè9½¹”°€‰M=a`ˆè9½¹•ô°€‰U9-9=]8ˆ°€À¤4(4(€€€‘•˜}ÉÕ¹}É•Í•…É ¡Í•±˜°ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”°É•ÅÕ•ÍÐ°…¹…±åÍ¥Í}½¹Ñ•áÐõ9½¹”°É•Ù¥Í¥½¸õ9½¹”¤è4(€€€€€€€™½È…ÉÌ¥¸€ ¡ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”°É•ÅÕ•ÍÐ°É•Ù¥Í¥½¸°…¹…±åÍ¥Í}½¹Ñ•áÐ¤°4(€€€€€€€€€€€€€€€€€€€€€¡ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”°É•ÅÕ•ÍÐ°É•Ù¥Í¥½¸¤°4(€€€€€€€€€€€€€€€€€€€€€¡ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”¤¤è4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€¥¹ÍÁ•Ð¹Í¥¹…ÑÕÉ”¡Í•±˜¹É•Í•…É¡•È¹ÉÕ¸¤¹‰¥¹ ©…ÉÌ¤4(€€€€€€€€€€€•á•ÁÐQåÁ•ÉÉ½Èè4(€€€€€€€€€€€€€€€½¹Ñ¥¹Õ”4(€€€€€€€€€€€É•ÑÕÉ¸Í•±˜¹É•Í•…É¡•È¹ÉÕ¸ ©…ÉÌ¤4(€€€€€€€É…¥Í”QåÁ•ÉÉ½È ‰Õ¹ÍÕÁÁ½ÉÑ•I•Í•…É …•¹ÐÍ¥¹…ÑÕÉ”ˆ¤4(4(€€€‘•˜}ÉÕ¹}É¥Ñ¥Œ¡Í•±˜°É•Í•…É °ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”°É•ÅÕ•ÍÐ°…¹…±åÍ¥Í}½¹Ñ•áÐõ9½¹”°4(€€€€€€€€€€€€€€€€€€€‘•‰…Ñ•}½¹Ñ•áÐõ9½¹”¤è4(€€€€€€€™½È…ÉÌ¥¸€ ¡É•Í•…É °ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”°É•ÅÕ•ÍÐ°…¹…±åÍ¥Í}½¹Ñ•áÐ°‘•‰…Ñ•}½¹Ñ•áÐ¤°4(€€€€€€€€€€€€€€€€€€€€€¡É•Í•…É °ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”°É•ÅÕ•ÍÐ°…¹…±åÍ¥Í}½¹Ñ•áÐ¤°4(€€€€€€€€€€€€€€€€€€€€€¡É•Í•…É °ÍÑ…Ñ”°µ…É­•Ð°•Ù¥‘•¹”°É•ÅÕ•ÍÐ¤°4(€€€€€€€€€€€€€€€€€€€€€¡É•Í•…É °ÍÑ…Ñ”°µ…É­•Ð¤¤è4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€¥¹ÍÁ•Ð¹Í¥¹…ÑÕÉ”¡Í•±˜¹É¥Ñ¥Œ¹ÉÕ¸¤¹‰¥¹ ©…ÉÌ¤4(€€€€€€€€€€€•á•ÁÐQåÁ•ÉÉ½Èè4(€€€€€€€€€€€€€€€½¹Ñ¥¹Õ”4(€€€€€€€€€€€É•ÑÕÉ¸Í•±˜¹É¥Ñ¥Œ¹ÉÕ¸ ©…ÉÌ¤4(€€€€€€€É…¥Í”QåÁ•ÉÉ½È ‰Õ¹ÍÕÁÁ½ÉÑ•É¥Ñ¥Œ…•¹ÐÍ¥¹…ÑÕÉ”ˆ¤4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}µ¥¹¥µÕµ}±…¥µÌ¡É•ÅÕ•ÍÐèUÍ•ÉI•ÅÕ•ÍÐ¤€´ø¥¹Ðè4(€€€€€€€É•ÑÕÉ¸ì‰5%9%5U4ˆè€Ì°€‰9=I50ˆè€Ô°€‰5a%5U4ˆè€Ýô¹•Ð 4(€€€€€€€€€€€É•ÅÕ•ÍÐ¹…¹…±åÍ¥Í}¥¹Ñ•¹Í¥Ñä°€Ô¤4(4(€€€‘•˜}ÉÕ¹}¡…¥Éµ…¸¡Í•±˜°É•Í•…É °É¥Ñ¥Œ°É¥Í¬°É•ÅÕ•ÍÐ°Á½Í¥Ñ¥½¹}Í¥é”¤è4(€€€€€€€ÑÉäè4(€€€€€€€€€€€¥¹ÍÁ•Ð¹Í¥¹…ÑÕÉ”¡Í•±˜¹¡…¥Éµ…¸¹ÉÕ¸¤¹‰¥¹¡É•Í•…É °É¥Ñ¥Œ°É¥Í¬°É•ÅÕ•ÍÐ°Á½Í¥Ñ¥½¹}Í¥é”¤4(€€€€€€€•á•ÁÐQåÁ•ÉÉ½Èè4(€€€€€€€€€€€É•ÑÕÉ¸Í•±˜¹¡…¥Éµ…¸¹ÉÕ¸¡É•Í•…É °É¥Ñ¥Œ°É¥Í¬¤4(€€€€€€€É•ÑÕÉ¸Í•±˜¹¡…¥Éµ…¸¹ÉÕ¸¡É•Í•…É °É¥Ñ¥Œ°É¥Í¬°É•ÅÕ•ÍÐ°Á½Í¥Ñ¥½¹}Í¥é”¤4(4(€€€‘•˜}É•½É‘}ÕÍ…”¡Í•±˜°ÉÕ¹}¥èÍÑÈ°Ñ¥­•ÈèÍÑÈ¤€´ø9½¹”è4(€€€€€€€€Œ…¹½¹¥…°!•Éµ•Ì…‘…ÁÑ•ÉÌÉ•½É•Ù•Éä¥¹Ù½…Ñ¥½¸€¡¥¹±Õ‘¥¹œÉ•Á…¥ÉÌ¤¥µµ•‘¥…Ñ•±ä¸4(€€€€€€€€Œ-•ÁÐ…Ì„½µÁ…Ñ¥‰¥±¥Ñä¡½½¬™½È¹½¸µ!•Éµ•ÌÑ•ÍÐ…•¹ÑÌ¸4(€€€€€€€É•ÑÕÉ¸9½¹”4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}ÁÉ½µÁÑ}¡…Í¡•Ì ¤€´ø‘¥ÑmÍÑÈ°ÍÑÉtè4(€€€€€€€É½½Ð€ô}}¥µÁ½ÉÑ}| ‰Á…Ñ¡±¥ˆˆ¤¹A…Ñ ¡}}™¥±•}|¤¹É•Í½±Ù” ¤¹Á…É•¹ÑÍlÅt€¼€‰ÁÉ½µÁÑÌˆ4(€€€€€€€É•ÍÕ±Ð€ôíô4(€€€€€€€™½ÈÁ…Ñ ¥¸Í½ÉÑ•¡É½½Ð¹±½ˆ ˆ¨¹µˆ¤¤è4(€€€€€€€€€€€É•ÍÕ±ÑmÁ…Ñ ¹¹…µ•t€ô¡…Í¡±¥ˆ¹Í¡„ÈÔØ¡Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¤¹¡•á‘¥•ÍÐ ¤4(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ð4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}Í•Ñ}…•¹Ñ}½¹Ñ•áÐ¡…•¹Ð°ÉÕ¹}¥èÍÑÈ°É•ÅÕ•ÍÐèUÍ•ÉI•ÅÕ•ÍÐ°Ñ¥­•ÈèÍÑÈ°4(€€€€€€€€€€€€€€€€€€€€€€€€€€É½Õ¹‘}¹¼è¥¹Ð°Á¡…Í”èÍÑÈ°…¹•±±…Ñ¥½¹}¡•¬õ9½¹”¤€´ø9½¹”è4(€€€€€€€…‘…ÁÑ•È€ô•Ñ…ÑÑÈ¡…•¹Ð°€‰…‘…ÁÑ•Èˆ°9½¹”¤4(€€€€€€€Í•ÑÑ•È€ô•Ñ…ÑÑÈ¡…‘…ÁÑ•È°€‰Í•Ñ}…±±}½¹Ñ•áÐˆ°9½¹”¤4(€€€€€€€¥˜Í•ÑÑ•Èè4(€€€€€€€€€€€Í•ÑÑ•È¡ÉÕ¹}¥õÉÕ¹}¥°É•ÅÕ•ÍÑ}¥õÉ•ÅÕ•ÍÐ¹É•ÅÕ•ÍÑ}¥°Ñ¥­•ÈõÑ¥­•È°4(€€€€€€€€€€€€€€€€€€É½Õ¹‘}¹¼õÉ½Õ¹‘}¹¼°Á¡…Í”õÁ¡…Í”°4(€€€€€€€€€€€€€€€€€€É•…Í½¹¥¹}•™™½ÉÐõÉ•ÅÕ•ÍÐ¹É•…Í½¹¥¹}ÁÉ½™¥±”°É•Á…¥É}…ÑÑ•µÁÐõ…±Í”°4(€€€€€€€€€€€€€€€€€€…¹•±±…Ñ¥½¹}¡•¬õ…¹•±±…Ñ¥½¹}¡•¬¤4(4(€€€‘•˜}Ù…±¥‘…Ñ•}•Ù¥‘•¹”¡Í•±˜°•Ù¥‘•¹”è±¥ÍÑmÙ¥‘•¹•%Ñ•µt¤€´ø9½¹”è4(€€€€€€€µ…á}…”€ôÍ•±˜¹½¹™¥l‰…¹…±åÍ¥Ì‰ul‰µ…á}•Ù¥‘•¹•}…•}‘…åÌ‰t4(€€€€€€€¹½Ü€ô‘…Ñ•Ñ¥µ”¹¹½Ü¡Ñ¥µ•é½¹”¹ÕÑŒ¤4(€€€€€€€ÕÍ…‰±”€ô€À4(€€€€€€€™½È¥Ñ•´¥¸•Ù¥‘•¹”è4(€€€€€€€€€€€ÁÕ‰±¥Í¡•€ô‘…Ñ•Ñ¥µ”¹™É½µ¥Í½™½Éµ…Ð¡¥Ñ•´¹ÁÕ‰±¥Í¡•‘}…Ð¹É•Á±…” ‰hˆ°€ˆ¬ÀÀèÀÀˆ¤¤4(€€€€€€€€€€€¥˜ÁÕ‰±¥Í¡•¹Ñé¥¹™¼¥Ì9½¹”è4(€€€€€€€€€€€€€€€ÁÕ‰±¥Í¡•€ôÁÕ‰±¥Í¡•¹É•Á±…”¡Ñé¥¹™¼õÑ¥µ•é½¹”¹ÕÑŒ¤4(€€€€€€€€€€€¥˜€¡¹½Ü€´ÁÕ‰±¥Í¡•¹…ÍÑ¥µ•é½¹”¡Ñ¥µ•é½¹”¹ÕÑŒ¤¤¹‘…åÌ€øµ…á}…”è4(€€€€€€€€€€€€€€€¥Ñ•´¹‘…Ñ…}ÅÕ…±¥Ñä€ô€‰MQ1ˆ4(€€€€€€€€€€€•±Í”è4(€€€€€€€€€€€€€€€ÕÍ…‰±”€¬ô€Ä4(€€€€€€€É•ÅÕ¥É•€ôÍ•±˜¹½¹™¥l‰…¹…±åÍ¥Ì‰ul‰µ¥¹}•Ù¥‘•¹”‰t4(€€€€€€€¥˜ÕÍ…‰±”€ðÉ•ÅÕ¥É•è4(€€€€€€€€€€€É…¥Í”¹…±åÍ¥Í%¹½µÁ±•Ñ•ÉÉ½È¡˜‰ÕÍ…‰±”•Ù¥‘•¹”íÕÍ…‰±•ô¥Ì‰•±½Üµ¥¹¥µÕ´íÉ•ÅÕ¥É•‘ôˆ¤4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}µ…É­•Ñ}…Á}™É½µ}™…ÑÌ¡™…ÑÌè‘¥Ð°ÁÉ¥”è™±½…Ð¤€´ø™±½…Ðè4(€€€€€€€É½Ü€ô™…ÑÌ¹•Ð ‰Í¡…É•Í}½ÕÑÍÑ…¹‘¥¹œˆ¤½Èíô4(€€€€€€€ÑÉäè4(€€€€€€€€€€€É•ÑÕÉ¸™±½…Ð¡É½Ü¹•Ð ‰Ù…±Õ”ˆ°É½Ü¹•Ð ‰Ù…°ˆ°€À¤¤¤€¨ÁÉ¥”4(€€€€€€€•á•ÁÐ€¡QåÁ•ÉÉ½È°Y…±Õ•ÉÉ½È¤è4(€€€€€€€€€€€É•ÑÕÉ¸€À¸À4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}™…Ñ}Ù…±Õ”¡™…ÑÌè‘¥Ð°¹…µ”èÍÑÈ¤€´ø™±½…Ðð9½¹”è4(€€€€€€€É½Ü€ô™…ÑÌ¹•Ð¡¹…µ”¤½Èíô4(€€€€€€€ÑÉäè4(€€€€€€€€€€€Ù…±Õ”€ôÉ½Ü¹•Ð ‰Ù…±Õ”ˆ°É½Ü¹•Ð ‰Ù…°ˆ¤¤4(€€€€€€€€€€€É•ÑÕÉ¸™±½…Ð¡Ù…±Õ”¤¥˜Ù…±Õ”¥Ì¹½Ð9½¹”•±Í”9½¹”4(€€€€€€€•á•ÁÐ€¡QåÁ•ÉÉ½È°Y…±Õ•ÉÉ½È¤è4(€€€€€€€€€€€É•ÑÕÉ¸9½¹”4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}½¹™¥‘•¹•}…À¡‘…Ñ…}ÅÕ…±¥ÑäèÍÑÈ°É•¥µ•}½¹™¥‘•¹”è¥¹Ð°4(€€€€€€€€€€€€€€€€€€€€€€€É¥Ñ¥…±}…Á¥Ñ…±}Õ¹­¹½Ý¸è‰½½°°‘•‰…Ñ•}ÍÑ…ÑÕÌèÍÑÈ¤€´ø¥¹Ðè4(€€€€€€€…À€ô€ÄÀÀ4(€€€€€€€¥˜‘…Ñ…}ÅÕ…±¥Ñä€ôô€‰AIQ%0ˆè4(€€€€€€€€€€€…À€ôµ¥¸¡…À°€àÀ¤4(€€€€€€€•±¥˜‘…Ñ…}ÅÕ…±¥Ñä€„ô€‰=,ˆè4(€€€€€€€€€€€…À€ôµ¥¸¡…À°€ÔÔ¤4(€€€€€€€¥˜É•¥µ•}½¹™¥‘•¹”€ð€ÔÀè4(€€€€€€€€€€€…À€ôµ¥¸¡…À°€àÀ¤4(€€€€€€€¥˜É¥Ñ¥…±}…Á¥Ñ…±}Õ¹­¹½Ý¸è4(€€€€€€€€€€€…À€ôµ¥¸¡…À°€ÜÀ¤4(€€€€€€€¥˜‘•‰…Ñ•}ÍÑ…ÑÕÌ€ôô€‰1=,ˆè4(€€€€€€€€€€€…À€ôµ¥¸¡…À°€ØÔ¤4(€€€€€€€É•ÑÕÉ¸…À4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}™¥¹…±}‘•¥Í¥½¸¡É•Í•…É °É¥Ñ¥Œ°É¥Í¬°¥Í}µ½¬è‰½½°°¡…¥Éµ…¸è‘¥Ðð9½¹”€ô9½¹”¤€´øÍÑÈè4(€€€€€€€¥˜¹½ÐÉ¥Í¬¹¡…É‘}™¥±Ñ•É}Á…ÍÌè4(€€€€€€€€€€€É•ÑÕÉ¸€‰a1Uˆ4(€€€€€€€¥˜É¥Í¬¹É¥Í­}‘•¥Í¥½¸¥¸ì‰]%Pˆ°€‰a1U‰ô½ÈÉ¥Ñ¥Œ¹É¥Ñ¥}‘•¥Í¥½¸€ôô€‰]%Pˆè4(€€€€€€€€€€€É•ÑÕÉ¸É¥Í¬¹É¥Í­}‘•¥Í¥½¸¥˜É¥Í¬¹É¥Í­}‘•¥Í¥½¸€ôô€‰a1Uˆ•±Í”€‰]%Pˆ4(€€€€€€€¥˜¥Í}µ½¬è4(€€€€€€€€€€€É•ÑÕÉ¸€‰]%Pˆ4(€€€€€€€ÁÉ½Á½Í•€ô€¡¡…¥Éµ…¸½Èíô¤¹•Ð ‰‘•¥Í¥½¸ˆ°É•Í•…É ¹ÍÕ•ÍÑ•‘}‘•¥Í¥½¸¤4(€€€€€€€…±±½Ý•€ôí¥Ñ•´¹Ù…±Õ”™½È¥Ñ•´¥¸•¥Í¥½¹ô4(€€€€€€€É•ÑÕÉ¸ÁÉ½Á½Í•¥˜ÁÉ½Á½Í•¥¸…±±½Ý••±Í”€‰]%Pˆ4(

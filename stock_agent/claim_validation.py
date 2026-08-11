@@ -22,7 +22,7 @@ def _evidence_domains(item: EvidenceItem) -> set[str]:
     domains = set()
     if source in {"SEC", "EDGAR", "MOCK_SEC", "MOCK_IR", "MOCK_NEWS"}:
         domains.add("SEC_FILING")
-    if source in {"XBRL", "SEC_XBRL", "COMPANYFACTS"}:
+    if source in {"XBRL", "XBRL_FACT", "SEC_XBRL", "COMPANYFACTS"}:
         domains.add("XBRL_FACT")
     if source in {"TOSS", "TOSS_OPEN_API", "MARKET", "MARKET_DATA"}:
         domains.update({"MARKET_PRICE", "MARKET_TECHNICAL"})
@@ -45,6 +45,12 @@ def _domain_compatible(expected: str, actual: set[str]) -> bool:
         return True
     if expected == "FINANCIAL_FACT":
         return bool(actual & {"XBRL_FACT", "SEC_FILING"})
+    if expected == "CAPITAL_STRUCTURE":
+        return bool(actual & {"XBRL_FACT", "SEC_FILING"})
+    if expected == "MARKET_TECHNICAL":
+        return bool(actual & {"MARKET_TECHNICAL", "MARKET_PRICE"})
+    if expected == "MARKET_PRICE":
+        return bool(actual & {"MARKET_PRICE", "MARKET_TECHNICAL"})
     return expected in actual
 
 
@@ -56,7 +62,8 @@ _DOMAIN_TERMS = {
     "FINANCIAL_FACT": {"revenue", "gross", "margin", "cash", "debt", "income", "shares",
                        "burn", "runway", "capex", "profit", "loss", "ebitda"},
     "CAPITAL_STRUCTURE": {"atm", "warrant", "shelf", "convertible", "dilution", "offering",
-                          "outstanding", "authorized", "issuance"},
+                          "outstanding", "authorized", "issuance", "shares", "equity",
+                          "merger", "acquisition", "transaction", "consideration"},
     "MARKET_TECHNICAL": {"ma20", "ma50", "ma200", "moving", "average", "volume", "stage",
                           "relative", "strength", "trend"},
     "MARKET_PRICE": {"price", "quote", "close", "trade", "market"},
@@ -87,7 +94,7 @@ def validate_claim_schema(claim: dict) -> None:
     if str(claim.get("verification_status") or "").upper() == "UNVERIFIED":
         return
     materiality = str(claim.get("materiality") or "MATERIAL").upper()
-    if materiality not in {"MATERIAL", "NON_MATERIAL"}:
+    if materiality not in {"MATERIAL", "SUPPORTING", "NON_MATERIAL"}:
         raise AnalysisIncompleteError(f"invalid claim materiality: {materiality}")
     if materiality == "NON_MATERIAL":
         return

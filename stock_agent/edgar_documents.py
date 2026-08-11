@@ -116,6 +116,13 @@ class EvidenceClassifier:
                                                  "non-binding")):
             grade = "D"
             reason = "Non-binding MOU/LOI language was found"
+        elif (item.document_type == "EX-99"
+              and "terms of the agreement" in lowered
+              and any(marker in lowered for marker in (
+                  "at close of the transaction", "shareholders are receiving",
+                  "merger consideration"))):
+            grade = "B"
+            reason = "Issuer-filed Exhibit 99 contains substantive transaction terms"
         elif (item.document_type in {"S-1", "S-3", "S-8", "424B3", "424B5", "424B7", "424B8"}
               and any(term in lowered for term in ("registration statement", "prospectus",
                                                     "offering", "securities"))):

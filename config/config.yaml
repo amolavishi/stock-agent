@@ -20,5 +20,41 @@
     "mode": "WARN",
     "soft_cost_limit_usd": 0,
     "hard_cost_limit_usd": 0
+  },
+  "discovery": {
+    "enabled": false,
+    "shadow_mode": true,
+    "rule_version": "discovery_rules_v001",
+    "feature_version": "discovery_features_v001",
+    "universe": {
+      "min_price": 3.0,
+      "min_market_cap_usd": 300000000,
+      "min_adv20_usd": 10000000,
+      "allow_adr": false
+    },
+    "coverage": {
+      "market_min_pct": 95,
+      "feature_min_pct": 90
+    },
+    "stage": {
+      "stage3_return_1d_pct": 25,
+      "stage3_return_5d_pct": 35,
+      "stage3_return_20d_pct": 50,
+      "stage3_distance_ma20_pct": 20,
+      "stage3_atr_multiple": 3
+    },
+    "shortlist": {
+      "python_top_n": 20,
+      "evidence_preflight_n": 8,
+      "deep_analysis_n": 3
+    },
+    "diversity": {
+      "max_same_sector": 2,
+      "max_same_theme": 2
+    },
+    "cost": {
+      "max_deep_analysis_candidates": 3,
+      "max_llm_calls_per_discovery": 0
+    }
   }
 }
