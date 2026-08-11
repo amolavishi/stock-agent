@@ -104,8 +104,11 @@ def rank_candidates(candidates: list[CandidateFeatureSnapshot], weights: dict[st
             and known_field(candidate, "adv20_usd")
             and known_field(candidate, "capital_overhang_status")
             and candidate.fields.get("capital_overhang_status").known
+            and candidate.gate_results.get("final_candidate_gate") == "PASS"
         )
-        if candidate.eligibility == "ELIGIBLE" and candidate.gate_results.get("fuel_gate") != "PASS":
+        # Preliminary PENDING_ENRICHMENT is not a final veto.  Only an
+        # explicitly evaluated final FAIL may remove a candidate here.
+        if candidate.eligibility == "ELIGIBLE" and candidate.gate_results.get("fuel_gate") == "FAIL":
             candidate.eligibility = "INELIGIBLE"
         if candidate.eligibility == "ELIGIBLE" and mandatory_known and candidate.score_coverage_pct >= 70 and candidate.composite_score >= 65:
             candidate.discovery_bucket = "P1_DEEP_ANALYSIS"

@@ -120,8 +120,10 @@ def bootstrap_health(database, security_master=None, market_data=None,
                 reason_codes.append("FUNDAMENTAL_SAMPLE_EMPTY")
         except Exception:
             reason_codes.append("FUNDAMENTAL_SAMPLE_FAILED")
-    elif fundamental_provider is not None:
-        reason_codes.append("FUNDAMENTAL_PROVIDER_UNAVAILABLE")
+    elif fundamental_provider is None:
+        reason_codes.append("FUNDAMENTAL_PROVIDER_MISSING")
+    elif not market_ready:
+        reason_codes.append("FUNDAMENTAL_BLOCKED_MARKET_BOOTSTRAP")
 
     if market_ready and capital_preflight_provider is not None and tickers and hasattr(capital_preflight_provider, "preflight"):
         try:
@@ -133,8 +135,10 @@ def bootstrap_health(database, security_master=None, market_data=None,
                 reason_codes.append("CAPITAL_PREFLIGHT_SAMPLE_EMPTY")
         except Exception:
             reason_codes.append("CAPITAL_PREFLIGHT_SAMPLE_FAILED")
-    elif capital_preflight_provider is not None:
-        reason_codes.append("CAPITAL_PREFLIGHT_PROVIDER_UNAVAILABLE")
+    elif capital_preflight_provider is None:
+        reason_codes.append("CAPITAL_PREFLIGHT_PROVIDER_MISSING")
+    elif not market_ready:
+        reason_codes.append("CAPITAL_PREFLIGHT_BLOCKED_MARKET_BOOTSTRAP")
 
     checks["market_scan_status"] = "MARKET_SCAN_READY" if market_ready else "BOOTSTRAP_REQUIRED"
     enrichment_ready = market_ready and checks["fundamental_data"]

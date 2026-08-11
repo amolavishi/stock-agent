@@ -25,7 +25,37 @@ class FuelEngine:
     def __init__(self, rules: FuelRules | None = None):
         self.rules = rules or FuelRules()
 
+    def evaluate_preliminary(self, candidate: CandidateFeatureSnapshot) -> CandidateFeatureSnapshot:
+        """Evaluate cheap fuel without turning missing fundamentals into a veto.
+
+        A market-only candidate is allowed to remain in the enrichment funnel.
+        ``PENDING_ENRICHMENT`` is deliberately distinct from a final fuel
+        failure, so the final hard veto remains available after CompanyFacts
+        hydration.
+        """
+        self._normalize(candidate)
+        if self._passes(self._families(candidate)):
+            status = "PASS"
+        elif self._fundamental_hydration_attempted(candidate):
+            status = "PRELIMINARY_FAIL"
+        else:
+            status = "PENDING_ENRICHMENT"
+        candidate.gate_results["preliminary_fuel_gate"] = status
+        candidate.gate_results["fuel_gate"] = status
+        candidate.gate_results["final_fuel_evaluated"] = "NO"
+        return candidate
+
     def evaluate(self, candidate: CandidateFeatureSnapshot) -> CandidateFeatureSnapshot:
+        """Evaluate the final fuel gate after all available enrichment."""
+        self._normalize(candidate)
+        families = self._families(candidate)
+        passed = self._passes(families)
+        candidate.gate_results["fuel_gate"] = "PASS" if passed else "FAIL"
+        candidate.gate_results["final_fuel_evaluated"] = "YES"
+        candidate.gate_results["final_fuel_status"] = "PASS" if passed else "FAIL"
+        return candidate
+
+    def _normalize(self, candidate: CandidateFeatureSnapshot) -> None:
         families: dict[str, list[dict[str, Any]]] = {}
         for raw in candidate.fuel_events:
             event = dict(raw)
@@ -46,10 +76,27 @@ class FuelEngine:
             families.setdefault(family, []).append(event)
         candidate.signal_families = sorted(families)
         candidate.fuel_events = [event for group in families.values() for event in group]
-        candidate.gate_results["fuel_gate"] = "PASS" if self._passes(families) else "FAIL"
         if not families and "NO_FUEL" not in candidate.risk_flags:
             candidate.risk_flags.append("NO_FUEL")
-        return candidate
+
+    @staticmethod
+    def _families(candidate: CandidateFeatureSnapshot) -> dict[str, list[dict[str, Any]]]:
+        families: dict[str, list[dict[str, Any]]] = {}
+        for event in candidate.fuel_events:
+            family = str(event.get("signal_family") or event.get("family") or "UNKNOWN")
+            if family != "UNKNOWN":
+                families.setdefault(family, []).append(event)
+        return families
+
+    @staticmethod
+    def _fundamental_hydration_attempted(candidate: CandidateFeatureSnapshot) -> bool:
+        fields = {
+            "primary_financial_evidence", "revenue_growth_current_pct",
+            "revenue_growth_acceleration_pp", "gross_margin_delta_pp",
+            "operating_margin_delta_pp", "operating_cash_flow_inflection",
+            "fcf_inflection",
+        }
+        return any(name in candidate.fields for name in fields)
 
     def _passes(self, families: dict[str, list[dict[str, Any]]]) -> bool:
         if len(families) >= self.rules.minimum_independent_families:
@@ -62,20 +109,25 @@ class FuelEngine:
 
 
 def infer_fuel_events(candidate: CandidateFeatureSnapshot) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
+    # Preserve provider-sourced events, but replace events previously derived
+    # by this resolver so re-inference after hydration is deterministic.
+    events: list[dict[str, Any]] = [dict(event) for event in candidate.fuel_events
+                                    if not event.get("_inferred")]
     acceleration_field = ("revenue_growth_acceleration_pp" if known_field(candidate, "revenue_growth_acceleration_pp")
                           else "revenue_growth_acceleration")
     if known_field(candidate, acceleration_field) and value(candidate, acceleration_field) > 0:
         events.append({"event_type": "REVENUE_ACCELERATION", "signal_family": "FUNDAMENTAL",
                        "strength": min(100, 50 + value(candidate, acceleration_field)), "material": True,
-                       "source_evidence_id": next(iter(candidate.fields[acceleration_field].source_ids), "")})
+                       "source_evidence_id": next(iter(candidate.fields[acceleration_field].source_ids), ""),
+                       "_inferred": True})
     margin_field = ("gross_margin_delta_pp" if known_field(candidate, "gross_margin_delta_pp") else "margin_delta")
     if known_field(candidate, margin_field) and value(candidate, margin_field) > 0:
         events.append({"event_type": "MARGIN_INFLECTION", "signal_family": "FUNDAMENTAL",
                        "strength": min(100, 50 + value(candidate, margin_field) * 2), "material": True,
-                       "source_evidence_id": next(iter(candidate.fields[margin_field].source_ids), "")})
+                       "source_evidence_id": next(iter(candidate.fields[margin_field].source_ids), ""),
+                       "_inferred": True})
     if known_field(candidate, "return_5d_pct") and known_field(candidate, "relative_volume_completed_bar"):
         if (value(candidate, "return_5d_pct") or 0) > 0 and (value(candidate, "relative_volume_completed_bar") or 0) >= 1.2:
             events.append({"event_type": "RELATIVE_STRENGTH_INFLECTION", "signal_family": "FLOW",
-                           "strength": 60, "material": True})
+                           "strength": 60, "material": True, "_inferred": True})
     return events

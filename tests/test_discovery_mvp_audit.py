@@ -143,8 +143,12 @@ class DiscoveryMvpAuditTests(unittest.TestCase):
         eligible = {"certified": True, "decision": "BUY", "risk_hard_filter_pass": True,
                     "trade_plan_valid": True, "market_fresh": True,
                     "no_material_unresolved_blocker": True}
+        complete_scorecard = {axis: 80 for axis in (
+            "signal_strength", "catalyst_quality", "expectation_gap", "surge_elasticity",
+            "entry_readiness", "capital_structure_safety", "strategy_fit", "data_confidence")}
+        complete_scorecard["reward_risk"] = 2.0
         self.assertEqual(final_selection([{**eligible, "ticker": "A",
-                                          "scores": {"data_confidence": 90}},
+                                          "scores": complete_scorecard},
                                          {"ticker": "B", "certified": False,
                                           "scores": {"data_confidence": 100}}]), "A")
 

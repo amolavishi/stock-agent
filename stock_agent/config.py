@@ -18,6 +18,7 @@ def validate_discovery_config(discovery: dict[str, Any]) -> None:
     coverage = discovery.get("coverage", {})
     stage = discovery.get("stage", {})
     bootstrap = discovery.get("bootstrap", {})
+    scorecard = discovery.get("final_scorecard", {})
     deprecated = {key for key in ("min_identity_pct", "min_sector_pct") if key in bootstrap}
     if deprecated:
         raise DiscoveryConfigError("deprecated discovery.bootstrap coverage keys: " + ", ".join(sorted(deprecated)))
@@ -31,6 +32,12 @@ def validate_discovery_config(discovery: dict[str, Any]) -> None:
         value = coverage.get(key, 0)
         if not isinstance(value, (int, float)) or not 0 <= value <= 100:
             raise DiscoveryConfigError(f"discovery.coverage.{key} must be between 0 and 100")
+    coverage_limit = scorecard.get("min_coverage_pct", 75)
+    if not isinstance(coverage_limit, (int, float)) or not 0 <= coverage_limit <= 100:
+        raise DiscoveryConfigError("discovery.final_scorecard.min_coverage_pct must be between 0 and 100")
+    reward_risk = scorecard.get("min_reward_risk", 1.5)
+    if not isinstance(reward_risk, (int, float)) or reward_risk <= 0:
+        raise DiscoveryConfigError("discovery.final_scorecard.min_reward_risk must be positive")
     for key, value in discovery.get("cost", {}).items():
         if value is not None and (not isinstance(value, (int, float)) or value < 0):
             raise DiscoveryConfigError(f"discovery.cost.{key} must be non-negative or null")

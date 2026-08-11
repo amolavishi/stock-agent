@@ -330,3 +330,14 @@ class TossDiscoveryMarketDataProvider:
                 observed_at=raw_timestamp, ingested_at=datetime.now(timezone.utc).isoformat(),
                 quality_status=quality))
         return sorted(output, key=lambda item: item.session_date)
+
+
+class TossDiscoveryBenchmarkProvider:
+    """Read-only benchmark adapter kept outside the candidate universe."""
+
+    def __init__(self, market_data: TossDiscoveryMarketDataProvider):
+        self.market_data = market_data
+
+    def benchmark_bars(self, tickers: list[str], completed_bar_cutoff: str) -> dict[str, list[DailyBar]]:
+        return {ticker: self.market_data.daily_bars(ticker, completed_bar_cutoff)
+                for ticker in tickers}

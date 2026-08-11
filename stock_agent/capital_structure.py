@@ -203,9 +203,16 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
             continue
         snapshot.offering_events.append(classify_offering_event(
             item.document_type, text, item.accession, item.filed_at or item.published_at))
-        if any(term in text for term in ("at-the-market", "at the market", "equity distribution agreement")):
-            snapshot.atm_active = _provenance(item, True, "KNOWN", text,
-                                               "EXPLICIT_ATM_AGREEMENT_LANGUAGE", 95)
+        if any(term in text for term in ("at-the-market", "at the market", "equity distribution agreement")) or re.search(r"\batm\b", text, flags=re.I):
+            inactive_atm = re.search(
+                r"\b(?:no|without|not)\s+(?:an?\s+)?(?:active|current)\s+"
+                r"(?:at[- ]the[- ]market|atm)\s+(?:program|facility|agreement)\b|"
+                r"\b(?:at[- ]the[- ]market|atm)\s+(?:program|facility|agreement)\s+"
+                r"(?:was|has been)\s+(?:terminated|expired|ended)\b", text, flags=re.I)
+            snapshot.atm_active = _provenance(
+                item, False if inactive_atm else True, "KNOWN", text,
+                "EXPLICIT_NO_ACTIVE_ATM_WITHIN_FILING" if inactive_atm else
+                "EXPLICIT_ATM_AGREEMENT_LANGUAGE", 90 if inactive_atm else 95)
             snapshot.atm_last_verified_at = item.filed_at or item.published_at
             capacity = _money(text, r"(?:up to|aggregate offering price of up to)\s*\$\s*([0-9,.]+)\s*([bmk]?)")
             if capacity is not None:
@@ -238,13 +245,23 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
                                if outstanding else "")
         outstanding_count = (float(outstanding.group(1).replace(",", ""))
                              if outstanding else 0.0)
+        negative_warrant = re.search(
+            r"\b(?:no|not|never|without|zero|none)\s+(?:longer\s+)?"
+            r"(?:being\s+)?outstanding\s+warrants?\b|"
+            r"\b(?:warrants?)\b[^.]{0,100}\b(?:fully\s+exercised|redeemed|retired|"
+            r"terminated|expired|no\s+longer\s+outstanding)\b", text, flags=re.I)
+        if negative_warrant:
+            snapshot.warrant_outstanding = _provenance(
+                item, False, "KNOWN", negative_warrant.group(0),
+                "EXPLICIT_NO_LONGER_OUTSTANDING", 90)
         if outstanding and outstanding_count > 0 and not re.search(
                 r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
                 outstanding_context, flags=re.I) and not _negative_outstanding_context(
                     outstanding_context):
-            snapshot.warrant_outstanding = _provenance(
-                item, float(outstanding.group(1).replace(",", "")), "KNOWN",
-                outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
+            if not negative_warrant:
+                snapshot.warrant_outstanding = _provenance(
+                    item, float(outstanding.group(1).replace(",", "")), "KNOWN",
+                    outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
         elif outstanding and outstanding_count == 0 and not re.search(
                 r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
                 outstanding_context, flags=re.I):

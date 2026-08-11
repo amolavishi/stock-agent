@@ -215,6 +215,7 @@ class CoverageMetrics:
     identity_coverage_pct: float = 0.0
     fundamental_enrichment_coverage_pct: float = 0.0
     capital_preflight_coverage_pct: float = 0.0
+    capital_preflight_scope_pct: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

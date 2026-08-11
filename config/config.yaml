@@ -50,6 +50,11 @@
       "evidence_preflight_n": 8,
       "deep_analysis_n": 3
     },
+    "final_scorecard": {
+      "min_coverage_pct": 75,
+      "min_reward_risk": 1.5,
+      "strong_reward_risk": 3.0
+    },
     "diversity": {
       "max_same_sector": 2,
       "max_same_theme": 2,

@@ -112,17 +112,22 @@ def main() -> int:
         return 0
     if args.command in {"discovery-bootstrap", "discovery-refresh", "discovery-health"}:
         from stock_agent.discovery.health import bootstrap_health
+        bootstrap = app.config.get("discovery", {}).get("bootstrap", {})
+        cost = app.config.get("discovery", {}).get("cost", {})
         health = bootstrap_health(app.db, app.discovery.security_master, app.discovery.market_data,
                                   app.discovery.benchmark_provider,
-                                  **{key: app.config.get("discovery", {}).get("bootstrap", {}).get(key, default)
-                                     for key, default in (("min_accepted", 1),
-                                                           ("min_identity_pct", 95.0),
-                                                           ("min_sector_pct", 90.0))})
+                                  min_accepted=int(bootstrap.get("min_accepted", 1)),
+                                  min_identity_coverage_pct=float(bootstrap.get("min_identity_coverage_pct", 95.0)),
+                                  min_sector_coverage_pct=float(bootstrap.get("min_sector_coverage_pct", 90.0)),
+                                  fundamental_provider=app.discovery.fundamental_provider,
+                                  capital_preflight_provider=app.discovery.capital_preflight_provider,
+                                  max_actual_llm_calls=int(cost.get("max_actual_llm_calls",
+                                                                   cost.get("max_llm_calls_per_discovery", 0)) or 0))
         health["command"] = args.command
         if args.command != "discovery-health" and health["status"] == "BOOTSTRAP_REQUIRED":
             health["message"] = "A real SecurityMasterProvider and MarketDataProvider are required; no placeholder universe is used."
         print(json.dumps(health, ensure_ascii=False, indent=2))
-        return 0 if health["status"] == "DISCOVERY_READY" else 2
+        return 0 if health["status"] in {"MARKET_SCAN_READY", "ENRICHMENT_READY", "DEEP_HANDOFF_READY"} else 2
     if args.command == "discord":
         run_chairman_bot(config, app)
         return 0

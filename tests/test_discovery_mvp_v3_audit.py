@@ -211,7 +211,9 @@ class DiscoveryMvpV3AuditTests(unittest.TestCase):
                  "risk": SimpleNamespace(hard_filter_pass=True, trade_plan=plan),
                  "research": SimpleNamespace(signal_strength=80, catalyst_quality=70,
                                              expectation_gap=60, surge_elasticity=65,
-                                             entry_readiness=75, strategy_fit=80, score_details={})}
+                                             entry_readiness=75, strategy_fit=80,
+                                             score_details={"capital_structure_safety": {"value": 80},
+                                                            "data_confidence": {"value": 80}})}
         with tempfile.TemporaryDirectory() as directory:
             db = Database(str(Path(directory) / "promotion.sqlite"))
             db.init()
@@ -320,15 +322,17 @@ class DiscoveryMvpV3AuditTests(unittest.TestCase):
         result = DataReadinessPreflight().evaluate([older_accession, newer_filed], {"100"})
         self.assertEqual(result.status, "READY")
 
-    def test_v25_migration_is_additive_and_preserves_existing_tables(self):
+    def test_v26_migration_is_additive_and_preserves_existing_tables(self):
         with tempfile.TemporaryDirectory() as directory:
             db = Database(str(Path(directory) / "v3.sqlite"))
             db.init()
             with db.connect() as connection:
                 self.assertIsNotNone(connection.execute("SELECT 1 FROM schema_migrations WHERE version=24").fetchone())
                 self.assertIsNotNone(connection.execute("SELECT 1 FROM schema_migrations WHERE version=25").fetchone())
+                self.assertIsNotNone(connection.execute("SELECT 1 FROM schema_migrations WHERE version=26").fetchone())
                 columns = {row[1] for row in connection.execute("PRAGMA table_info(discovery_runs)")}
-                self.assertTrue({"market_scan_status", "actual_llm_calls", "actual_cost_usd"}.issubset(columns))
+                self.assertTrue({"market_scan_status", "actual_llm_calls", "actual_cost_usd",
+                                 "capital_preflight_scope_pct"}.issubset(columns))
                 self.assertIsNotNone(connection.execute("SELECT 1 FROM sqlite_master WHERE name='paper_accounts'").fetchone())
 
 
