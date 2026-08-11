@@ -23,6 +23,17 @@ def unknown(method: str = "NOT_OBSERVED") -> ProvenancedValue:
     return ProvenancedValue(status="UNKNOWN", calculation_method=method)
 
 
+def semantic_state(item: ProvenancedValue) -> str:
+    """Normalize a provenanced boolean/numeric into the audit 3-state model."""
+    if item.status != "KNOWN":
+        return "UNKNOWN"
+    if item.value is False:
+        return "KNOWN_FALSE"
+    if isinstance(item.value, (int, float)) and not isinstance(item.value, bool) and item.value == 0:
+        return "KNOWN_FALSE"
+    return "KNOWN_TRUE"
+
+
 @dataclass
 class CapitalStructureSnapshot:
     ticker: str
@@ -76,16 +87,20 @@ class CapitalStructureSnapshot:
 
     @property
     def warrants(self) -> str:
-        if self.warrant_outstanding.status == "KNOWN":
+        if semantic_state(self.warrant_outstanding) == "KNOWN_TRUE":
             return "OUTSTANDING"
+        if semantic_state(self.warrant_outstanding) == "KNOWN_FALSE":
+            return "NONE"
         if self.warrant_offerable.status == "KNOWN":
             return "OFFERABLE"
         return "UNKNOWN"
 
     @property
     def convertibles(self) -> str:
-        if self.convertible_outstanding.status == "KNOWN":
+        if semantic_state(self.convertible_outstanding) == "KNOWN_TRUE":
             return "OUTSTANDING"
+        if semantic_state(self.convertible_outstanding) == "KNOWN_FALSE":
+            return "NONE"
         if self.convertible_offerable.status == "KNOWN":
             return "OFFERABLE"
         if self.convertible_authorized.status == "KNOWN":
@@ -103,13 +118,22 @@ class CapitalStructureSnapshot:
 
     @property
     def capital_overhang_status(self) -> str:
-        if self.atm_active.value is True or self.convertible_outstanding.value is True:
+        states = {
+            "atm": semantic_state(self.atm_active),
+            "warrant": semantic_state(self.warrant_outstanding),
+            "convertible": semantic_state(self.convertible_outstanding),
+        }
+        if states["atm"] == "KNOWN_TRUE" or states["convertible"] == "KNOWN_TRUE":
             return "HIGH_RISK"
-        if self.warrant_outstanding.value is not None:
+        if states["warrant"] == "KNOWN_TRUE":
             return "REVIEW_REQUIRED"
-        if any(event.get("offering_type") == "SELLING_STOCKHOLDER_RESALE" for event in self.offering_events):
-            return "CLEAR"
-        return "UNKNOWN"
+        if "UNKNOWN" in states.values():
+            return "UNKNOWN"
+        # A resale is secondary supply; it must not erase unknown issuer-side
+        # risk.  Reaching this branch means every material dimension is
+        # explicitly known false, so CLEAR is justified independently of the
+        # event label.
+        return "CLEAR"
 
 
 def _fact_value(facts: dict[str, Any], name: str) -> float | None:
@@ -221,6 +245,12 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
             snapshot.warrant_outstanding = _provenance(
                 item, float(outstanding.group(1).replace(",", "")), "KNOWN",
                 outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
+        elif outstanding and outstanding_count == 0 and not re.search(
+                r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
+                outstanding_context, flags=re.I):
+            snapshot.warrant_outstanding = _provenance(
+                item, False, "KNOWN", outstanding.group(0),
+                "EXPLICIT_ZERO_OUTSTANDING_DISCLOSURE", 95)
         for convertible in re.finditer(
                 r"\bconvertible\s+(?:notes?|debt|debentures?)\b", text):
             context = _capital_context(text, convertible.start(), convertible.end())
@@ -228,6 +258,9 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
                                                min(len(text), convertible.end() + 100))
             negative_outstanding = _negative_outstanding_context(context)
             if negative_outstanding:
+                snapshot.convertible_outstanding = _provenance(
+                    item, False, "KNOWN", subject_context,
+                    "EXPLICIT_NO_LONGER_OUTSTANDING", 90)
                 if re.search(r"\b(?:may|could)\s+(?:offer|issue)|"
                              r"\b(?:offerable|issuable)\b", subject_context, flags=re.I):
                     snapshot.convertible_offerable = _provenance(

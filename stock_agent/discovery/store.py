@@ -25,8 +25,10 @@ class DiscoveryStore:
                 coverage_pct,identity_coverage_pct,feature_coverage_pct,sector_coverage_pct,
                 fundamental_enrichment_coverage_pct,capital_preflight_coverage_pct,
                 final_selection,final_selection_status,final_selection_reason_codes_json,budget_json,
+                market_scan_status,enrichment_status,deep_handoff_status,actual_llm_calls,
+                actual_input_tokens,actual_output_tokens,actual_cost_usd,
                 started_at,finished_at,error_code,payload_json)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(discovery_run_id) DO UPDATE SET status=excluded.status,
                 certification_status=excluded.certification_status,coverage_pct=excluded.coverage_pct,
                 identity_coverage_pct=excluded.identity_coverage_pct,feature_coverage_pct=excluded.feature_coverage_pct,
@@ -35,7 +37,11 @@ class DiscoveryStore:
                 capital_preflight_coverage_pct=excluded.capital_preflight_coverage_pct,
                 final_selection=excluded.final_selection,final_selection_status=excluded.final_selection_status,
                 final_selection_reason_codes_json=excluded.final_selection_reason_codes_json,
-                budget_json=excluded.budget_json,finished_at=excluded.finished_at,error_code=excluded.error_code,
+                budget_json=excluded.budget_json,market_scan_status=excluded.market_scan_status,
+                enrichment_status=excluded.enrichment_status,deep_handoff_status=excluded.deep_handoff_status,
+                actual_llm_calls=excluded.actual_llm_calls,actual_input_tokens=excluded.actual_input_tokens,
+                actual_output_tokens=excluded.actual_output_tokens,actual_cost_usd=excluded.actual_cost_usd,
+                finished_at=excluded.finished_at,error_code=excluded.error_code,
                 payload_json=excluded.payload_json""",
                 (result.run_id, "", context.mode, context.requested_sector, context.intensity,
                  context.discovery_as_of, context.rule_version, context.feature_version,
@@ -45,9 +51,20 @@ class DiscoveryStore:
                  result.coverage.sector_coverage_pct, result.coverage.fundamental_enrichment_coverage_pct,
                  result.coverage.capital_preflight_coverage_pct, result.final_selection,
                  result.final_selection_status, json.dumps(result.final_selection_reason_codes),
-                 json.dumps(result.budget_status), started_at, finished_at, result.error_code,
+                  json.dumps(result.budget_status), result.market_scan_status, result.enrichment_status,
+                  result.deep_handoff_status, result.actual_llm_calls, result.actual_input_tokens,
+                  result.actual_output_tokens, result.actual_cost_usd, started_at, finished_at, result.error_code,
                  json.dumps(payload, ensure_ascii=False)))
-            for candidate in (result.all_candidates or result.candidates):
+            persisted_candidates = {}
+            for candidate in result.all_candidates:
+                persisted_candidates[candidate.security.ticker] = candidate
+            for candidate in result.candidates:
+                # Promotion updates the selected candidate objects while the
+                # original all_candidates snapshot remains intact.  Persist
+                # the promoted lifecycle state instead of silently restoring
+                # the stale snapshot.
+                persisted_candidates[candidate.security.ticker] = candidate
+            for candidate in persisted_candidates.values():
                 self._save_candidate(connection, candidate)
                 for scanner in result.scanner_counts:
                     if scanner in candidate.scanner_hits:
@@ -84,14 +101,17 @@ class DiscoveryStore:
         connection.execute("""INSERT OR REPLACE INTO discovery_candidates(
             discovery_run_id,ticker,stage,eligibility,discovery_bucket,composite_score,
             reason_codes_json,unknown_fields_json,risk_flags_json,payload_json,screen_layer,
-            preflight_status,analysis_status,certification_status)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (candidate.discovery_run_id, candidate.security.ticker,
+            preflight_status,analysis_status,certification_status,preliminary_priority_score,size_bucket,
+            fundamental_rank,capital_preflight_rank,promotion_status,promotion_reason_codes_json)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (candidate.discovery_run_id, candidate.security.ticker,
                                               candidate.stage, candidate.eligibility, candidate.discovery_bucket,
                                               candidate.composite_score, json.dumps(candidate.gate_results),
                                               json.dumps(candidate.unknown_fields), json.dumps(candidate.risk_flags), payload,
                                               "FUNDAMENTAL" if "primary_financial_evidence" in candidate.fields else "MARKET",
                                               "READY" if candidate.fields.get("capital_overhang_status") and candidate.fields["capital_overhang_status"].known else "NOT_FETCHED",
-                                              "NOT_REQUESTED", "NOT_APPLICABLE"))
+                                              "NOT_REQUESTED", "NOT_APPLICABLE", candidate.preliminary_priority_score,
+                                              candidate.size_bucket, candidate.fundamental_rank, candidate.capital_preflight_rank,
+                                              candidate.promotion_status, json.dumps(candidate.promotion_reason_codes)))
 
     def latest(self, run_id: str) -> dict[str, Any] | None:
         with self.database.connect() as connection:
@@ -103,11 +123,29 @@ class DiscoveryStore:
             row = connection.execute("SELECT payload_json FROM discovery_runs ORDER BY started_at DESC LIMIT 1").fetchone()
         return json.loads(row[0]) if row else None
 
-    def save_analysis_link(self, discovery_run_id: str, ticker: str, analysis_run_id: str, created_at: str) -> None:
+    def save_analysis_link(self, discovery_run_id: str, ticker: str, analysis_run_id: str, created_at: str,
+                           promotion_requested_at: str = "", analysis_started_at: str = "",
+                           analysis_finished_at: str = "", actual_llm_calls: int = 0,
+                           actual_cost_usd: float = 0.0) -> None:
         with self.database.connect() as connection:
             connection.execute("""INSERT OR REPLACE INTO discovery_analysis_links(
-                discovery_run_id,ticker,analysis_run_id,created_at) VALUES(?,?,?,?)""",
-                (discovery_run_id, ticker, analysis_run_id, created_at))
+                discovery_run_id,ticker,analysis_run_id,created_at,promotion_requested_at,
+                analysis_started_at,analysis_finished_at,actual_llm_calls,actual_cost_usd)
+                VALUES(?,?,?,?,?,?,?,?,?)""",
+                (discovery_run_id, ticker, analysis_run_id, created_at, promotion_requested_at,
+                 analysis_started_at, analysis_finished_at, actual_llm_calls, actual_cost_usd))
+
+    def save_provider_call(self, discovery_run_id: str, provider: str, operation: str,
+                           batch_no: int, requested_count: int, returned_count: int,
+                           failed_count: int, cache_hits: int, started_at: str,
+                           finished_at: str, payload: dict[str, Any] | None = None) -> None:
+        with self.database.connect() as connection:
+            connection.execute("""INSERT OR REPLACE INTO discovery_provider_calls(
+                discovery_run_id,provider,operation,batch_no,requested_count,returned_count,
+                failed_count,cache_hits,started_at,finished_at,payload_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (discovery_run_id, provider, operation, batch_no,
+                requested_count, returned_count, failed_count, cache_hits, started_at, finished_at,
+                json.dumps(payload or {}, ensure_ascii=False)))
 
     def save_universe(self, snapshot: dict) -> None:
         with self.database.connect() as connection:

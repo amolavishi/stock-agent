@@ -63,12 +63,17 @@ class FuelEngine:
 
 def infer_fuel_events(candidate: CandidateFeatureSnapshot) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
-    if known_field(candidate, "revenue_growth_acceleration") and value(candidate, "revenue_growth_acceleration") > 0:
+    acceleration_field = ("revenue_growth_acceleration_pp" if known_field(candidate, "revenue_growth_acceleration_pp")
+                          else "revenue_growth_acceleration")
+    if known_field(candidate, acceleration_field) and value(candidate, acceleration_field) > 0:
         events.append({"event_type": "REVENUE_ACCELERATION", "signal_family": "FUNDAMENTAL",
-                       "strength": min(100, 50 + value(candidate, "revenue_growth_acceleration")), "material": True})
-    if known_field(candidate, "margin_delta") and value(candidate, "margin_delta") > 0:
+                       "strength": min(100, 50 + value(candidate, acceleration_field)), "material": True,
+                       "source_evidence_id": next(iter(candidate.fields[acceleration_field].source_ids), "")})
+    margin_field = ("gross_margin_delta_pp" if known_field(candidate, "gross_margin_delta_pp") else "margin_delta")
+    if known_field(candidate, margin_field) and value(candidate, margin_field) > 0:
         events.append({"event_type": "MARGIN_INFLECTION", "signal_family": "FUNDAMENTAL",
-                       "strength": min(100, 50 + value(candidate, "margin_delta") * 2), "material": True})
+                       "strength": min(100, 50 + value(candidate, margin_field) * 2), "material": True,
+                       "source_evidence_id": next(iter(candidate.fields[margin_field].source_ids), "")})
     if known_field(candidate, "return_5d_pct") and known_field(candidate, "relative_volume_completed_bar"):
         if (value(candidate, "return_5d_pct") or 0) > 0 and (value(candidate, "relative_volume_completed_bar") or 0) >= 1.2:
             events.append({"event_type": "RELATIVE_STRENGTH_INFLECTION", "signal_family": "FLOW",

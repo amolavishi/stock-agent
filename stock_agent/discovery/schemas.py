@@ -162,6 +162,19 @@ class CandidateFeatureSnapshot:
     expires_at: str = ""
     promotion_conditions: list[str] = field(default_factory=list)
     invalidation_conditions: list[str] = field(default_factory=list)
+    # Enrichment ordering is deliberately separate from the final investment
+    # score.  Market cap is retained only as a size/liquidity context field.
+    preliminary_priority_score: float | None = None
+    size_bucket: str = "UNKNOWN"
+    fundamental_rank: int | None = None
+    capital_preflight_rank: int | None = None
+    promotion_status: str = "NOT_REQUESTED"
+    promotion_reason_codes: list[str] = field(default_factory=list)
+    first_seen_at: str = ""
+    last_seen_at: str = ""
+    fuel_changed: bool = False
+    stage_changed: bool = False
+    score_changed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -172,6 +185,20 @@ class CandidateFeatureSnapshot:
     def canonical_hash(self) -> str:
         raw = json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "CandidateFeatureSnapshot":
+        security_payload = dict(payload.get("security") or {})
+        security_payload["themes"] = tuple(security_payload.get("themes") or ())
+        security = SecurityMasterRecord(**security_payload)
+        fields = {}
+        for name, raw in (payload.get("fields") or {}).items():
+            raw = dict(raw)
+            raw["source_ids"] = tuple(raw.get("source_ids") or ())
+            fields[name] = FieldValue(**raw)
+        values = {key: value for key, value in payload.items()
+                  if key not in {"security", "fields"}}
+        return cls(security=security, fields=fields, **values)
 
 
 @dataclass(frozen=True)
@@ -260,6 +287,13 @@ class DiscoveryResult:
     final_selection_status: str = "NONE"
     final_selection_reason_codes: list[str] = field(default_factory=list)
     budget_status: dict[str, Any] = field(default_factory=dict)
+    market_scan_status: str = "UNKNOWN"
+    enrichment_status: str = "UNKNOWN"
+    deep_handoff_status: str = "UNKNOWN"
+    actual_llm_calls: int = 0
+    actual_input_tokens: int = 0
+    actual_output_tokens: int = 0
+    actual_cost_usd: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {"run_id": self.run_id, "status": self.status,
@@ -280,4 +314,22 @@ class DiscoveryResult:
                 "final_selection": self.final_selection,
                 "final_selection_status": self.final_selection_status,
                 "final_selection_reason_codes": self.final_selection_reason_codes,
-                "budget_status": self.budget_status}
+                "budget_status": self.budget_status,
+                "market_scan_status": self.market_scan_status,
+                "enrichment_status": self.enrichment_status,
+                "deep_handoff_status": self.deep_handoff_status,
+                "actual_llm_calls": self.actual_llm_calls,
+                "actual_input_tokens": self.actual_input_tokens,
+                "actual_output_tokens": self.actual_output_tokens,
+                "actual_cost_usd": self.actual_cost_usd}
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "DiscoveryResult":
+        context = DiscoveryContext(**payload["context"])
+        coverage = CoverageMetrics(**payload["coverage"])
+        candidates = [CandidateFeatureSnapshot.from_dict(item) for item in payload.get("candidates", [])]
+        all_candidates = [CandidateFeatureSnapshot.from_dict(item) for item in payload.get("all_candidates", [])]
+        values = {key: value for key, value in payload.items()
+                  if key not in {"context", "coverage", "candidates", "all_candidates"}}
+        return cls(context=context, coverage=coverage, candidates=candidates,
+                   all_candidates=all_candidates, **values)

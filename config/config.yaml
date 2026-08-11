@@ -52,7 +52,8 @@
     },
     "diversity": {
       "max_same_sector": 2,
-      "max_same_theme": 2
+      "max_same_theme": 2,
+      "max_same_size_bucket": 3
     },
     "cost": {
       "max_quote_batches": 100,
@@ -61,7 +62,11 @@
       "max_sec_calls": 100,
       "max_deep_analysis_candidates": 3,
       "max_child_analysis_runs": 3,
-      "max_llm_calls_per_discovery": 0
+      "max_llm_calls_per_discovery": 0,
+      "max_actual_llm_calls": 0,
+      "max_llm_input_tokens": 0,
+      "max_llm_output_tokens": 0,
+      "max_estimated_cost_usd": 0
     },
     "bootstrap": {
       "security_master_enrichment_path": "data/discovery/security_master_enrichment.json",

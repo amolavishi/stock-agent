@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from statistics import mean
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .schemas import CandidateFeatureSnapshot, DailyBar, FieldValue, MarketQuote, SecurityMasterRecord, UnknownState
@@ -91,6 +92,15 @@ def _field_map(record: SecurityMasterRecord, quote: MarketQuote, bars: list[Dail
                 fields[key] = _known(round((current / max(max(prices[-days:]), 0.0001) - 1) * 100, 6), source, as_of)
     if fundamentals:
         fields.update(fundamentals)
+        cap = fields.get("market_cap_usd")
+        shares = fields.get("shares_outstanding")
+        current = fields.get("current_price")
+        if (cap is not None and not cap.known and shares is not None and shares.known and
+                current is not None and current.known and float(shares.value) > 0):
+            fields["market_cap_usd"] = _known(
+                float(shares.value) * float(current.value),
+                "DERIVED_VERIFIED_SHARES", as_of,
+                tuple(shares.source_ids))
     return fields
 
 
@@ -99,10 +109,15 @@ def build_candidate(record: SecurityMasterRecord, quote: MarketQuote, bars: list
                     fundamentals: dict[str, FieldValue] | None = None) -> CandidateFeatureSnapshot:
     fields = _field_map(record, quote, bars, fundamentals, as_of)
     unknown_fields = sorted(name for name, field in fields.items() if not field.known)
+    try:
+        expires = (datetime.fromisoformat(as_of.replace("Z", "+00:00")) + timedelta(days=1)).isoformat()
+    except ValueError:
+        expires = ""
     return CandidateFeatureSnapshot(security=record, as_of=as_of, discovery_run_id=run_id,
                                     feature_version=FEATURE_VERSION, fields=fields,
                                     unknown_fields=unknown_fields, created_at=as_of,
-                                    last_validated_at=as_of)
+                                    last_validated_at=as_of, first_seen_at=as_of,
+                                    last_seen_at=as_of, expires_at=expires)
 
 
 def value(candidate: CandidateFeatureSnapshot, name: str, default=None):

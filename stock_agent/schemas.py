@@ -126,6 +126,8 @@ class Intent(str, Enum):
     DISCOVERY_REPORT = "DISCOVERY_REPORT"
     DISCOVERY_STATUS = "DISCOVERY_STATUS"
     DISCOVERY_CANCEL = "DISCOVERY_CANCEL"
+    DISCOVERY_DEEP_HANDOFF = "DISCOVERY_DEEP_HANDOFF"
+    DISCOVERY_PROMOTE = "DISCOVERY_PROMOTE"
 
 
 class RequestStatus(str, Enum):
@@ -370,7 +372,7 @@ class RunManifest:
     finished_at: str = ""
     final_decision: str = ""
     code_version: str = "v1.1"
-    db_schema_version: int = 24
+    db_schema_version: int = 25
     prompt_hashes: dict[str, str] = field(default_factory=dict)
     risk_config_hash: str = ""
     analysis_intensity: str = "NORMAL"
@@ -479,6 +481,8 @@ class UserRequest:
     requested_sector: str = ""
     discovery_mode: str = ""
     shadow: bool = True
+    discovery_run_id: str = ""
+    promotion_limit: int = 0
 
 
 @dataclass(frozen=True)

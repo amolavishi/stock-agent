@@ -129,7 +129,8 @@ class DiscoveryMvpAuditTests(unittest.TestCase):
                 [quote("VALID")], bars("VALID", [10.0] * 10)
                 + [bar for ticker in ("SPY", "QQQ", "IWM") for bar in bars(ticker, [10.0] * 10)])
             health = bootstrap_health(db, InMemorySecurityMasterProvider([valid]), market, market)
-            self.assertEqual(health["status"], "DISCOVERY_READY")
+            self.assertEqual(health["status"], "MARKET_SCAN_READY")
+            self.assertTrue(health["legacy_discovery_ready"])
             identity_only = record("UNKNOWN", is_common_stock=None, is_etf=None, is_unit=None,
                                    is_warrant=None, is_preferred=None, is_adr=None,
                                    sector_canonical="UNKNOWN", industry_canonical="UNKNOWN")
@@ -139,7 +140,10 @@ class DiscoveryMvpAuditTests(unittest.TestCase):
 
     def test_certified_only_final_selection_allows_none(self):
         self.assertEqual(final_selection([{"ticker": "A", "certified": False}]), "NONE")
-        self.assertEqual(final_selection([{"ticker": "A", "certified": True,
+        eligible = {"certified": True, "decision": "BUY", "risk_hard_filter_pass": True,
+                    "trade_plan_valid": True, "market_fresh": True,
+                    "no_material_unresolved_blocker": True}
+        self.assertEqual(final_selection([{**eligible, "ticker": "A",
                                           "scores": {"data_confidence": 90}},
                                          {"ticker": "B", "certified": False,
                                           "scores": {"data_confidence": 100}}]), "A")

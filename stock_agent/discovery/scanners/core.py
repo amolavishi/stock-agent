@@ -45,11 +45,15 @@ class ProfitabilityInflectionScanner(_CoreScanner):
     name = "PROFITABILITY_INFLECTION"
 
     def evaluate(self, candidate: CandidateFeatureSnapshot, context: DiscoveryContext) -> ScannerResult:
-        required_fields = ("revenue_growth_acceleration", "margin_delta", "operating_cash_flow")
+        required_fields = ("revenue_growth_acceleration_pp", "gross_margin_delta_pp", "operating_cash_flow_current")
         unknown = tuple(field for field in required_fields if not known_field(candidate, field))
         if unknown:
             return self._result(candidate, False, 0, False, ("FUNDAMENTAL_UNKNOWN",), unknown=unknown)
-        hit = value(candidate, "revenue_growth_acceleration") > 0 and value(candidate, "margin_delta") > 0 and value(candidate, "operating_cash_flow") >= 0
+        margin_improved = value(candidate, "gross_margin_delta_pp") > 0 or (
+            known_field(candidate, "operating_margin_delta_pp") and
+            value(candidate, "operating_margin_delta_pp") > 0) or (
+            known_field(candidate, "fcf_inflection") and value(candidate, "fcf_inflection") > 0)
+        hit = value(candidate, "revenue_growth_acceleration_pp") > 0 and margin_improved and value(candidate, "operating_cash_flow_current") >= 0
         return self._result(candidate, hit, 70 if hit else 20, hit,
                             ("PROFITABILITY_INFLECTION" if hit else "NO_INFLECTION",), ("FUNDAMENTAL",))
 
@@ -58,8 +62,8 @@ class AIBottleneckExpansionScanner(_CoreScanner):
     name = "AI_BOTTLENECK_EXPANSION"
 
     def evaluate(self, candidate: CandidateFeatureSnapshot, context: DiscoveryContext) -> ScannerResult:
-        numeric_fields = ("revenue_growth_acceleration", "backlog_growth", "bookings_growth",
-                          "arr_growth", "rpo_growth", "margin_delta")
+        numeric_fields = ("revenue_growth_acceleration_pp", "backlog_growth", "bookings_growth",
+                          "arr_growth", "rpo_growth", "gross_margin_delta_pp")
         numeric_count = sum(known_field(candidate, field) and value(candidate, field) is not None
                             for field in numeric_fields)
         linkage = candidate.fields.get("customer_linkage")

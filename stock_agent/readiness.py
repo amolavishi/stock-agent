@@ -14,20 +14,26 @@ PERIODIC_STATES = {
 def periodic_filing_readiness(item: Any, companyfacts_accessions: set[str]) -> dict[str, Any]:
     """Return an auditable lifecycle state without treating accession lag as total failure."""
     accession = str(getattr(item, "accession", "") or "").replace("-", "")
+    filed_at = str(getattr(item, "filed_at", "") or getattr(item, "published_at", "") or "")
+    acceptance_datetime = str((getattr(item, "facts", {}) or {}).get("acceptance_datetime") or "")
     raw_hash = str(getattr(item, "raw_document_hash", "") or "")
     parsed = bool(getattr(item, "parsed_at", "") or getattr(item, "normalized_fact", ""))
     if not raw_hash:
         return {"state": "DISCOVERED", "reason_codes": ["RAW_FILING_NOT_FETCHED"],
-                "numeric_claims": "BLOCKED", "accession": accession}
+                "numeric_claims": "BLOCKED", "accession": accession,
+                "filed_at": filed_at, "acceptance_datetime": acceptance_datetime}
     if not parsed:
         return {"state": "FETCHED", "reason_codes": ["RAW_FILING_NOT_PARSED"],
-                "numeric_claims": "BLOCKED", "accession": accession}
+                "numeric_claims": "BLOCKED", "accession": accession,
+                "filed_at": filed_at, "acceptance_datetime": acceptance_datetime}
     if accession and accession in companyfacts_accessions:
         return {"state": "READY_FOR_ANALYSIS", "reason_codes": ["XBRL_CROSS_VALIDATED"],
-                "numeric_claims": "READY", "accession": accession}
+                "numeric_claims": "READY", "accession": accession,
+                "filed_at": filed_at, "acceptance_datetime": acceptance_datetime}
     return {"state": "READY_PARTIAL", "reason_codes": [
         "COMPANYFACTS_ACCESSION_LAG", "RAW_FILING_PARSED", "NUMERIC_XBRL_NOT_CROSS_VALIDATED"
-    ], "numeric_claims": "BLOCKED", "accession": accession}
+    ], "numeric_claims": "BLOCKED", "accession": accession,
+        "filed_at": filed_at, "acceptance_datetime": acceptance_datetime}
 
 
 def classify_offering_event(document_type: str, text: str, accession: str = "",
@@ -76,11 +82,18 @@ class DataReadinessAssessment:
 
 
 class DataReadinessPreflight:
+    @staticmethod
+    def _filing_order(item: Any, readiness: dict[str, Any]) -> tuple[str, str, str]:
+        """Use filing chronology first; accession is only a tie-breaker."""
+        return (str(readiness.get("filed_at") or ""),
+                str(readiness.get("acceptance_datetime") or ""),
+                str(readiness.get("accession") or ""))
+
     def evaluate(self, evidence: list[Any], companyfacts_accessions: set[str],
                  capital_structure: dict[str, Any] | None = None) -> DataReadinessAssessment:
         periodic_items = [item for item in evidence if getattr(item, "document_type", "") in {"10-Q", "10-K"}]
         periodic = tuple(periodic_filing_readiness(item, companyfacts_accessions) for item in periodic_items)
-        latest = max(periodic, key=lambda row: row.get("accession", ""), default=None)
+        latest = max(periodic, key=lambda row: self._filing_order(None, row), default=None)
         reasons: list[str] = []
         if not latest:
             reasons.append("LATEST_MATERIAL_PERIODIC_FILING_MISSING")

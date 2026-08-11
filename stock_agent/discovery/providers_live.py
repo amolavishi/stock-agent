@@ -158,17 +158,36 @@ class SECDiscoveryFundamentalProvider:
                 self.calls.append(ticker)
                 rows = facts.get("normalized_facts", [])
                 source_ids = tuple(str(row.get("fact_id")) for row in rows if row.get("fact_id"))
+                metrics = facts.get("period_metrics", {})
                 revenue = facts.get("revenue") or {}
                 revenue_value = revenue.get("value")
-                previous_revenue = self._previous_duration_value(rows, "revenue", revenue)
-                growth = None
-                if revenue_value is not None and previous_revenue not in (None, 0):
-                    growth = (float(revenue_value) / float(previous_revenue) - 1) * 100
-                margin = facts.get("derived", {}).get("gross_margin_pct")
+                metric_ids = tuple(str(value) for value in
+                                   (metrics.get("revenue_growth_provenance", {}).get("source_fact_ids") or [])
+                                   if value)
+                def metric(name: str):
+                    return self._field(metrics.get(name), "SEC_COMPANYFACTS_PERIOD_RESOLVER", as_of,
+                                       metric_ids or source_ids)
                 output[ticker] = {
-                    "revenue_growth_acceleration": self._field(growth, "SEC_COMPANYFACTS", as_of, source_ids),
-                    "margin_delta": self._field(margin, "SEC_COMPANYFACTS", as_of, source_ids),
-                    "operating_cash_flow": self._field(self._value(facts.get("operating_cash_flow")), "SEC_COMPANYFACTS", as_of, source_ids),
+                    "revenue_growth_current_pct": metric("revenue_growth_current_pct"),
+                    "revenue_growth_previous_pct": metric("revenue_growth_previous_pct"),
+                    "revenue_growth_acceleration_pp": metric("revenue_growth_acceleration_pp"),
+                    # Compatibility aliases retain the corrected semantic,
+                    # never the old growth/margin-level meaning.
+                    "revenue_growth_acceleration": metric("revenue_growth_acceleration_pp"),
+                    "gross_margin_current_pct": metric("gross_margin_current_pct"),
+                    "gross_margin_previous_pct": metric("gross_margin_previous_pct"),
+                    "gross_margin_delta_pp": metric("gross_margin_delta_pp"),
+                    "margin_delta": metric("gross_margin_delta_pp"),
+                    "operating_margin_current_pct": metric("operating_margin_current_pct"),
+                    "operating_margin_previous_pct": metric("operating_margin_previous_pct"),
+                    "operating_margin_delta_pp": metric("operating_margin_delta_pp"),
+                    "fcf_current": metric("fcf_current"),
+                    "fcf_previous": metric("fcf_previous"),
+                    "fcf_inflection": metric("fcf_inflection"),
+                    "operating_cash_flow_current": metric("operating_cash_flow_current"),
+                    "operating_cash_flow_previous": metric("operating_cash_flow_previous"),
+                    "operating_cash_flow_inflection": metric("operating_cash_flow_inflection"),
+                    "operating_cash_flow": metric("operating_cash_flow_current"),
                     "cash": self._field(self._value(facts.get("cash")), "SEC_COMPANYFACTS", as_of, source_ids),
                     "shares_outstanding": self._field(self._value(facts.get("shares_outstanding")), "SEC_COMPANYFACTS", as_of, source_ids),
                     "trailing_revenue_usd": self._field(self._value(revenue), "SEC_COMPANYFACTS", as_of, source_ids),
@@ -188,18 +207,6 @@ class SECDiscoveryFundamentalProvider:
     @staticmethod
     def _value(row: dict[str, Any] | None) -> Any:
         return row.get("value") if isinstance(row, dict) else None
-
-    @staticmethod
-    def _previous_duration_value(rows: list[dict[str, Any]], name: str,
-                                  selected: dict[str, Any]) -> Any:
-        concept = selected.get("concept") if isinstance(selected, dict) else None
-        end = str(selected.get("end") or "") if isinstance(selected, dict) else ""
-        values = [row for row in rows if row.get("concept") == concept and row.get("period_type") == "DURATION"
-                  and str(row.get("end") or "") < end]
-        if not values:
-            return None
-        return max(values, key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or ""))).get("value")
-
 
 class SECDiscoveryCapitalPreflightProvider:
     """Layer-C targeted SEC event/capital hydration for shortlisted survivors."""
@@ -292,6 +299,18 @@ class TossDiscoveryMarketDataProvider:
     def daily_bars(self, ticker: str, completed_bar_cutoff: str) -> list[DailyBar]:
         self.bar_calls += 1
         rows = self.client.candles(ticker, 200)
+        return self._normalize_bars(ticker, completed_bar_cutoff, rows)
+
+    def daily_bars_incremental(self, ticker: str, completed_bar_cutoff: str,
+                               last_session_date: str) -> list[DailyBar]:
+        """Refresh only the small post-cache window; bootstrap remains 200 bars."""
+        self.bar_calls += 1
+        rows = self.client.candles(ticker, 10)
+        return [bar for bar in self._normalize_bars(ticker, completed_bar_cutoff, rows)
+                if bar.session_date > last_session_date]
+
+    def _normalize_bars(self, ticker: str, completed_bar_cutoff: str,
+                        rows: list[dict[str, Any]]) -> list[DailyBar]:
         cutoff = completed_bar_cutoff[:10]
         output = []
         for row in rows:

@@ -23,5 +23,9 @@ def pareto_filter(candidates: list[CandidateFeatureSnapshot]) -> list[CandidateF
 
 
 def _dominates(a: CandidateFeatureSnapshot, b: CandidateFeatureSnapshot) -> bool:
-    av, bv = [a.scores.get(axis, 0) for axis in PARETO_AXES], [b.scores.get(axis, 0) for axis in PARETO_AXES]
+    shared = [axis for axis in PARETO_AXES if axis in a.scores and axis in b.scores]
+    if not shared:
+        return False
+    av = [a.scores[axis] for axis in shared]
+    bv = [b.scores[axis] for axis in shared]
     return all(left >= right for left, right in zip(av, bv)) and any(left > right for left, right in zip(av, bv))

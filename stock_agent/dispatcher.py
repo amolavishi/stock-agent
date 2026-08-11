@@ -74,6 +74,17 @@ class RequestDispatcher:
             if self.presenters and hasattr(self.presenters, "publish_discovery"):
                 self.presenters.publish_discovery(result)
             return {"kind": "DISCOVERY", "result": result, "text": text}
+        if intent in {"DISCOVERY_DEEP_HANDOFF", "DISCOVERY_PROMOTE"}:
+            try:
+                result = self.orchestrator.promote_discovery_request(request)
+            except ValueError as exc:
+                return {"kind": "TEXT", "text": f"Discovery deep handoff blocked: `{exc}`"}
+            text = (f"[Discovery Deep] `{result.run_id}`\n"
+                    f"certified=`{len(result.certified_candidates)}` final=`{result.final_selection}`\n"
+                    f"actual_llm_calls=`{result.actual_llm_calls}`")
+            if self.presenters and hasattr(self.presenters, "publish_discovery"):
+                self.presenters.publish_discovery(result)
+            return {"kind": "DISCOVERY", "result": result, "text": text}
         if intent == "DISCOVERY_REPORT":
             result = self.orchestrator.discovery.latest_any()
             if not result:

@@ -17,6 +17,14 @@ def validate_discovery_config(discovery: dict[str, Any]) -> None:
     universe = discovery.get("universe", {})
     coverage = discovery.get("coverage", {})
     stage = discovery.get("stage", {})
+    bootstrap = discovery.get("bootstrap", {})
+    deprecated = {key for key in ("min_identity_pct", "min_sector_pct") if key in bootstrap}
+    if deprecated:
+        raise DiscoveryConfigError("deprecated discovery.bootstrap coverage keys: " + ", ".join(sorted(deprecated)))
+    for key in ("min_identity_coverage_pct", "min_sector_coverage_pct"):
+        value = bootstrap.get(key, 0)
+        if not isinstance(value, (int, float)) or not 0 <= value <= 100:
+            raise DiscoveryConfigError(f"discovery.bootstrap.{key} must be between 0 and 100")
     if not isinstance(discovery.get("enabled", False), bool) or not isinstance(discovery.get("shadow_mode", True), bool):
         raise DiscoveryConfigError("discovery.enabled and discovery.shadow_mode must be boolean")
     for key in ("market_min_pct", "feature_min_pct", "fundamental_enrichment_min_pct", "capital_preflight_min_pct"):

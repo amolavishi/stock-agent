@@ -15,7 +15,7 @@ from .gates import DiscoveryGateRules, global_gate
 from .handoff import EvidencePreflight, make_child_request
 from .ingestion import EmptyDiscoveryMarketDataProvider
 from .pareto import pareto_filter
-from .ranking import rank_candidates
+from .ranking import rank_candidates, preliminary_priority_score, size_bucket
 from .regime import DiscoveryMarketRegimeEngine
 from .schemas import (CoverageMetrics, DiscoveryContext, DiscoveryResult, DiscoveryStatus,
                       FieldValue, UnknownState)
@@ -30,6 +30,7 @@ from .stage import DiscoveryStageEngine, DiscoveryStageRules
 from .store import DiscoveryStore
 from .tournament import final_selection
 from .universe import EmptySecurityMasterProvider, UniverseIntegrityEngine
+from .expiry import can_promote
 
 
 class DiscoveryOrchestrator:
@@ -78,6 +79,12 @@ class DiscoveryOrchestrator:
             "max_sec_calls": cost.get("max_sec_calls"),
             "max_deep_analysis_candidates": cost.get("max_deep_analysis_candidates", 3),
             "max_child_analysis_runs": cost.get("max_child_analysis_runs", 3),
+            "max_actual_llm_calls": cost.get("max_actual_llm_calls", cost.get("max_llm_calls_per_discovery", 0)),
+            "max_actual_input_tokens": cost.get("max_llm_input_tokens", 0),
+            "max_actual_output_tokens": cost.get("max_llm_output_tokens", 0),
+            "max_actual_cost_usd": cost.get("max_estimated_cost_usd", 0),
+            # Legacy test/config key is retained only as an alias for the
+            # measured call limit; consumption is always actual telemetry.
             "max_llm_calls": cost.get("max_llm_calls_per_discovery", 0),
         }
 
@@ -120,12 +127,19 @@ class DiscoveryOrchestrator:
             return result
         self.store.save_universe(universe)
         tickers = [record.ticker for record in records]
-        quotes = self.market_data.batch_quotes(tickers, as_of)
-        quote_counter = getattr(self.market_data, "quote_batches", None)
-        if quote_counter is None:
-            quote_counter = len(getattr(self.market_data, "quote_calls", [])) or 1
-        budget.used["max_quote_batches"] = int(quote_counter)
+        quote_before = self._counter(self.market_data, "quote_batches", "quote_calls")
+        quote_batch_size = max(1, int(getattr(self.market_data, "quote_batch_size", len(tickers) or 1)))
+        quotes: dict[str, Any] = {}
+        for offset in range(0, len(tickers), quote_batch_size):
+            if not budget.allow("max_quote_batches"):
+                break
+            chunk = tickers[offset:offset + quote_batch_size]
+            quotes.update(self.market_data.batch_quotes(chunk, as_of))
+            budget.consume("max_quote_batches")
+        quote_counter = max(0, self._counter(self.market_data, "quote_batches", "quote_calls") - quote_before)
         feature_rows = []
+        bar_before = self._counter(self.market_data, "bar_calls", "bar_calls")
+        bar_cache_hits = 0
         for record in records:
             quote = quotes.get(record.ticker)
             if quote is None:
@@ -137,6 +151,20 @@ class DiscoveryOrchestrator:
                 bars = self.market_data.daily_bars(record.ticker, as_of)
                 budget.consume("max_bar_calls")
                 self.store.save_bars(bars)
+            else:
+                refresh = getattr(self.market_data, "daily_bars_incremental", None)
+                if callable(refresh) and budget.allow("max_bar_calls"):
+                    updates = refresh(record.ticker, as_of, bars[-1].session_date)
+                    budget.consume("max_bar_calls")
+                    if updates:
+                        by_date = {bar.session_date: bar for bar in bars}
+                        by_date.update({bar.session_date: bar for bar in updates})
+                        bars = sorted(by_date.values(), key=lambda bar: bar.session_date)
+                        self.store.save_bars(updates)
+                    else:
+                        bar_cache_hits += 1
+                else:
+                    bar_cache_hits += 1
             candidate = build_candidate(record, quote, bars, run_id, as_of)
             candidate.fuel_events = infer_fuel_events(candidate)
             self.stage_engine.apply(candidate)
@@ -147,12 +175,21 @@ class DiscoveryOrchestrator:
             for reason in reasons:
                 candidate.risk_flags.append(reason)
             feature_rows.append(candidate)
+        self._apply_market_paths(feature_rows, context, as_of, demote_no_hit=False)
         # Layer B: hydrate only market survivors, never the entire raw universe.
         survivor_limit = int(self.config.get("discovery", {}).get("enrichment", {}).get("market_survivor_n", 300))
-        market_survivors = sorted(
-            [item for item in feature_rows if item.eligibility != "INELIGIBLE"],
-            key=lambda item: (value(item, "market_cap_usd", 0) or 0), reverse=True)[:survivor_limit]
+        eligible = [item for item in feature_rows if item.eligibility != "INELIGIBLE"]
+        for item in eligible:
+            item.preliminary_priority_score, _ = preliminary_priority_score(item)
+            item.size_bucket = size_bucket(value(item, "market_cap_usd", None))
+        diversity = self.config.get("discovery", {}).get("diversity", {})
+        market_survivors = self._diversified_prefix(
+            sorted(eligible, key=lambda item: (-float(item.preliminary_priority_score or 0), item.security.ticker)),
+            survivor_limit, int(diversity.get("max_same_sector", survivor_limit)),
+            int(diversity.get("max_same_theme", survivor_limit)),
+            int(diversity.get("max_same_size_bucket", survivor_limit)))
         fundamental_rows = {}
+        fundamental_before = len(getattr(self.fundamental_provider, "calls", [])) if self.fundamental_provider else 0
         if self.fundamental_provider and market_survivors and budget.allow(
                 "max_companyfacts_calls", len(market_survivors)):
             fundamental_rows = self.fundamental_provider.fundamentals(
@@ -168,10 +205,22 @@ class DiscoveryOrchestrator:
                 for reason in reasons:
                     if reason not in candidate.risk_flags:
                         candidate.risk_flags.append(reason)
+        # Re-rank hydrated survivors before selecting expensive capital/SEC
+        # preflight.  The first rank is cheap prioritization only.
+        rank_candidates(market_survivors)
+        for index, candidate in enumerate(market_survivors, 1):
+            candidate.fundamental_rank = index
         # Layer C: expensive offering/capital semantics only for the evidence
         # preflight slice, never for the complete market universe.
         preflight_n = int(self.config.get("discovery", {}).get("shortlist", {}).get("evidence_preflight_n", 8))
-        preflight_rows = market_survivors[:preflight_n]
+        preflight_rows = diversity_filter(
+            sorted(market_survivors, key=lambda item: (-item.composite_score, item.security.ticker)),
+            int(diversity.get("max_same_sector", preflight_n)),
+            int(diversity.get("max_same_theme", preflight_n)),
+            int(diversity.get("max_same_size_bucket", preflight_n)))[:preflight_n]
+        for index, candidate in enumerate(preflight_rows, 1):
+            candidate.capital_preflight_rank = index
+        capital_before = len(getattr(self.capital_preflight_provider, "calls", [])) if self.capital_preflight_provider else 0
         if (self.capital_preflight_provider and preflight_rows and
                 budget.allow("max_sec_calls", len(preflight_rows))):
             capital_rows = self.capital_preflight_provider.preflight(
@@ -187,223 +236,10 @@ class DiscoveryOrchestrator:
                     if reason not in candidate.risk_flags:
                         candidate.risk_flags.append(reason)
         sectors = rank_sectors(feature_rows)
-        top_sectors = {row["sector"] for row in sectors[:3] if row.get("rotation_score") is not None}
-        sector_by_name = {row["sector"]: row for row in sectors}
-        for candidate in feature_rows:
-            sector = sector_by_name.get(candidate.security.sector_canonical, {})
-            rotation_score = sector.get("rotation_score")
-            candidate.fields["sector_rotation_score"] = FieldValue(
-                rotation_score, UnknownState.KNOWN.value if rotation_score is not None else UnknownState.UNKNOWN_NOT_AVAILABLE.value,
-                "DISCOVERY_SECTOR_SNAPSHOT", as_of)
-            candidate.fields["sector_regime_fit"] = FieldValue(
-                max(0.0, min(100.0, float(rotation_score))) if rotation_score is not None else None,
-                UnknownState.KNOWN.value if rotation_score is not None else UnknownState.UNKNOWN_NOT_AVAILABLE.value,
-                "DISCOVERY_SECTOR_SNAPSHOT", as_of)
-            candidate.fields["sector_rotation_phase"] = FieldValue(
-                sector.get("rotation_phase"), UnknownState.KNOWN.value if sector.get("rotation_phase") else UnknownState.UNKNOWN_NOT_AVAILABLE.value,
-                "DISCOVERY_SECTOR_SNAPSHOT", as_of)
-            candidate.unknown_fields = sorted(name for name, field in candidate.fields.items() if not field.known)
-            candidate.paths.append("BLIND")
-            if candidate.security.sector_canonical in top_sectors:
-                candidate.paths.append("TOP_DOWN")
-            for scanner in self.scanners:
-                result = scanner.evaluate(candidate, context)
-                if result.hit:
-                    candidate.scanner_hits.append(result.scanner_name)
-            if candidate.eligibility == "ELIGIBLE" and not candidate.scanner_hits:
-                candidate.eligibility = "REVIEW_REQUIRED"
-                candidate.risk_flags.append("NO_SCANNER_HIT")
+        self._apply_market_paths(feature_rows, context, as_of)
         ranked = rank_candidates(feature_rows)
         pareto_filter(ranked)
         shortlist_n = int(self.config.get("discovery", {}).get("shortlist", {}).get("python_top_n", 20))
         p1_candidates = [item for item in ranked if item.discovery_bucket == "P1_DEEP_ANALYSIS"
                          and item.eligibility == "ELIGIBLE"
-                         and item.gate_results.get("fuel_gate") == "PASS"]
-        watch_candidates = [item for item in ranked if item.discovery_bucket == "WATCH"]
-        rejected_candidates = [item for item in ranked if item.discovery_bucket == "REJECT"]
-        secondary_candidates = [item for item in ranked if item.discovery_bucket == "P2_SECONDARY"]
-        shortlisted = diversity_filter(p1_candidates + secondary_candidates,
-                                       int(self.config.get("discovery", {}).get("diversity", {}).get("max_same_sector", 2)),
-                                       int(self.config.get("discovery", {}).get("diversity", {}).get("max_same_theme", 2)))[:shortlist_n]
-        market_loaded = len(quotes)
-        feature_ready = sum(self._feature_ready(item) for item in feature_rows)
-        sector_mapped = sum(item.security.sector_canonical != "UNKNOWN" for item in feature_rows)
-        fundamental_ready = sum(self._fundamental_ready(item) for item in feature_rows)
-        capital_ready = sum(self._capital_preflight_ready(item) for item in market_survivors)
-        total = len(records)
-        survivor_total = len(market_survivors)
-        health = universe.get("health", {})
-        coverage = CoverageMetrics(total, market_loaded, feature_ready, sector_mapped, fundamental_ready,
-                                   round(market_loaded / total * 100, 4), round(feature_ready / total * 100, 4),
-                                   round(sector_mapped / total * 100, 4), round(fundamental_ready / total * 100, 4),
-                                   float(health.get("identity_coverage_pct", 0)),
-                                   round(fundamental_ready / survivor_total * 100, 4) if survivor_total else 0.0,
-                                   round(capital_ready / survivor_total * 100, 4) if survivor_total else 0.0)
-        coverage_rules = self.config.get("discovery", {}).get("coverage", {})
-        min_market = float(coverage_rules.get("market_min_pct", 95))
-        min_feature = float(coverage_rules.get("feature_min_pct", 90))
-        min_fundamental = float(coverage_rules.get("fundamental_enrichment_min_pct", 80))
-        min_capital = float(coverage_rules.get("capital_preflight_min_pct", 80))
-        if coverage.market_coverage_pct < min_market or coverage.feature_coverage_pct < min_feature:
-            status, certification = DiscoveryStatus.BLOCKED_COVERAGE.value, "BLOCKED_COVERAGE"
-        elif not fundamental_rows or coverage.fundamental_enrichment_coverage_pct < min_fundamental:
-            status, certification = DiscoveryStatus.COMPLETED_SHADOW_MARKET_ONLY.value, "SHADOW_MARKET_ONLY"
-        elif coverage.capital_preflight_coverage_pct < min_capital:
-            status, certification = DiscoveryStatus.COMPLETED_SHADOW_ENRICHED.value, "SHADOW_ENRICHED"
-        elif shadow:
-            status, certification = DiscoveryStatus.COMPLETED_SHADOW_ENRICHED.value, "SHADOW_ENRICHED"
-        else:
-            status, certification = DiscoveryStatus.READY_FOR_DEEP_HANDOFF.value, "READY_FOR_DEEP_HANDOFF"
-        benchmark_returns = self._benchmark_returns(as_of)
-        bar_counter = getattr(self.market_data, "bar_calls", None)
-        if not isinstance(bar_counter, (int, float)):
-            bar_counter = len(bar_counter or [])
-        result = DiscoveryResult(run_id, status, certification, context, coverage,
-                                 DiscoveryMarketRegimeEngine().evaluate_with_benchmark_returns(feature_rows, benchmark_returns),
-                                 sectors, p1_candidates[:shortlist_n],
-                                 rejection_counts=universe["rejected"],
-                                 scanner_counts={scanner.name: sum(scanner.name in item.scanner_hits for item in feature_rows)
-                                                 for scanner in self.scanners},
-                                 api_telemetry={"quote_batches": int(quote_counter),
-                                                "bar_fetches": int(bar_counter),
-                                 "fundamental_calls": len(getattr(self.fundamental_provider, "calls", [])),
-                                                "capital_preflight_calls": len(getattr(self.capital_preflight_provider, "calls", [])),
-                                                "benchmark_tickers": sorted(benchmark_returns)},
-                                 all_candidates=ranked,
-                                 watch_candidates=[item.to_dict() for item in watch_candidates],
-                                 rejected_candidates=[item.to_dict() for item in rejected_candidates],
-                                 budget_status=budget.snapshot())
-        result.report_path = self._write_report(result)
-        if (not shadow and request is not None and self.handoff and
-                result.status == DiscoveryStatus.READY_FOR_DEEP_HANDOFF.value):
-            result.deep_analysis_results = self.deep_analyze(result, request, budget)
-            result.certified_candidates = [row for row in result.deep_analysis_results if row.get("certified")]
-            result.blocked_candidates = [row for row in result.deep_analysis_results if not row.get("certified")]
-            result.final_selection = final_selection(result.certified_candidates)
-            result.final_selection_status = "EXECUTABLE" if result.final_selection != "NONE" else "NONE"
-            result.final_selection_reason_codes = (["CERTIFIED_CHILD_SELECTED"] if result.final_selection != "NONE"
-                                                   else ["NO_CERTIFIED_CHILD"])
-            result.status = (DiscoveryStatus.COMPLETED.value if result.final_selection != "NONE"
-                             else DiscoveryStatus.FINAL_NONE.value)
-            result.budget_status = budget.snapshot()
-        result.report_path = self._write_report(result)
-        self.store.save_run(result, started, now_iso())
-        return result
-
-    def deep_analyze(self, result: DiscoveryResult, request, budget: DiscoveryBudgetGuard | None = None) -> list[dict[str, Any]]:
-        """Explicit non-shadow handoff through the existing analyze_request call path."""
-        limit = min(int(self.config.get("discovery", {}).get("shortlist", {}).get("deep_analysis_n", 3)),
-                    int(self.cost_limits.get("max_deep_analysis_candidates") or 10_000))
-        outputs = []
-        for candidate in result.candidates[:limit]:
-            if candidate.discovery_bucket != "P1_DEEP_ANALYSIS" or candidate.eligibility != "ELIGIBLE":
-                outputs.append({"ticker": candidate.security.ticker, "status": "BLOCKED",
-                                "reason_codes": ["NOT_P1_DEEP_ANALYSIS"], "certified": False})
-                continue
-            if budget and not budget.allow("max_child_analysis_runs"):
-                outputs.append({"ticker": candidate.security.ticker, "status": "BLOCKED",
-                                "reason_codes": ["MAX_CHILD_ANALYSIS_RUNS"], "certified": False})
-                continue
-            if budget and not budget.allow("max_llm_calls", 1):
-                outputs.append({"ticker": candidate.security.ticker, "status": "BLOCKED",
-                                "reason_codes": ["MAX_LLM_CALLS_PER_DISCOVERY"], "certified": False})
-                continue
-            preflight = self.evidence_preflight.evaluate(candidate)
-            if preflight["status"] != "READY":
-                candidate.risk_flags.extend(preflight["reason_codes"])
-                outputs.append({"ticker": candidate.security.ticker, "status": "BLOCKED",
-                                "certified": False, **preflight})
-                continue
-            child = self.handoff(make_child_request(request, candidate.security.ticker))
-            if budget:
-                budget.consume("max_child_analysis_runs")
-                budget.consume("max_llm_calls")
-            child_run_id = str(child.get("run_id", "")) if isinstance(child, dict) else ""
-            if child_run_id:
-                self.store.save_analysis_link(result.run_id, candidate.security.ticker, child_run_id, now_iso())
-                result.analysis_links.append({"ticker": candidate.security.ticker,
-                                              "analysis_run_id": child_run_id})
-            certification = child.get("certification") if isinstance(child, dict) else None
-            child_decision = getattr(child.get("decision"), "decision", None) if isinstance(child, dict) else None
-            child_risk = child.get("risk") if isinstance(child, dict) else None
-            certified = bool(getattr(certification, "certified", False)) and \
-                child_decision in {"BUY", "CONDITIONAL_BUY"} and \
-                bool(getattr(child_risk, "hard_filter_pass", False))
-            decision_obj = child.get("decision") if isinstance(child, dict) else None
-            risk_plan = getattr(child_risk, "trade_plan", None)
-            decision_plan = getattr(decision_obj, "trade_plan", None)
-            plan = decision_plan or risk_plan
-            rr = float(getattr(plan, "reward_risk", 0.0) or 0.0)
-            confidence = float(getattr(certification, "decision_confidence", None)
-                               or getattr(decision_obj, "confidence", 0) or 0)
-            entry_status = str(getattr(decision_obj, "entry_status", "UNKNOWN"))
-            research_obj = child.get("research") if isinstance(child, dict) else None
-            catalysts = getattr(research_obj, "catalysts", []) or []
-            child_scores = {
-                "catalyst_quality": min(100.0, len(catalysts) * 25.0),
-                "expectation_gap": confidence,
-                "entry_readiness": 100.0 if entry_status in {"READY", "CONDITIONAL", "READY_NOW"} else 0.0,
-                "capital_structure_safety": max(0.0, 100.0 - len(getattr(child_risk, "warnings", []) or []) * 20.0),
-                "reward_risk": min(100.0, max(0.0, rr * 20.0)),
-                "data_confidence": confidence,
-            }
-            outputs.append({"ticker": candidate.security.ticker, "status": "HANDOFF",
-                            "analysis_run_id": child_run_id, "certified": certified,
-                            "certification_status": getattr(certification, "certification_status", "UNKNOWN"),
-                            "decision": child_decision, "scores": child_scores,
-                            "entry_readiness": child_scores["entry_readiness"],
-                            "capital_structure_safety": child_scores["capital_structure_safety"],
-                            "reward_risk": rr, "data_confidence": confidence})
-        return outputs
-
-    @staticmethod
-    def _feature_ready(candidate) -> bool:
-        return candidate.fields.get("current_price") is not None and candidate.fields.get("bar_count") is not None and candidate.fields["bar_count"].known and (candidate.fields["bar_count"].value or 0) >= 20
-
-    @staticmethod
-    def _capital_preflight_ready(candidate) -> bool:
-        field = candidate.fields.get("capital_overhang_status")
-        return bool(field and field.known and str(field.value).upper() not in {"UNKNOWN", "HIGH_RISK"})
-
-    @staticmethod
-    def _fundamental_ready(candidate) -> bool:
-        field = candidate.fields.get("primary_financial_evidence")
-        return bool(field and field.known and field.value is True)
-
-    def _benchmark_returns(self, as_of: str) -> dict[str, float | None]:
-        provider = self.benchmark_provider
-        if not hasattr(provider, "benchmark_bars"):
-            return {}
-        try:
-            bars = provider.benchmark_bars(["SPY", "QQQ", "IWM"], as_of)
-        except Exception:
-            return {}
-        output: dict[str, float | None] = {}
-        for ticker, rows in bars.items():
-            usable = [row for row in rows if row.usable]
-            prices = [float(row.adjusted_close if row.adjusted_close is not None else row.close)
-                      for row in usable]
-            output[ticker] = round((prices[-1] / prices[-21] - 1) * 100, 4) if len(prices) > 20 else None
-        return output
-
-    def _empty_result(self, context, status: str, error_code: str) -> DiscoveryResult:
-        zero = CoverageMetrics(0, 0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0)
-        return DiscoveryResult(context.discovery_run_id, status, "BLOCKED_DATA", context, zero,
-                               {"regime": "UNKNOWN", "confidence": 0, "reasons": [error_code]}, [], [],
-                               error_code=error_code)
-
-    def _write_report(self, result: DiscoveryResult) -> str:
-        lines = ["# Discovery Report", "", f"- Run: `{result.run_id}`", f"- Status: `{result.status}`",
-                 f"- Certification: `{result.certification_status}`", f"- As-of: `{result.context.discovery_as_of}`",
-                 f"- Coverage: `{result.coverage.market_coverage_pct:.2f}% market / {result.coverage.feature_coverage_pct:.2f}% feature`",
-                 f"- Regime: `{result.regime.get('regime')}`", "", "## Pipeline", "",
-                 f"- Universe: `{result.coverage.eligible_universe_count}`",
-                 f"- Market data: `{result.coverage.market_data_loaded_count}`",
-                 f"- Feature ready: `{result.coverage.feature_ready_count}`",
-                 f"- Shortlist: `{len(result.candidates)}`", "", "## Candidates"]
-        for candidate in result.candidates:
-            lines.append(f"- `{candidate.security.ticker}` â€” {candidate.discovery_bucket} / {candidate.stage} / score={candidate.composite_score:.2f}; unknown={','.join(candidate.unknown_fields) or 'none'}")
-        if result.error_code:
-            lines.extend(["", f"## Block reason", "", f"`{result.error_code}`"])
-        path = write_run_report(self.config.get("report_dir", "data/reports"), "\n".join(lines), "DISCOVERY", result.run_id)
-        return str(path)
+                         anãx¶‰Ëkºwµç@€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€…¹…±åÍ¥Í}™¥¹¥Í¡•‘}…Ğõ…¹…±åÍ¥Í}™¥¹¥Í¡•‘}…Ğ°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€…ÑÕ…±}±±µ}…±±Ìõ¥¹Ğ¡ÕÍ…”¹•Ğ ‰±±µ}…±±Ìˆ°€À¤½È€À¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€…ÑÕ…±}½ÍÑ}ÕÍõ™±½…Ğ¡ÕÍ…”¹•Ğ ‰•ÍÑ¥µ…Ñ•‘}½ÍÑ}ÕÍˆ°€À¤½È€À¤¤(€€€€€€€€€€€€€€€É•ÍÕ±Ğ¹…¹…±åÍ¥Í}±¥¹­Ì¹…ÁÁ•¹¡ì‰Ñ¥­•Èˆè…¹‘¥‘…Ñ”¹Í•ÕÉ¥Ñä¹Ñ¥­•È°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰…¹…±åÍ¥Í}ÉÕ¹}¥ˆè¡¥±‘}ÉÕ¹}¥°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰…ÑÕ…±}±±µ}…±±Ìˆè¥¹Ğ¡ÕÍ…”¹•Ğ ‰±±µ}…±±Ìˆ°€À¤½È€À¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰…ÑÕ…±}½ÍÑ}ÕÍˆè™±½…Ğ¡ÕÍ…”¹•Ğ ‰•ÍÑ¥µ…Ñ•‘}½ÍÑ}ÕÍˆ°€À¤½È€À¥ô¤(€€€€€€€€€€€•ÉÑ¥™¥…Ñ¥½¸€ô¡¥±¹•Ğ ‰•ÉÑ¥™¥…Ñ¥½¸ˆ¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€€€€€¡¥±‘}‘•¥Í¥½¸€ô•Ñ…ÑÑÈ¡¡¥±¹•Ğ ‰‘•¥Í¥½¸ˆ¤°€‰‘•¥Í¥½¸ˆ°9½¹”¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€€€€€¡¥±‘}É¥Í¬€ô¡¥±¹•Ğ ‰É¥Í¬ˆ¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€€€€€•ÉÑ¥™¥•€ô‰½½°¡•Ñ…ÑÑÈ¡•ÉÑ¥™¥…Ñ¥½¸°€‰•ÉÑ¥™¥•ˆ°…±Í”¤¤…¹p(€€€€€€€€€€€€€€€¡¥±‘}‘•¥Í¥½¸¥¸ì‰	Udˆ°€‰=9%Q%=91}	Ud‰ô…¹p(€€€€€€€€€€€€€€€‰½½°¡•Ñ…ÑÑÈ¡¡¥±‘}É¥Í¬°€‰¡…É‘}™¥±Ñ•É}Á…ÍÌˆ°…±Í”¤¤(€€€€€€€€€€€‘•¥Í¥½¹}½‰¨€ô¡¥±¹•Ğ ‰‘•¥Í¥½¸ˆ¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€€€€€É¥Í­}Á±…¸€ô•Ñ…ÑÑÈ¡¡¥±‘}É¥Í¬°€‰ÑÉ…‘•}Á±…¸ˆ°9½¹”¤(€€€€€€€€€€€‘•¥Í¥½¹}Á±…¸€ô•Ñ…ÑÑÈ¡‘•¥Í¥½¹}½‰¨°€‰ÑÉ…‘•}Á±…¸ˆ°9½¹”¤(€€€€€€€€€€€Á±…¸€ô‘•¥Í¥½¹}Á±…¸½ÈÉ¥Í­}Á±…¸(€€€€€€€€€€€É•Í•…É¡}½‰¨€ô¡¥±¹•Ğ ‰É•Í•…É ˆ¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€€€€€¡¥±‘}Í½É•Ì°Í½É•}ÁÉ½Ù•¹…¹”€ôÍ•±˜¹}•ÉÑ¥™¥•‘}Í½É•…É¡¡¥±°É•Í•…É¡}½‰¨°¡¥±‘}ÉÕ¹}¥°É•ÍÕ±Ğ¹½¹Ñ•áĞ¹‘¥Í½Ù•Éå}…Í}½˜¤(€€€€€€€€€€€ÉÈ€ô•Ñ…ÑÑÈ¡Á±…¸°€‰É•İ…É‘}É¥Í¬ˆ°9½¹”¤¥˜Á±…¸¥Ì¹½Ğ9½¹”•±Í”9½¹”(€€€€€€€€€€€ÑÉ…‘•}Á±…¹}Ù…±¥€ô‰½½°¡Á±…¸¥Ì¹½Ğ9½¹”…¹ÉÈ¥Ì¹½Ğ9½¹”…¹™±½…Ğ¡ÉÈ¤€ø€À¤(€€€€€€€€€€€Õ¹É•Í½±Ù•€ô‰½½°¡•Ñ…ÑÑÈ¡•ÉÑ¥™¥…Ñ¥½¸°€‰É•ÅÕ¥É•‘}‘…Ñ…}™…¥±ÕÉ•Ìˆ°mt¤½È(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€•Ñ…ÑÑÈ¡•ÉÑ¥™¥…Ñ¥½¸°€‰¥µÁ½ÉÑ…¹Ñ}‘…Ñ…}İ…É¹¥¹Ìˆ°mt¤¤(€€€€€€€€€€€•ÉÑ¥™¥•€ô•ÉÑ¥™¥•…¹ÑÉ…‘•}Á±…¹}Ù…±¥…¹¹½ĞÕ¹É•Í½±Ù•(€€€€€€€€€€€½ÕÑÁÕÑÌ¹…ÁÁ•¹¡ì‰Ñ¥­•Èˆè…¹‘¥‘…Ñ”¹Í•ÕÉ¥Ñä¹Ñ¥­•È°€‰ÍÑ…ÑÕÌˆè€‰!9=ˆ°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰…¹…±åÍ¥Í}ÉÕ¹}¥ˆè¡¥±‘}ÉÕ¹}¥°€‰•ÉÑ¥™¥•ˆè•ÉÑ¥™¥•°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰•ÉÑ¥™¥…Ñ¥½¹}ÍÑ…ÑÕÌˆè•Ñ…ÑÑÈ¡•ÉÑ¥™¥…Ñ¥½¸°€‰•ÉÑ¥™¥…Ñ¥½¹}ÍÑ…ÑÕÌˆ°€‰U9-9=]8ˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰‘•¥Í¥½¸ˆè¡¥±‘}‘•¥Í¥½¸°€‰Í½É•Ìˆè¡¥±‘}Í½É•Ì°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½É•}ÁÉ½Ù•¹…¹”ˆèÍ½É•}ÁÉ½Ù•¹…¹”°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰É¥Í­}¡…É‘}™¥±Ñ•É}Á…ÍÌˆè‰½½°¡•Ñ…ÑÑÈ¡¡¥±‘}É¥Í¬°€‰¡…É‘}™¥±Ñ•É}Á…ÍÌˆ°…±Í”¤¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰ÑÉ…‘•}Á±…¹}Ù…±¥ˆèÑÉ…‘•}Á±…¹}Ù…±¥°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰µ…É­•Ñ}™É•Í ˆè‰½½°¡¡¥±¹•Ğ ‰µ…É­•Ñ}™É•Í ˆ°QÉÕ”¤¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”…±Í”°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰¹½}µ…Ñ•É¥…±}Õ¹É•Í½±Ù•‘}‰±½­•Èˆè¹½ĞÕ¹É•Í½±Ù•°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰É•İ…É‘}É¥Í¬ˆèÉÉô¤(€€€€€€€É•ÑÕÉ¸½ÕÑÁÕÑÌ((€€€‘•˜ÁÉ½µ½Ñ”¡Í•±˜°Í½ÕÉ•}ÉÕ¹}¥èÍÑÈ°É•ÅÕ•ÍĞ°±¥µ¥Ğè¥¹Ğ€ô€À¤€´ø¥Í½Ù•ÉåI•ÍÕ±Ğè(€€€€€€€€ˆˆ‰áÁ±¥¥Ñ±äÁÉ½µ½Ñ”„ÍÑ½É•Í¡…‘½ÜÉÕ¸ìÍ…¹Ì¹•Ù•È…±°Ñ¡¥ÌÁ…Ñ ¸ˆˆˆ(€€€€€€€Á…å±½…€ôÍ•±˜¹ÍÑ½É”¹±…Ñ•ÍĞ¡Í½ÕÉ•}ÉÕ¹}¥¤(€€€€€€€¥˜¹½ĞÁ…å±½…è(€€€€€€€€€€€É…¥Í”Y…±Õ•ÉÉ½È ‰%M=YIe}M=UI}IU9}9=Q}=U9ˆ¤(€€€€€€€É•ÍÕ±Ğ€ô¥Í½Ù•ÉåI•ÍÕ±Ğ¹™É½µ}‘¥Ğ¡Á…å±½…¤(€€€€€€€¥˜É•ÍÕ±Ğ¹ÍÑ…ÑÕÌ¥¸í¥Í½Ù•ÉåMÑ…ÑÕÌ¹	1=-}Q¹Ù…±Õ”°¥Í½Ù•ÉåMÑ…ÑÕÌ¹	1=-}=YI¹Ù…±Õ•ôè(€€€€€€€€€€€É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¹}É•…Í½¹}½‘•Ì€ôl‰M=UI}IU9}9=Q}=5A1Q‰t(€€€€€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ğ(€€€€€€€…Í}½˜€ô¹½İ}¥Í¼ ¤(€€€€€€€…¹‘¥‘…Ñ•Ì€ômt(€€€€€€€™½È…¹‘¥‘…Ñ”¥¸É•ÍÕ±Ğ¹…¹‘¥‘…Ñ•Ìè(€€€€€€€€€€€…±±½İ•°É•…Í½¸€ô…¹}ÁÉ½µ½Ñ”¡…¹‘¥‘…Ñ”¹Ñ½}‘¥Ğ ¤°…Í}½˜¤(€€€€€€€€€€€¥˜…¹‘¥‘…Ñ”¹‘¥Í½Ù•Éå}‰Õ­•Ğ€„ô€‰@Å}A}91eM%Lˆè(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ€ô€‰	1=-ˆ(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì€ôl‰9=Q}@Å}A}91eM%L‰t(€€€€€€€€€€€•±¥˜…¹‘¥‘…Ñ”¹•±¥¥‰¥±¥Ñä€„ô€‰1%%	1ˆè(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ€ô€‰	1=-ˆ(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì€ôl‰9=Q}1%%	1‰t(€€€€€€€€€€€•±¥˜…¹‘¥‘…Ñ”¹…Ñ•}É•ÍÕ±ÑÌ¹•Ğ ‰™Õ•±}…Ñ”ˆ¤€„ô€‰AMLˆè(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ€ô€‰	1=-ˆ(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì€ôl‰U1}Q}9=Q}AML‰t(€€€€€€€€€€€•±¥˜¹½ĞÍ•±˜¹}…Á¥Ñ…±}ÁÉ•™±¥¡Ñ}É•…‘ä¡…¹‘¥‘…Ñ”¤è(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ€ô€‰	1=-ˆ(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì€ôl‰A%Q1}AI1%!Q}9=Q}Id‰t(€€€€€€€€€€€•±¥˜¹½Ğ…±±½İ•è(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ€ô€‰	1=-ˆ(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì€ômÉ•…Í½¹t(€€€€€€€€€€€•±Í”è(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ€ô€‰Idˆ(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ”¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì€ôl‰AI=5=Q%=9}11=]‰t(€€€€€€€€€€€€€€€…¹‘¥‘…Ñ•Ì¹…ÁÁ•¹¡…¹‘¥‘…Ñ”¤(€€€€€€€±¥™•å±•}‰å}Ñ¥­•È€ôí…¹‘¥‘…Ñ”¹Í•ÕÉ¥Ñä¹Ñ¥­•Èè…¹‘¥‘…Ñ”™½È…¹‘¥‘…Ñ”¥¸É•ÍÕ±Ğ¹…¹‘¥‘…Ñ•Íô(€€€€€€€™½ÈÍ¹…ÁÍ¡½Ğ¥¸É•ÍÕ±Ğ¹…±±}…¹‘¥‘…Ñ•Ìè(€€€€€€€€€€€ÕÁ‘…Ñ•€ô±¥™•å±•}‰å}Ñ¥­•È¹•Ğ¡Í¹…ÁÍ¡½Ğ¹Í•ÕÉ¥Ñä¹Ñ¥­•È¤(€€€€€€€€€€€¥˜ÕÁ‘…Ñ•¥Ì¹½Ğ9½¹”è(€€€€€€€€€€€€€€€Í¹…ÁÍ¡½Ğ¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ€ôÕÁ‘…Ñ•¹ÁÉ½µ½Ñ¥½¹}ÍÑ…ÑÕÌ(€€€€€€€€€€€€€€€Í¹…ÁÍ¡½Ğ¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì€ô±¥ÍĞ¡ÕÁ‘…Ñ•¹ÁÉ½µ½Ñ¥½¹}É•…Í½¹}½‘•Ì¤(€€€€€€€É•ÍÕ±Ğ¹…¹‘¥‘…Ñ•Ì€ô…¹‘¥‘…Ñ•Ílé±¥µ¥Ğ½È±•¸¡…¹‘¥‘…Ñ•Ì¥t(€€€€€€€‰Õ‘•Ğ€ô¥Í½Ù•Éå	Õ‘•ÑÕ…É¡Í•±˜¹½ÍÑ}±¥µ¥ÑÌ¤(€€€€€€€É•ÍÕ±Ğ¹‘••Á}…¹…±åÍ¥Í}É•ÍÕ±ÑÌ€ôÍ•±˜¹‘••Á}…¹…±åé”¡É•ÍÕ±Ğ°É•ÅÕ•ÍĞ°‰Õ‘•Ğ¤(€€€€€€€É•ÍÕ±Ğ¹•ÉÑ¥™¥•‘}…¹‘¥‘…Ñ•Ì€ômÉ½Ü™½ÈÉ½Ü¥¸É•ÍÕ±Ğ¹‘••Á}…¹…±åÍ¥Í}É•ÍÕ±ÑÌ¥˜É½Ü¹•Ğ ‰•ÉÑ¥™¥•ˆ¥t(€€€€€€€É•ÍÕ±Ğ¹‰±½­•‘}…¹‘¥‘…Ñ•Ì€ômÉ½Ü™½ÈÉ½Ü¥¸É•ÍÕ±Ğ¹‘••Á}…¹…±åÍ¥Í}É•ÍÕ±ÑÌ¥˜¹½ĞÉ½Ü¹•Ğ ‰•ÉÑ¥™¥•ˆ¥t(€€€€€€€É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¸€ô™¥¹…±}Í•±•Ñ¥½¸¡É•ÍÕ±Ğ¹•ÉÑ¥™¥•‘}…¹‘¥‘…Ñ•Ì°Í•±˜¹}Á½ÉÑ™½±¥½}½¹Ñ•áĞ ¤¤(€€€€€€€É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¹}ÍÑ…ÑÕÌ€ô€‰aUQ	1ˆ¥˜É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¸€„ô€‰9=9ˆ•±Í”€‰9=9ˆ(€€€€€€€É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¹}É•…Í½¹}½‘•Ì€ô€¡l‰IQ%%}!%1}M1Q‰t¥˜É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¸€„ô€‰9=9ˆ(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€•±Í”l‰9=}IQ%%}!%1‰t¤(€€€€€€€É•ÍÕ±Ğ¹‘••Á}¡…¹‘½™™}ÍÑ…ÑÕÌ€ô€‰A}!9=}Idˆ¥˜É•ÍÕ±Ğ¹‘••Á}…¹…±åÍ¥Í}É•ÍÕ±ÑÌ•±Í”€‰	==QMQIA}IEU%Iˆ(€€€€€€€É•ÍÕ±Ğ¹‰Õ‘•Ñ}ÍÑ…ÑÕÌ€ô‰Õ‘•Ğ¹Í¹…ÁÍ¡½Ğ ¤(€€€€€€€µ•…ÍÕÉ•€ô‰Õ‘•Ğ¹µ•…ÍÕÉ• ¤(€€€€€€€É•ÍÕ±Ğ¹…ÑÕ…±}±±µ}…±±Ì€ô¥¹Ğ¡µ•…ÍÕÉ•‘l‰…ÑÕ…±}±±µ}…±±Ì‰t¤(€€€€€€€É•ÍÕ±Ğ¹…ÑÕ…±}¥¹ÁÕÑ}Ñ½­•¹Ì€ô¥¹Ğ¡µ•…ÍÕÉ•‘l‰…ÑÕ…±}¥¹ÁÕÑ}Ñ½­•¹Ì‰t¤(€€€€€€€É•ÍÕ±Ğ¹…ÑÕ…±}½ÕÑÁÕÑ}Ñ½­•¹Ì€ô¥¹Ğ¡µ•…ÍÕÉ•‘l‰…ÑÕ…±}½ÕÑÁÕÑ}Ñ½­•¹Ì‰t¤(€€€€€€€É•ÍÕ±Ğ¹…ÑÕ…±}½ÍÑ}ÕÍ€ô™±½…Ğ¡µ•…ÍÕÉ•‘l‰…ÑÕ…±}½ÍÑ}ÕÍ‰t¤(€€€€€€€É•ÍÕ±Ğ¹ÍÑ…ÑÕÌ€ô¥Í½Ù•ÉåMÑ…ÑÕÌ¹=5A1Q¹Ù…±Õ”¥˜É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¸€„ô€‰9=9ˆ•±Í”¥Í½Ù•ÉåMÑ…ÑÕÌ¹%91}9=9¹Ù…±Õ”(€€€€€€€Í•±˜¹ÍÑ½É”¹Í…Ù•}ÉÕ¸¡É•ÍÕ±Ğ°É•ÍÕ±Ğ¹½¹Ñ•áĞ¹‘¥Í½Ù•Éå}…Í}½˜°¹½İ}¥Í¼ ¤¤(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ğ((€€€‘•˜}Á½ÉÑ™½±¥½}½¹Ñ•áĞ¡Í•±˜¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€ÑÉäè(€€€€€€€€€€€ÍÑ…Ñ”€ôÍ•±˜¹‘…Ñ…‰…Í”¹Á…Á•É}…½Õ¹Ñ}ÍÑ…Ñ” ¤(€€€€€€€•á•ÁĞá•ÁÑ¥½¸è(€€€€€€€€€€€É•ÑÕÉ¸íô(€€€€€€€É•ÑÕÉ¸ì‰É•µ…¥¹¥¹}É¥Í­}‰Õ‘•Ñ}ÕÍˆèµ…à À¸À°™±½…Ğ¡ÍÑ…Ñ”¹•Ğ ‰É¥Í­}‰Õ‘•Ğˆ°€À¤¤€´(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€™±½…Ğ¡ÍÑ…Ñ”¹•Ğ ‰Á½ÉÑ™½±¥½}É¥Í­}ÕÍ•ˆ°€À¤¤¤°(€€€€€€€€€€€€€€€€‰•á¥ÍÑ¥¹}Í•Ñ½É}•áÁ½ÍÕÉ•}ÁĞˆèíô°(€€€€€€€€€€€€€€€€‰•á¥ÍÑ¥¹}Ñ¥­•É}•áÁ½ÍÕÉ•}ÁĞˆèíõô((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}±±µ}‰Õ‘•Ñ}…±±½İÌ¡‰Õ‘•Ğè¥Í½Ù•Éå	Õ‘•ÑÕ…É¤€´ø‰½½°è(€€€€€€€¥˜€‰µ…á}…ÑÕ…±}±±µ}…±±Ìˆ¥¸‰Õ‘•Ğ¹±¥µ¥ÑÌè(€€€€€€€€€€€¥˜¹½Ğ‰Õ‘•Ğ¹…±±½İ}ÕÍ…” ‰µ…á}…ÑÕ…±}±±µ}…±±Ìˆ°€‰…ÑÕ…±}±±µ}…±±Ìˆ°€Ä¤è(€€€€€€€€€€€€€€€É•ÑÕÉ¸…±Í”(€€€€€€€€€€€™½È±¥µ¥Ñ}¹…µ”°ÕÍ…•}¹…µ”¥¸€ (€€€€€€€€€€€€€€€€ ‰µ…á}…ÑÕ…±}¥¹ÁÕÑ}Ñ½­•¹Ìˆ°€‰…ÑÕ…±}¥¹ÁÕÑ}Ñ½­•¹Ìˆ¤°(€€€€€€€€€€€€€€€€ ‰µ…á}…ÑÕ…±}½ÕÑÁÕÑ}Ñ½­•¹Ìˆ°€‰…ÑÕ…±}½ÕÑÁÕÑ}Ñ½­•¹Ìˆ¤°(€€€€€€€€€€€€€€€€ ‰µ…á}…ÑÕ…±}½ÍÑ}ÕÍˆ°€‰…ÑÕ…±}½ÍÑ}ÕÍˆ¤°(€€€€€€€€€€€€¤è(€€€€€€€€€€€€€€€±¥µ¥Ğ€ô‰Õ‘•Ğ¹±¥µ¥ÑÌ¹•Ğ¡±¥µ¥Ñ}¹…µ”¤(€€€€€€€€€€€€€€€¥˜±¥µ¥Ğ¥Ì¹½Ğ9½¹”…¹€¡±¥µ¥Ğ€ğô€À½È‰Õ‘•Ğ¹ÕÍ•¹•Ğ¡ÕÍ…•}¹…µ”°€À¤€øô±¥µ¥Ğ¤è(€€€€€€€€€€€€€€€€€€€É•ÑÕÉ¸…±Í”(€€€€€€€€€€€É•ÑÕÉ¸QÉÕ”(€€€€€€€É•ÑÕÉ¸‰Õ‘•Ğ¹…±±½Ü ‰µ…á}±±µ}…±±Ìˆ°€Ä¤((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}•ÉÑ¥™¥•‘}Í½É•…É¡¡¥±è‘¥ÑmÍÑÈ°¹åt°É•Í•…É¡}½‰¨è¹ä°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€Í½ÕÉ•}ÉÕ¹}¥èÍÑÈ°Í½ÕÉ•}…Í}½˜èÍÑÈ¤€´øÑÕÁ±•m‘¥ÑmÍÑÈ°¹åt°‘¥ÑmÍÑÈ°¹åutè(€€€€€€€€ˆˆ‰½Áä…ÑÕ…°Í½É•…ÉÙ…±Õ•Ììµ¥ÍÍ¥¹œ…á•ÌÍÑ…ä…‰Í•¹Ğ½U9-9=]8¸ˆˆˆ(€€€€€€€Í½É•}‘•Ñ…¥±Ì€ô•Ñ…ÑÑÈ¡É•Í•…É¡}½‰¨°€‰Í½É•}‘•Ñ…¥±Ìˆ°íô¤½Èíô(€€€€€€€Í½É•Ìè‘¥ÑmÍÑÈ°¹åt€ôíô(€€€€€€€ÁÉ½Ù•¹…¹”è‘¥ÑmÍÑÈ°¹åt€ôíô(€€€€€€€¥˜É•Í•…É¡}½‰¨¥Ì¹½Ğ9½¹”è(€€€€€€€€€€€™½È…á¥Ì¥¸€ ‰Í¥¹…±}ÍÑÉ•¹Ñ ˆ°€‰…Ñ…±åÍÑ}ÅÕ…±¥Ñäˆ°€‰•áÁ•Ñ…Ñ¥½¹}…Àˆ°€‰ÍÕÉ•}•±…ÍÑ¥¥Ñäˆ°(€€€€€€€€€€€€€€€€€€€€€€€€€‰•¹ÑÉå}É•…‘¥¹•ÍÌˆ°€‰ÍÑÉ…Ñ•å}™¥Ğˆ¤è(€€€€€€€€€€€€€€€É…Ü€ô•Ñ…ÑÑÈ¡É•Í•…É¡}½‰¨°…á¥Ì°9½¹”¤(€€€€€€€€€€€€€€€¥˜É…Ü¥Ì¹½Ğ9½¹”è(€€€€€€€€€€€€€€€€€€€Í½É•Ím…á¥Ít€ô™±½…Ğ¡É…Ü¤(€€€€€€€€€€€€€€€€€€€ÁÉ½Ù•¹…¹•m…á¥Ít€ôì‰Í½ÕÉ•}ÉÕ¹}¥ˆèÍ½ÕÉ•}ÉÕ¹}¥°€‰Í½ÕÉ•}½µÁ½¹•¹Ğˆè€‰IMI ˆ°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™¥•±ˆè…á¥Ì°€‰Í½ÕÉ•}…Í}½˜ˆèÍ½ÕÉ•}…Í}½™ô(€€€€€€€€€€€™½È…á¥Ì¥¸€ ‰…Á¥Ñ…±}ÍÑÉÕÑÕÉ•}Í…™•Ñäˆ°€‰‘…Ñ…}½¹™¥‘•¹”ˆ¤è(€€€€€€€€€€€€€€€‘•Ñ…¥°€ôÍ½É•}‘•Ñ…¥±Ì¹•Ğ¡…á¥Ì¤(€€€€€€€€€€€€€€€¥˜¥Í¥¹ÍÑ…¹”¡‘•Ñ…¥°°‘¥Ğ¤…¹‘•Ñ…¥°¹•Ğ ‰Ù…±Õ”ˆ¤¥Ì¹½Ğ9½¹”è(€€€€€€€€€€€€€€€€€€€Í½É•Ím…á¥Ít€ô™±½…Ğ¡‘•Ñ…¥±l‰Ù…±Õ”‰t¤(€€€€€€€€€€€€€€€€€€€ÁÉ½Ù•¹…¹•m…á¥Ít€ôì‰Í½ÕÉ•}ÉÕ¹}¥ˆèÍ½ÕÉ•}ÉÕ¹}¥°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}½µÁ½¹•¹Ğˆè‘•Ñ…¥°¹•Ğ ‰Í½ÕÉ•}½µÁ½¹•¹Ğˆ°€‰IMI!}M=IIˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™¥•±ˆè‘•Ñ…¥°¹•Ğ ‰Í½ÕÉ•}™¥•±ˆ°…á¥Ì¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆè‘•Ñ…¥°¹•Ğ ‰Í½ÕÉ•}…Í}½˜ˆ°Í½ÕÉ•}…Í}½˜¥ô(€€€€€€€‘•¥Í¥½¸€ô¡¥±¹•Ğ ‰‘•¥Í¥½¸ˆ¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€Á±…¸€ô•Ñ…ÑÑÈ¡¡¥±¹•Ğ ‰É¥Í¬ˆ¤°€‰ÑÉ…‘•}Á±…¸ˆ°9½¹”¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€Á±…¸€ô•Ñ…ÑÑÈ¡‘•¥Í¥½¸°€‰ÑÉ…‘•}Á±…¸ˆ°9½¹”¤½ÈÁ±…¸(€€€€€€€¥˜Á±…¸¥Ì¹½Ğ9½¹”…¹•Ñ…ÑÑÈ¡Á±…¸°€‰É•İ…É‘}É¥Í¬ˆ°9½¹”¤¥Ì¹½Ğ9½¹”è(€€€€€€€€€€€Í½É•Íl‰É•İ…É‘}É¥Í¬‰t€ô™±½…Ğ¡Á±…¸¹É•İ…É‘}É¥Í¬¤(€€€€€€€€€€€ÁÉ½Ù•¹…¹•l‰É•İ…É‘}É¥Í¬‰t€ôì‰Í½ÕÉ•}ÉÕ¹}¥ˆèÍ½ÕÉ•}ÉÕ¹}¥°€‰Í½ÕÉ•}½µÁ½¹•¹Ğˆè€‰QI}A18ˆ°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™¥•±ˆè€‰É•İ…É‘}É¥Í¬ˆ°€‰Í½ÕÉ•}…Í}½˜ˆèÍ½ÕÉ•}…Í}½™ô(€€€€€€€•ÉÑ¥™¥…Ñ¥½¸€ô¡¥±¹•Ğ ‰•ÉÑ¥™¥…Ñ¥½¸ˆ¤¥˜¥Í¥¹ÍÑ…¹”¡¡¥±°‘¥Ğ¤•±Í”9½¹”(€€€€€€€¥˜•Ñ…ÑÑÈ¡•ÉÑ¥™¥…Ñ¥½¸°€‰‘•¥Í¥½¹}½¹™¥‘•¹”ˆ°9½¹”¤¥Ì¹½Ğ9½¹”è(€€€€€€€€€€€Í½É•Íl‰‘•¥Í¥½¹}½¹™¥‘•¹”‰t€ô™±½…Ğ¡•ÉÑ¥™¥…Ñ¥½¸¹‘•¥Í¥½¹}½¹™¥‘•¹”¤(€€€€€€€€€€€ÁÉ½Ù•¹…¹•l‰‘•¥Í¥½¹}½¹™¥‘•¹”‰t€ôì‰Í½ÕÉ•}ÉÕ¹}¥ˆèÍ½ÕÉ•}ÉÕ¹}¥°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}½µÁ½¹•¹Ğˆè€‰IQ%%Q%=8ˆ°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™¥•±ˆè€‰‘•¥Í¥½¹}½¹™¥‘•¹”ˆ°€‰Í½ÕÉ•}…Í}½˜ˆèÍ½ÕÉ•}…Í}½™ô(€€€€€€€É•ÑÕÉ¸Í½É•Ì°ÁÉ½Ù•¹…¹”((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}™•…ÑÕÉ•}É•…‘ä¡…¹‘¥‘…Ñ”¤€´ø‰½½°è(€€€€€€€É•ÑÕÉ¸…¹‘¥‘…Ñ”¹™¥•±‘Ì¹•Ğ ‰ÕÉÉ•¹Ñ}ÁÉ¥”ˆ¤¥Ì¹½Ğ9½¹”…¹…¹‘¥‘…Ñ”¹™¥•±‘Ì¹•Ğ ‰‰…É}½Õ¹Ğˆ¤¥Ì¹½Ğ9½¹”…¹…¹‘¥‘…Ñ”¹™¥•±‘Íl‰‰…É}½Õ¹Ğ‰t¹­¹½İ¸…¹€¡…¹‘¥‘…Ñ”¹™¥•±‘Íl‰‰…É}½Õ¹Ğ‰t¹Ù…±Õ”½È€À¤€øô€ÈÀ((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}…Á¥Ñ…±}ÁÉ•™±¥¡Ñ}É•…‘ä¡…¹‘¥‘…Ñ”¤€´ø‰½½°è(€€€€€€€™¥•±€ô…¹‘¥‘…Ñ”¹™¥•±‘Ì¹•Ğ ‰…Á¥Ñ…±}½Ù•É¡…¹}ÍÑ…ÑÕÌˆ¤(€€€€€€€É•ÑÕÉ¸‰½½°¡™¥•±…¹™¥•±¹­¹½İ¸…¹ÍÑÈ¡™¥•±¹Ù…±Õ”¤¹ÕÁÁ•È ¤¹½Ğ¥¸ì‰U9-9=]8ˆ°€‰!%!}I%M,‰ô¤((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}™Õ¹‘…µ•¹Ñ…±}É•…‘ä¡…¹‘¥‘…Ñ”¤€´ø‰½½°è(€€€€€€€™¥•±€ô…¹‘¥‘…Ñ”¹™¥•±‘Ì¹•Ğ ‰ÁÉ¥µ…Éå}™¥¹…¹¥…±}•Ù¥‘•¹”ˆ¤(€€€€€€€É•ÑÕÉ¸‰½½°¡™¥•±…¹™¥•±¹­¹½İ¸…¹™¥•±¹Ù…±Õ”¥ÌQÉÕ”¤((€€€‘•˜}‰•¹¡µ…É­}É•ÑÕÉ¹Ì¡Í•±˜°…Í}½˜èÍÑÈ¤€´ø‘¥ÑmÍÑÈ°™±½…Ğğ9½¹•tè(€€€€€€€ÁÉ½Ù¥‘•È€ôÍ•±˜¹‰•¹¡µ…É­}ÁÉ½Ù¥‘•È(€€€€€€€¥˜¹½Ğ¡…Í…ÑÑÈ¡ÁÉ½Ù¥‘•È°€‰‰•¹¡µ…É­}‰…ÉÌˆ¤è(€€€€€€€€€€€É•ÑÕÉ¸íô(€€€€€€€ÑÉäè(€€€€€€€€€€€‰…ÉÌ€ôÁÉ½Ù¥‘•È¹‰•¹¡µ…É­}‰…ÉÌ¡l‰MAdˆ°€‰EEDˆ°€‰%]4‰t°…Í}½˜¤(€€€€€€€•á•ÁĞá•ÁÑ¥½¸è(€€€€€€€€€€€É•ÑÕÉ¸íô(€€€€€€€½ÕÑÁÕĞè‘¥ÑmÍÑÈ°™±½…Ğğ9½¹•t€ôíô(€€€€€€€™½ÈÑ¥­•È°É½İÌ¥¸‰…ÉÌ¹¥Ñ•µÌ ¤è(€€€€€€€€€€€ÕÍ…‰±”€ômÉ½Ü™½ÈÉ½Ü¥¸É½İÌ¥˜É½Ü¹ÕÍ…‰±•t(€€€€€€€€€€€ÁÉ¥•Ì€ôm™±½…Ğ¡É½Ü¹…‘©ÕÍÑ•‘}±½Í”¥˜É½Ü¹…‘©ÕÍÑ•‘}±½Í”¥Ì¹½Ğ9½¹”•±Í”É½Ü¹±½Í”¤(€€€€€€€€€€€€€€€€€€€€€™½ÈÉ½Ü¥¸ÕÍ…‰±•t(€€€€€€€€€€€½ÕÑÁÕÑmÑ¥­•Ét€ôÉ½Õ¹ ¡ÁÉ¥•Íl´Åt€¼ÁÉ¥•Íl´ÈÅt€´€Ä¤€¨€ÄÀÀ°€Ğ¤¥˜±•¸¡ÁÉ¥•Ì¤€ø€ÈÀ•±Í”9½¹”(€€€€€€€É•ÑÕÉ¸½ÕÑÁÕĞ((€€€‘•˜}•µÁÑå}É•ÍÕ±Ğ¡Í•±˜°½¹Ñ•áĞ°ÍÑ…ÑÕÌèÍÑÈ°•ÉÉ½É}½‘”èÍÑÈ¤€´ø¥Í½Ù•ÉåI•ÍÕ±Ğè(€€€€€€€é•É¼€ô½Ù•É…•5•ÑÉ¥Ì À°€À°€À°€À°€À°€À¸À°€À¸À°€À¸À°€À¸À¤(€€€€€€€É•ÑÕÉ¸¥Í½Ù•ÉåI•ÍÕ±Ğ¡½¹Ñ•áĞ¹‘¥Í½Ù•Éå}ÉÕ¹}¥°ÍÑ…ÑÕÌ°€‰	1=-}Qˆ°½¹Ñ•áĞ°é•É¼°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ì‰É•¥µ”ˆè€‰U9-9=]8ˆ°€‰½¹™¥‘•¹”ˆè€À°€‰É•…Í½¹Ìˆèm•ÉÉ½É}½‘•uô°mt°mt°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€•ÉÉ½É}½‘”õ•ÉÉ½É}½‘”¤((€€€‘•˜}İÉ¥Ñ•}É•Á½ÉĞ¡Í•±˜°É•ÍÕ±Ğè¥Í½Ù•ÉåI•ÍÕ±Ğ¤€´øÍÑÈè(€€€€€€€±¥¹•Ì€ôlˆŒ¥Í½Ù•ÉäI•Á½ÉĞˆ°€ˆˆ°˜ˆ´IÕ¸èíÉ•ÍÕ±Ğ¹ÉÕ¹}¥‘õ€ˆ°˜ˆ´MÑ…ÑÕÌèíÉ•ÍÕ±Ğ¹ÍÑ…ÑÕÍõ€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´•ÉÑ¥™¥…Ñ¥½¸èíÉ•ÍÕ±Ğ¹•ÉÑ¥™¥…Ñ¥½¹}ÍÑ…ÑÕÍõ€ˆ°˜ˆ´Ìµ½˜èíÉ•ÍÕ±Ğ¹½¹Ñ•áĞ¹‘¥Í½Ù•Éå}…Í}½™õ€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´5…É­•ĞÍ…¸èíÉ•ÍÕ±Ğ¹µ…É­•Ñ}Í…¹}ÍÑ…ÑÕÍõ€€¼•¹É¥¡µ•¹ĞèíÉ•ÍÕ±Ğ¹•¹É¥¡µ•¹Ñ}ÍÑ…ÑÕÍõ€€¼‘••À¡…¹‘½™˜èíÉ•ÍÕ±Ğ¹‘••Á}¡…¹‘½™™}ÍÑ…ÑÕÍõ€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´½Ù•É…”èíÉ•ÍÕ±Ğ¹½Ù•É…”¹µ…É­•Ñ}½Ù•É…•}ÁĞè¸É™ô”µ…É­•Ğ€¼íÉ•ÍÕ±Ğ¹½Ù•É…”¹™•…ÑÕÉ•}½Ù•É…•}ÁĞè¸É™ô”™•…ÑÕÉ”€¼íÉ•ÍÕ±Ğ¹½Ù•É…”¹™Õ¹‘…µ•¹Ñ…±}•¹É¥¡µ•¹Ñ}½Ù•É…•}ÁĞè¸É™ô”™Õ¹‘…µ•¹Ñ…°€¼íÉ•ÍÕ±Ğ¹½Ù•É…”¹…Á¥Ñ…±}ÁÉ•™±¥¡Ñ}½Ù•É…•}ÁĞè¸É™ô”…Á¥Ñ…±€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´%‘•¹Ñ¥Ñä½M•Ñ½ÈèíÉ•ÍÕ±Ğ¹½Ù•É…”¹¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁĞè¸É™ô”€¼íÉ•ÍÕ±Ğ¹½Ù•É…”¹Í•Ñ½É}½Ù•É…•}ÁĞè¸É™ô•€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´I•¥µ”èíÉ•ÍÕ±Ğ¹É•¥µ”¹•Ğ É•¥µ”œ¥õ€ˆ°€ˆˆ°€ˆŒŒA¥Á•±¥¹”ˆ°€ˆˆ°(€€€€€€€€€€€€€€€€˜ˆ´U¹¥Ù•ÉÍ”…•ÁÑ•èíÉ•ÍÕ±Ğ¹½Ù•É…”¹•±¥¥‰±•}Õ¹¥Ù•ÉÍ•}½Õ¹Ñõ€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´5…É­•Ğ‘…Ñ„èíÉ•ÍÕ±Ğ¹½Ù•É…”¹µ…É­•Ñ}‘…Ñ…}±½…‘•‘}½Õ¹Ñõ€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´•…ÑÕÉ”É•…‘äèíÉ•ÍÕ±Ğ¹½Ù•É…”¹™•…ÑÕÉ•}É•…‘å}½Õ¹Ñõ€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´@Äèí±•¸¡É•ÍÕ±Ğ¹…¹‘¥‘…Ñ•Ì¥õ€€¼@Èèí±•¸¡m¥Ñ•´™½È¥Ñ•´¥¸É•ÍÕ±Ğ¹…±±}…¹‘¥‘…Ñ•Ì¥˜¥Ñ•´¹‘¥Í½Ù•Éå}‰Õ­•Ğ€ôô€@É}M=9Idt¥õ€€¼]…Ñ èí±•¸¡É•ÍÕ±Ğ¹İ…Ñ¡}…¹‘¥‘…Ñ•Ì¥õ€€¼I•©•Ñ•èí±•¸¡É•ÍÕ±Ğ¹É•©•Ñ•‘}…¹‘¥‘…Ñ•Ì¥õ€ˆ°(€€€€€€€€€€€€€€€€˜ˆ´ÑÕ…°114èíÉ•ÍÕ±Ğ¹…ÑÕ…±}±±µ}…±±Íõ€…±±Ì€¼íÉ•ÍÕ±Ğ¹…ÑÕ…±}¥¹ÁÕÑ}Ñ½­•¹Íõ€¥¹ÁÕĞ€¼íÉ•ÍÕ±Ğ¹…ÑÕ…±}½ÕÑÁÕÑ}Ñ½­•¹Íõ€½ÕÑÁÕĞ€¼€‘íÉ•ÍÕ±Ğ¹…ÑÕ…±}½ÍÑ}ÕÍè¸Ñ™õ€ˆ°(€€€€€€€€€€€€€€€€€ˆˆ°€ˆŒŒ…¹‘¥‘…Ñ•Ì‰t(€€€€€€€™½È…¹‘¥‘…Ñ”¥¸É•ÍÕ±Ğ¹…¹‘¥‘…Ñ•Ìè(€€€€€€€€€€€±¥¹•Ì¹…ÁÁ•¹¡˜ˆ´í…¹‘¥‘…Ñ”¹Í•ÕÉ¥Ñä¹Ñ¥­•Éõ€ƒŠPí…¹‘¥‘…Ñ”¹‘¥Í½Ù•Éå}‰Õ­•Ñô€¼í…¹‘¥‘…Ñ”¹ÍÑ…•ô€¼Í½É”õí…¹‘¥‘…Ñ”¹½µÁ½Í¥Ñ•}Í½É”è¸É™ôìÕ¹­¹½İ¸õìœ°œ¹©½¥¸¡…¹‘¥‘…Ñ”¹Õ¹­¹½İ¹}™¥•±‘Ì¤½È€¹½¹”ôˆ¤(€€€€€€€±¥¹•Ì¹•áÑ•¹¡lˆˆ°€ˆŒŒ¥¹…°ˆ°€ˆˆ°˜ˆ´¥¹…°Í•±•Ñ¥½¸èíÉ•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¹õ€ˆ°(€€€€€€€€€€€€€€€€€€€€€˜ˆ´¥¹…°ÍÑ…ÑÕÌèíÉ•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¹}ÍÑ…ÑÕÍõ€ˆ°(€€€€€€€€€€€€€€€€€€€€€˜ˆ´I•…Í½¹Ìèìœ°œ¹©½¥¸¡É•ÍÕ±Ğ¹™¥¹…±}Í•±•Ñ¥½¹}É•…Í½¹}½‘•Ì¤½È€¹½¹”õ€‰t¤(€€€€€€€¥˜É•ÍÕ±Ğ¹•ÉÉ½É}½‘”è(€€€€€€€€€€€±¥¹•Ì¹•áÑ•¹¡lˆˆ°˜ˆŒŒ	±½¬É•…Í½¸ˆ°€ˆˆ°˜‰íÉ•ÍÕ±Ğ¹•ÉÉ½É}½‘•õ€‰t¤(€€€€€€€Á…Ñ €ôİÉ¥Ñ•}ÉÕ¹}É•Á½ÉĞ¡Í•±˜¹½¹™¥œ¹•Ğ ‰É•Á½ÉÑ}‘¥Èˆ°€‰‘…Ñ„½É•Á½ÉÑÌˆ¤°€‰q¸ˆ¹©½¥¸¡±¥¹•Ì¤°€‰%M=YIdˆ°É•ÍÕ±Ğ¹ÉÕ¹}¥¤(€€€€€€€É•ÑÕÉ¸ÍÑÈ¡Á…Ñ ¤(

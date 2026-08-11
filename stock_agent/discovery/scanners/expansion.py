@@ -21,10 +21,10 @@ class _FieldsScanner(_CoreScanner):
 
 
 class TurnaroundScanner(_FieldsScanner):
-    name, required, family = "TURNAROUND", ("revenue_growth_acceleration", "margin_delta", "operating_cash_flow"), "FUNDAMENTAL"
+    name, required, family = "TURNAROUND", ("revenue_growth_acceleration_pp", "gross_margin_delta_pp", "operating_cash_flow_current"), "FUNDAMENTAL"
 
     def _hit(self, candidate):
-        hit = value(candidate, "revenue_growth_acceleration") >= 0 and value(candidate, "margin_delta") > 0 and value(candidate, "operating_cash_flow") >= 0
+        hit = value(candidate, "revenue_growth_acceleration_pp") >= 0 and value(candidate, "gross_margin_delta_pp") > 0 and value(candidate, "operating_cash_flow_current") >= 0
         return hit, "TURNAROUND_REAL" if hit else "TURNAROUND_FAKE_OR_INCOMPLETE"
 
 

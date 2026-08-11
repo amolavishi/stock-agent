@@ -28,4 +28,5 @@ class EvidencePreflight:
 def make_child_request(request, ticker: str):
     return replace(request, request_id=f"{request.request_id}:DISCOVERY:{ticker}",
                    discord_message_id=f"{request.discord_message_id}:DISCOVERY:{ticker}",
-                   intent="ANALYZE", tickers=[ticker], paper_action_enabled=False)
+                   intent="ANALYZE", tickers=[ticker], paper_action_enabled=False,
+                   need_debate=True, need_report=True, shadow=False)

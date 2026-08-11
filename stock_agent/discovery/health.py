@@ -11,8 +11,10 @@ def _sample_tickers(records, limit: int = 3) -> list[str]:
 
 def bootstrap_health(database, security_master=None, market_data=None,
                      benchmark_provider=None, min_accepted: int = 1,
-                     min_identity_pct: float = 95.0,
-                     min_sector_pct: float = 90.0) -> dict:
+                     min_identity_coverage_pct: float = 95.0,
+                     min_sector_coverage_pct: float = 90.0,
+                     fundamental_provider=None, capital_preflight_provider=None,
+                     max_actual_llm_calls: int = 0) -> dict:
     """Run a real, small bootstrap smoke instead of checking provider classes.
 
     A provider with no validated identity/sector coverage is intentionally reported
@@ -25,6 +27,8 @@ def bootstrap_health(database, security_master=None, market_data=None,
         "market_data": False,
         "daily_bar_cache": False,
         "benchmark_data": False,
+        "fundamental_data": False,
+        "capital_preflight_data": False,
         "status": "FAILED",
     }
     reason_codes: list[str] = []
@@ -57,14 +61,14 @@ def bootstrap_health(database, security_master=None, market_data=None,
     checks["security_master"] = (
         universe_health["raw_count"] > 0
         and universe_health["accepted_count"] >= min_accepted
-        and universe_health["identity_coverage_pct"] >= min_identity_pct
-        and universe_health["sector_coverage_pct"] >= min_sector_pct
+        and universe_health["identity_coverage_pct"] >= min_identity_coverage_pct
+        and universe_health["sector_coverage_pct"] >= min_sector_coverage_pct
     )
     if not records:
         reason_codes.append("UNIVERSE_EMPTY")
     elif universe_health["accepted_count"] == 0:
         reason_codes.append("IDENTITY_ENRICHMENT_MISSING")
-    if universe_health["sector_coverage_pct"] < min_sector_pct:
+    if universe_health["sector_coverage_pct"] < min_sector_coverage_pct:
         reason_codes.append("SECTOR_ENRICHMENT_INSUFFICIENT")
 
     tickers = _sample_tickers(records)
@@ -101,9 +105,48 @@ def bootstrap_health(database, security_master=None, market_data=None,
     else:
         reason_codes.append("BENCHMARK_PROVIDER_MISSING")
 
-    checks["status"] = "DISCOVERY_READY" if all(
+    market_ready = all(
         checks[key] for key in ("schema", "security_master", "market_data", "daily_bar_cache", "benchmark_data")
-    ) else "BOOTSTRAP_REQUIRED"
+    )
+
+    if market_ready and fundamental_provider is not None and tickers and hasattr(fundamental_provider, "fundamentals"):
+        try:
+            fundamental_sample = fundamental_provider.fundamentals(tickers, as_of)
+            checks["fundamental_data"] = bool(fundamental_sample) and any(
+                getattr((fields or {}).get("primary_financial_evidence"), "known", False)
+                and (fields or {}).get("primary_financial_evidence").value is True
+                for fields in fundamental_sample.values())
+            if not checks["fundamental_data"]:
+                reason_codes.append("FUNDAMENTAL_SAMPLE_EMPTY")
+        except Exception:
+            reason_codes.append("FUNDAMENTAL_SAMPLE_FAILED")
+    elif fundamental_provider is not None:
+        reason_codes.append("FUNDAMENTAL_PROVIDER_UNAVAILABLE")
+
+    if market_ready and capital_preflight_provider is not None and tickers and hasattr(capital_preflight_provider, "preflight"):
+        try:
+            capital_sample = capital_preflight_provider.preflight(tickers, as_of)
+            checks["capital_preflight_data"] = bool(capital_sample) and any(
+                getattr((fields or {}).get("capital_overhang_status"), "known", False)
+                for fields in capital_sample.values())
+            if not checks["capital_preflight_data"]:
+                reason_codes.append("CAPITAL_PREFLIGHT_SAMPLE_EMPTY")
+        except Exception:
+            reason_codes.append("CAPITAL_PREFLIGHT_SAMPLE_FAILED")
+    elif capital_preflight_provider is not None:
+        reason_codes.append("CAPITAL_PREFLIGHT_PROVIDER_UNAVAILABLE")
+
+    checks["market_scan_status"] = "MARKET_SCAN_READY" if market_ready else "BOOTSTRAP_REQUIRED"
+    enrichment_ready = market_ready and checks["fundamental_data"]
+    checks["enrichment_status"] = "ENRICHMENT_READY" if enrichment_ready else "BOOTSTRAP_REQUIRED"
+    deep_ready = enrichment_ready and checks["capital_preflight_data"] and max_actual_llm_calls > 0
+    checks["deep_handoff_status"] = "DEEP_HANDOFF_READY" if deep_ready else "BOOTSTRAP_REQUIRED"
+    checks["status"] = ("DEEP_HANDOFF_READY" if deep_ready else
+                         "ENRICHMENT_READY" if enrichment_ready else
+                         "MARKET_SCAN_READY" if market_ready else "BOOTSTRAP_REQUIRED")
+    # Kept as an explicit compatibility signal for operators/tests from v2;
+    # the canonical status above is now stage-specific.
+    checks["legacy_discovery_ready"] = market_ready
     checks["universe"] = universe_health
     checks["reason_codes"] = sorted(set(reason_codes))
     checks["checked_at"] = datetime.now(timezone.utc).isoformat()
