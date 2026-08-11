@@ -295,4 +295,322 @@ class SECCompanyFactsProvider(EdgarMetadataCollector):
             if current is None or str(row.get("filed") or "") > str(current.get("filed") or ""):
                 selected[key] = row
         series = list(selected.values())
-        # If a dir×Ž4¶‰žËkºwµç@€€€€€€€€€€É½Ü¹•Ð ‰Á•É¥½‘}ÑåÁ”ˆ¤€ôô€‰UIQ%=8ˆ…¹(€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™½É´ˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôô€ˆÄÀµD‰t(€€€€€€€ÕÉÉ•¹Ñ}É•Ù•¹Õ”€ô9½¹”(€€€€€€€™½È½¹•ÁÐ¥¸€ ‰I•Ù•¹Õ•É½µ½¹ÑÉ…Ñ]¥Ñ¡ÕÍÑ½µ•Éá±Õ‘¥¹ÍÍ•ÍÍ•‘Q…àˆ°€‰I•Ù•¹Õ•Ìˆ¤è(€€€€€€€€€€€½¹•ÁÑ}É½ÝÌ€ômÉ½Ü™½ÈÉ½Ü¥¸É•Ù•¹Õ•}…¹‘¥‘…Ñ•Ì¥˜É½Ü¹•Ð ‰½¹•ÁÐˆ¤€ôô½¹•ÁÑt(€€€€€€€€€€€¥˜½¹•ÁÑ}É½ÝÌè(€€€€€€€€€€€€€€€Í•±•Ñ•€ô±Ì¹}Í•±•Ñ}Á•É¥½‘}…Ý…É”¡½¹•ÁÑ}É½ÝÌ¤(€€€€€€€€€€€€€€€ÕÉÉ•¹Ñ}É•Ù•¹Õ”€ô±Ì¹}É•Í½±Ù•}‘ÕÉ…Ñ¥½¹}µ•ÑÉ¥Œ¡½¹•ÁÑ}É½ÝÌ°Í•±•Ñ•¤¥˜Í•±•Ñ••±Í”9½¹”(€€€€€€€€€€€€€€€¥˜ÕÉÉ•¹Ñ}É•Ù•¹Õ”è(€€€€€€€€€€€€€€€€€€€‰É•…¬(€€€€€€€¥˜ÕÉÉ•¹Ñ}É•Ù•¹Õ”è(€€€€€€€€€€€ÕÉÉ•¹Ñ}™ä€ôÍÑÈ¡ÕÉÉ•¹Ñ}É•Ù•¹Õ”¹•Ð ‰™äˆ¤½È€ˆˆ¤(€€€€€€€€€€€ÕÉÉ•¹Ñ}™À€ôÍÑÈ¡ÕÉÉ•¹Ñ}É•Ù•¹Õ”¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤(€€€€€€€€€€€Í…µ•}™ä€ômÉ½Ü™½ÈÉ½Ü¥¸É•Ù•¹Õ•}…¹‘¥‘…Ñ•Ì¥˜ÍÑÈ¡É½Ü¹•Ð ‰™äˆ¤½È€ˆˆ¤€ôôÕÉÉ•¹Ñ}™ä…¹(€€€€€€€€€€€€€€€€€€€€€€±Ì¹}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡É½Ü¤…¹ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤€ðÍÑÈ¡ÕÉÉ•¹Ñ}É•Ù•¹Õ”¹•Ð ‰•¹ˆ¤½È€ˆˆ¥t(€€€€€€€€€€€ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”€ôµ…à¡Í…µ•}™ä°­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤°‘•™…Õ±Ðõ9½¹”¤(€€€€€€€€€€€ÑÉäè(€€€€€€€€€€€€€€€ÁÉ¥½É}™ä€ôÍÑÈ¡¥¹Ð¡ÕÉÉ•¹Ñ}™ä¤€´€Ä¤(€€€€€€€€€€€•á•ÁÐ€¡QåÁ•ÉÉ½È°Y…±Õ•ÉÉ½È¤è(€€€€€€€€€€€€€€€ÁÉ¥½É}™ä€ô€ˆˆ(€€€€€€€€€€€ÁÉ¥½É}ÕÉÉ•¹Ð€ôµ…à¡mÉ½Ü™½ÈÉ½Ü¥¸É•Ù•¹Õ•}…¹‘¥‘…Ñ•Ì¥˜ÍÑÈ¡É½Ü¹•Ð ‰™äˆ¤½È€ˆˆ¤€ôôÁÉ¥½É}™ä…¹(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôôÕÉÉ•¹Ñ}™À…¹±Ì¹}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡É½Ü¥t°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤°‘•™…Õ±Ðõ9½¹”¤(€€€€€€€€€€€ÁÉ•Ù¥½ÕÍ}™À€ôÍÑÈ¡ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤¥˜ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”•±Í”€ˆˆ(€€€€€€€€€€€ÁÉ¥½É}ÁÉ•Ù¥½ÕÌ€ôµ…à¡mÉ½Ü™½ÈÉ½Ü¥¸É•Ù•¹Õ•}…¹‘¥‘…Ñ•Ì¥˜ÍÑÈ¡É½Ü¹•Ð ‰™äˆ¤½È€ˆˆ¤€ôôÁÉ¥½É}™ä…¹(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôôÁÉ•Ù¥½ÕÍ}™À…¹±Ì¹}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡É½Ü¥t°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤°‘•™…Õ±Ðõ9½¹”¤(€€€€€€€€€€€¥˜€¡½µÁ…Ñ¥‰±”¡ÕÉÉ•¹Ñ}É•Ù•¹Õ”°ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”¤…¹½µÁ…Ñ¥‰±”¡ÁÉ¥½É}ÕÉÉ•¹Ð°ÁÉ¥½É}ÁÉ•Ù¥½ÕÌ¤…¹(€€€€€€€€€€€€€€€€€€€ÕÉÉ•¹Ñ}É•Ù•¹Õ”¹•Ð ‰Õ¹¥Ðˆ¤€ôôÁÉ¥½É}ÕÉÉ•¹Ð¹•Ð ‰Õ¹¥Ðˆ¤…¹(€€€€€€€€€€€€€€€€€€€ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”¹•Ð ‰Õ¹¥Ðˆ¤€ôôÁÉ¥½É}ÁÉ•Ù¥½ÕÌ¹•Ð ‰Õ¹¥Ðˆ¤¤è(€€€€€€€€€€€€€€€Œ°À°ÁŒ°ÁÀ€ô€¡É…Ý}Ù…±Õ”¡ÕÉÉ•¹Ñ}É•Ù•¹Õ”¤°É…Ý}Ù…±Õ”¡ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€É…Ý}Ù…±Õ”¡ÁÉ¥½É}ÕÉÉ•¹Ð¤°É…Ý}Ù…±Õ”¡ÁÉ¥½É}ÁÉ•Ù¥½ÕÌ¤¤(€€€€€€€€€€€€€€€¥˜Œ¥Ì¹½Ð9½¹”…¹À¹½Ð¥¸€¡9½¹”°€À¤…¹ÁŒ¥Ì¹½Ð9½¹”…¹ÁÀ¹½Ð¥¸€¡9½¹”°€À¤è(€€€€€€€€€€€€€€€€€€€ÕÉÉ•¹Ñ}É½ÝÑ €ô€¡Œ€¼ÁŒ€´€Ä¤€¨€ÄÀÀ(€€€€€€€€€€€€€€€€€€€ÁÉ•Ù¥½ÕÍ}É½ÝÑ €ô€¡À€¼ÁÀ€´€Ä¤€¨€ÄÀÀ(€€€€€€€€€€€€€€€€€€€µ•ÑÉ¥Ì¹ÕÁ‘…Ñ”¡ì‰É•Ù•¹Õ•}É½ÝÑ¡}ÕÉÉ•¹Ñ}ÁÐˆèÕÉÉ•¹Ñ}É½ÝÑ °(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰É•Ù•¹Õ•}É½ÝÑ¡}ÁÉ•Ù¥½ÕÍ}ÁÐˆèÁÉ•Ù¥½ÕÍ}É½ÝÑ °(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰É•Ù•¹Õ•}É½ÝÑ¡}…•±•É…Ñ¥½¹}ÁÀˆèÕÉÉ•¹Ñ}É½ÝÑ €´ÁÉ•Ù¥½ÕÍ}É½ÝÑ °(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰É•Ù•¹Õ•}É½ÝÑ¡}ÁÉ½Ù•¹…¹”ˆèì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™…Ñ}¥‘ÌˆèmÉ½Ü¹•Ð ‰™…Ñ}¥ˆ¤™½ÈÉ½Ü¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¡ÕÉÉ•¹Ñ}É•Ù•¹Õ”°ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”°ÁÉ¥½É}ÕÉÉ•¹Ð°ÁÉ¥½É}ÁÉ•Ù¥½ÕÌ¥t°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…•ÍÍ¥½¹ÌˆèmÉ½Ü¹•Ð ‰…¸ˆ¤™½ÈÉ½Ü¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¡ÕÉÉ•¹Ñ}É•Ù•¹Õ”°ÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”°ÁÉ¥½É}ÕÉÉ•¹Ð°ÁÉ¥½É}ÁÉ•Ù¥½ÕÌ¥t°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰ÕÉÉ•¹Ñ}Á•É¥½ˆèÕÉÉ•¹Ñ}É•Ù•¹Õ”¹•Ð ‰•¹ˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰ÁÉ•Ù¥½ÕÍ}Á•É¥½ˆèÁÉ•Ù¥½ÕÍ}É•Ù•¹Õ”¹•Ð ‰•¹ˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰ÁÉ¥½É}å•…É}Á•É¥½‘ÌˆèmÁÉ¥½É}ÕÉÉ•¹Ð¹•Ð ‰•¹ˆ¤°ÁÉ¥½É}ÁÉ•Ù¥½ÕÌ¹•Ð ‰•¹ˆ¥t°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Á•É¥½‘}ÑåÁ”ˆèÕÉÉ•¹Ñ}É•Ù•¹Õ”¹•Ð ‰Á•É¥½‘}ÑåÁ”ˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Õ¹¥ÐˆèÕÉÉ•¹Ñ}É•Ù•¹Õ”¹•Ð ‰Õ¹¥Ðˆ¥õô¤((€€€€€€€‘•˜µ…É¥¹}Á…¥È¡¹Õµ•É…Ñ½Èè±¥ÍÑm‘¥ÑmÍÑÈ°¹åut¤€´øÑÕÁ±•m™±½…Ðð9½¹”°™±½…Ðð9½¹”°‘¥ÑmÍÑÈ°¹åtð9½¹•tè(€€€€€€€€€€€¹}ÕÉÉ•¹Ð°¹}ÁÉ•Ù¥½ÕÌ°|€ô½µÁ…É…‰±”¡¹Õµ•É…Ñ½È¤(€€€€€€€€€€€É}ÕÉÉ•¹Ð°É}ÁÉ•Ù¥½ÕÌ°|€ô½µÁ…É…‰±”¡É•Ù•¹Õ”¤(€€€€€€€€€€€¥˜¹½Ð½µÁ…Ñ¥‰±”¡¹}ÕÉÉ•¹Ð°¹}ÁÉ•Ù¥½ÕÌ¤½È¹½Ð½µÁ…Ñ¥‰±”¡É}ÕÉÉ•¹Ð°É}ÁÉ•Ù¥½ÕÌ¤è(€€€€€€€€€€€€€€€É•ÑÕÉ¸9½¹”°9½¹”°9½¹”(€€€€€€€€€€€¥˜¹}ÕÉÉ•¹Ð¹•Ð ‰•¹ˆ¤€„ôÉ}ÕÉÉ•¹Ð¹•Ð ‰•¹ˆ¤½È¹}ÁÉ•Ù¥½ÕÌ¹•Ð ‰•¹ˆ¤€„ôÉ}ÁÉ•Ù¥½ÕÌ¹•Ð ‰•¹ˆ¤è(€€€€€€€€€€€€€€€É•ÑÕÉ¸9½¹”°9½¹”°9½¹”(€€€€€€€€€€€¥˜¹}ÕÉÉ•¹Ð¹•Ð ‰Õ¹¥Ðˆ¤€„ôÉ}ÕÉÉ•¹Ð¹•Ð ‰Õ¹¥Ðˆ¤è(€€€€€€€€€€€€€€€É•ÑÕÉ¸9½¹”°9½¹”°9½¹”(€€€€€€€€€€€ÉÙ}Œ°ÉÙ}À€ôÉ…Ý}Ù…±Õ”¡É}ÕÉÉ•¹Ð¤°É…Ý}Ù…±Õ”¡É}ÁÉ•Ù¥½ÕÌ¤(€€€€€€€€€€€¹Ù}Œ°¹Ù}À€ôÉ…Ý}Ù…±Õ”¡¹}ÕÉÉ•¹Ð¤°É…Ý}Ù…±Õ”¡¹}ÁÉ•Ù¥½ÕÌ¤(€€€€€€€€€€€¥˜ÉÙ}Œ¥¸€¡9½¹”°€À¤½ÈÉÙ}À¥¸€¡9½¹”°€À¤½È¹Ù}Œ¥Ì9½¹”½È¹Ù}À¥Ì9½¹”è(€€€€€€€€€€€€€€€É•ÑÕÉ¸9½¹”°9½¹”°9½¹”(€€€€€€€€€€€É•ÑÕÉ¸¹Ù}Œ€¼ÉÙ}Œ€¨€ÄÀÀ°¹Ù}À€¼ÉÙ}À€¨€ÄÀÀ°ì(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™…Ñ}¥‘Ìˆèm¹}ÕÉÉ•¹Ð¹•Ð ‰™…Ñ}¥ˆ¤°¹}ÁÉ•Ù¥½ÕÌ¹•Ð ‰™…Ñ}¥ˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€É}ÕÉÉ•¹Ð¹•Ð ‰™…Ñ}¥ˆ¤°É}ÁÉ•Ù¥½ÕÌ¹•Ð ‰™…Ñ}¥ˆ¥t°(€€€€€€€€€€€€€€€€‰ÕÉÉ•¹Ñ}Á•É¥½ˆè¹}ÕÉÉ•¹Ð¹•Ð ‰•¹ˆ¤°€‰ÁÉ•Ù¥½ÕÍ}Á•É¥½ˆè¹}ÁÉ•Ù¥½ÕÌ¹•Ð ‰•¹ˆ¥ô((€€€€€€€É½ÍÍ}ÕÉÉ•¹Ð°É½ÍÍ}ÁÉ•Ù¥½ÕÌ°É½ÍÍ}ÁÉ½Ù•¹…¹”€ôµ…É¥¹}Á…¥È¡É½ÍÌ¤(€€€€€€€½Á}ÕÉÉ•¹Ð°½Á}ÁÉ•Ù¥½ÕÌ°½Á}ÁÉ½Ù•¹…¹”€ôµ…É¥¹}Á…¥È¡½Á•É…Ñ¥¹œ¤(€€€€€€€µ•ÑÉ¥Ì¹ÕÁ‘…Ñ”¡ì(€€€€€€€€€€€€‰É½ÍÍ}µ…É¥¹}ÕÉÉ•¹Ñ}ÁÐˆèÉ½ÍÍ}ÕÉÉ•¹Ð°(€€€€€€€€€€€€‰É½ÍÍ}µ…É¥¹}ÁÉ•Ù¥½ÕÍ}ÁÐˆèÉ½ÍÍ}ÁÉ•Ù¥½ÕÌ°(€€€€€€€€€€€€‰É½ÍÍ}µ…É¥¹}‘•±Ñ…}ÁÀˆè€¡É½ÍÍ}ÕÉÉ•¹Ð€´É½ÍÍ}ÁÉ•Ù¥½ÕÌ¥˜É½ÍÍ}ÕÉÉ•¹Ð¥Ì¹½Ð9½¹”…¹É½ÍÍ}ÁÉ•Ù¥½ÕÌ¥Ì¹½Ð9½¹”•±Í”9½¹”¤°(€€€€€€€€€€€€‰É½ÍÍ}µ…É¥¹}ÁÉ½Ù•¹…¹”ˆèÉ½ÍÍ}ÁÉ½Ù•¹…¹”°(€€€€€€€€€€€€‰½Á•É…Ñ¥¹}µ…É¥¹}ÕÉÉ•¹Ñ}ÁÐˆè½Á}ÕÉÉ•¹Ð°(€€€€€€€€€€€€‰½Á•É…Ñ¥¹}µ…É¥¹}ÁÉ•Ù¥½ÕÍ}ÁÐˆè½Á}ÁÉ•Ù¥½ÕÌ°(€€€€€€€€€€€€‰½Á•É…Ñ¥¹}µ…É¥¹}‘•±Ñ…}ÁÀˆè€¡½Á}ÕÉÉ•¹Ð€´½Á}ÁÉ•Ù¥½ÕÌ¥˜½Á}ÕÉÉ•¹Ð¥Ì¹½Ð9½¹”…¹½Á}ÁÉ•Ù¥½ÕÌ¥Ì¹½Ð9½¹”•±Í”9½¹”¤°(€€€€€€€€€€€€‰½Á•É…Ñ¥¹}µ…É¥¹}ÁÉ½Ù•¹…¹”ˆè½Á}ÁÉ½Ù•¹…¹”°(€€€€€€€ô¤((€€€€€€€½™}ÕÉÉ•¹Ð°½™}ÁÉ•Ù¥½ÕÌ°|€ô½µÁ…É…‰±”¡½˜¥lèÍt(€€€€€€€½™}Œ°½™}À€ôÉ…Ý}Ù…±Õ”¡½™}ÕÉÉ•¹Ð¤°É…Ý}Ù…±Õ”¡½™}ÁÉ•Ù¥½ÕÌ¤(€€€€€€€µ•ÑÉ¥Ì¹ÕÁ‘…Ñ”¡ì‰½Á•É…Ñ¥¹}…Í¡}™±½Ý}ÕÉÉ•¹Ðˆè½™}Œ°(€€€€€€€€€€€€€€€€€€€€€€€€‰½Á•É…Ñ¥¹}…Í¡}™±½Ý}ÁÉ•Ù¥½ÕÌˆè½™}À°(€€€€€€€€€€€€€€€€€€€€€€€€‰½Á•É…Ñ¥¹}…Í¡}™±½Ý}¥¹™±•Ñ¥½¸ˆè€¡½™}Œ€´½™}À¥˜½™}Œ¥Ì¹½Ð9½¹”…¹½™}À¥Ì¹½Ð9½¹”•±Í”9½¹”¥ô¤(€€€€€€€™™}ÕÉÉ•¹Ð°™™}ÁÉ•Ù¥½ÕÌ°|€ô½µÁ…É…‰±”¡…Á•à¥lèÍt(€€€€€€€…Á}Œ°…Á}À€ôÉ…Ý}Ù…±Õ”¡™™}ÕÉÉ•¹Ð¤°É…Ý}Ù…±Õ”¡™™}ÁÉ•Ù¥½ÕÌ¤(€€€€€€€¥˜½™}Œ¥Ì¹½Ð9½¹”…¹…Á}Œ¥Ì¹½Ð9½¹”…¹½™}À¥Ì¹½Ð9½¹”…¹…Á}À¥Ì¹½Ð9½¹”è(€€€€€€€€€€€™™}Œ°™™}À€ô½™}Œ€´…Á}Œ°½™}À€´…Á}À(€€€€€€€•±Í”è(€€€€€€€€€€€™™}Œ€ô™™}À€ô9½¹”(€€€€€€€µ•ÑÉ¥Ì¹ÕÁ‘…Ñ”¡ì‰™™}ÕÉÉ•¹Ðˆè™™}Œ°€‰™™}ÁÉ•Ù¥½ÕÌˆè™™}À°(€€€€€€€€€€€€€€€€€€€€€€€€‰™™}¥¹™±•Ñ¥½¸ˆè€¡™™}Œ€´™™}À¥˜™™}Œ¥Ì¹½Ð9½¹”…¹™™}À¥Ì¹½Ð9½¹”•±Í”9½¹”¥ô¤(€€€€€€€É•ÑÕÉ¸µ•ÑÉ¥Ì(4(€€€±…ÍÍµ•Ñ¡½4(€€€‘•˜}‘•‰Ñ}½¹Ñ½±½ä¡±Ì°É½ÝÌè±¥ÍÑm‘¥ÑmÍÑÈ°¹åut¤€´ø‘¥ÑmÍÑÈ°‘¥ÑmÍÑÈ°¹åutè4(€€€€€€€É•ÍÕ±Ðè‘¥ÑmÍÑÈ°‘¥ÑmÍÑÈ°¹åut€ôíô4(€€€€€€€™½È…Ñ•½Éä°½¹•ÁÑÌ¥¸±Ì¹	Q}=9AQL¹¥Ñ•µÌ ¤è4(€€€€€€€€€€€…¹‘¥‘…Ñ•Ì€ômÉ½Ü™½ÈÉ½Ü¥¸É½ÝÌ4(€€€€€€€€€€€€€€€€€€€€€€€€€¥˜É½Ü¹•Ð ‰½¹•ÁÐˆ¤¥¸½¹•ÁÑÌ…¹É½Ü¹•Ð ‰Á•É¥½‘}ÑåÁ”ˆ¤€ôô€‰%9MQ9P‰t4(€€€€€€€€€€€Í•±•Ñ•€ô±Ì¹}Í•±•Ñ}Á•É¥½‘}…Ý…É”¡…¹‘¥‘…Ñ•Ì¤4(€€€€€€€€€€€¥˜Í•±•Ñ•¥Ì9½¹”è4(€€€€€€€€€€€€€€€É•ÍÕ±Ñm…Ñ•½Éåt€ôì‰Ù…±Õ”ˆè9½¹”°€‰ÍÑ…ÑÕÌˆè€‰U9-9=]9}9=Q}Y%1	1ˆ°4(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰‘•É¥Ù•ˆè…±Í”°€‰µ•Ñ¡½ˆè€‰M}a	I1}%9MQ9Q}=91d‰ô4(€€€€€€€€€€€•±Í”è4(€€€€€€€€€€€€€€€É•ÍÕ±Ñm…Ñ•½Éåt€ô‘¥Ð¡Í•±•Ñ•¤ðì4(€€€€€€€€€€€€€€€€€€€€‰ÍÑ…ÑÕÌˆè€‰-9=]8ˆ°€‰‘•É¥Ù•ˆè…±Í”°4(€€€€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}¥ˆèÍ•±•Ñ•¹•Ð ‰™…Ñ}¥ˆ¤°€‰…Í}½˜ˆèÍ•±•Ñ•¹•Ð ‰•¹ˆ¤°4(€€€€€€€€€€€€€€€€€€€€‰µ•Ñ¡½ˆè€‰M}a	I1}%9MQ9Q}=91dˆ°4(€€€€€€€€€€€€€€€ô4(€€€€€€€¥¹±Õ‘•€ô€ ‰Í¡½ÉÑ}Ñ•Éµ}‰½ÉÉ½Ý¥¹Ìˆ°€‰±½¹}Ñ•Éµ}‰½ÉÉ½Ý¥¹Ìˆ°€‰½¹Ù•ÉÑ¥‰±•}‘•‰Ðˆ¤4(€€€€€€€­¹½Ý¸€ômÉ•ÍÕ±Ñm¹…µ•t™½È¹…µ”¥¸¥¹±Õ‘•¥˜É•ÍÕ±Ñm¹…µ•t¹•Ð ‰Ù…±Õ”ˆ¤¥Ì¹½Ð9½¹•t4(€€€€€€€¥˜­¹½Ý¸è4(€€€€€€€€€€€É•ÍÕ±Ñl‰™¥¹…¹¥…±}‘•‰Ð‰t€ôì4(€€€€€€€€€€€€€€€€‰Ù…±Õ”ˆèÍÕ´¡™±½…Ð¡¥Ñ•µl‰Ù…±Õ”‰t¤™½È¥Ñ•´¥¸­¹½Ý¸¤°€‰ÍÑ…ÑÕÌˆè€‰-9=]8ˆ°4(€€€€€€€€€€€€€€€€‰‘•É¥Ù•ˆèQÉÕ”°€‰µ•Ñ¡½ˆè€‰MU5}	=II=]%9M}9}=9YIQ%	1ˆ°4(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™…Ñ}¥‘Ìˆèm¥Ñ•´¹•Ð ‰™…Ñ}¥ˆ¤½È¥Ñ•´¹•Ð ‰Í½ÕÉ•}¥ˆ¤™½È¥Ñ•´¥¸­¹½Ý¹t°4(€€€€€€€€€€€€€€€€‰…Í}½˜ˆèµ…à¡ÍÑÈ¡¥Ñ•´¹•Ð ‰•¹ˆ¤½È¥Ñ•´¹•Ð ‰…Í}½˜ˆ¤½È€ˆˆ¤™½È¥Ñ•´¥¸­¹½Ý¸¤°4(€€€€€€€€€€€ô4(€€€€€€€•±Í”è4(€€€€€€€€€€€É•ÍÕ±Ñl‰™¥¹…¹¥…±}‘•‰Ð‰t€ôì4(€€€€€€€€€€€€€€€€‰Ù…±Õ”ˆè9½¹”°€‰ÍÑ…ÑÕÌˆè€‰U9-9=]9}9=Q}Y%1	1ˆ°€‰‘•É¥Ù•ˆèQÉÕ”°4(€€€€€€€€€€€€€€€€‰µ•Ñ¡½ˆè€‰MU5}	=II=]%9M}9}=9YIQ%	1ˆ°€‰Í½ÕÉ•}™…Ñ}¥‘Ìˆèmt°4(€€€€€€€€€€€ô4(€€€€€€€É•ÍÕ±Ñl‰‘•‰Ñ}±¥­•}½‰±¥…Ñ¥½¹Ì‰t€ôì4(€€€€€€€€€€€€‰Ù…±Õ”ˆè€¡ÍÕ´¡™±½…Ð¡É•ÍÕ±Ñm¹…µ•ul‰Ù…±Õ”‰t¤™½È¹…µ”¥¸4(€€€€€€€€€€€€€€€€€€€€€€€€€€ ‰™¥¹…¹•}±•…Í•}±¥…‰¥±¥Ñäˆ°€‰½Á•É…Ñ¥¹}±•…Í•}±¥…‰¥±¥Ñäˆ°€‰Á•¹Í¥½¹}½‰±¥…Ñ¥½¹Ìˆ¤4(€€€€€€€€€€€€€€€€€€€€€€€€€¥˜É•ÍÕ±Ñm¹…µ•t¹•Ð ‰Ù…±Õ”ˆ¤¥Ì¹½Ð9½¹”¤½È9½¹”¤°4(€€€€€€€€€€€€‰ÍÑ…ÑÕÌˆè€‰-9=]8ˆ¥˜…¹ä¡É•ÍÕ±Ñm¹…µ•t¹•Ð ‰Ù…±Õ”ˆ¤¥Ì¹½Ð9½¹”™½È¹…µ”¥¸4(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ ‰™¥¹…¹•}±•…Í•}±¥…‰¥±¥Ñäˆ°€‰½Á•É…Ñ¥¹}±•…Í•}±¥…‰¥±¥Ñäˆ°4(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€‰Á•¹Í¥½¹}½‰±¥…Ñ¥½¹Ìˆ¤¤•±Í”€‰U9-9=]9}9=Q}Y%1	1ˆ°4(€€€€€€€€€€€€‰‘•É¥Ù•ˆèQÉÕ”°€‰µ•Ñ¡½ˆè€‰MU5}	Q}1%-}=	1%Q%=9Lˆ°4(€€€€€€€ô4(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ð4(4(€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}Í•±•Ñ}Á•É¥½‘}…Ý…É”¡É½ÝÌè±¥ÍÑm‘¥ÑmÍÑÈ°¹åut¤€´ø‘¥ÑmÍÑÈ°¹åtð9½¹”è(€€€€€€€¥˜¹½ÐÉ½ÝÌè(€€€€€€€€€€€É•ÑÕÉ¸9½¹”(€€€€€€€¥¹ÍÑ…¹ÑÌ€ômÉ½Ü™½ÈÉ½Ü¥¸É½ÝÌ¥˜É½Ýl‰Á•É¥½‘}ÑåÁ”‰t€ôô€‰%9MQ9P‰t(€€€€€€€¥˜¥¹ÍÑ…¹ÑÌè(€€€€€€€€€€€É•ÑÕÉ¸µ…à¡¥¹ÍÑ…¹ÑÌ°­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤¤(€€€€€€€ÄÉ}‘¥É•Ð€ômÉ½Ü™½ÈÉ½Ü¥¸É½ÝÌ(€€€€€€€€€€€€€€€€€€€€¥˜M½µÁ…¹å…ÑÍAÉ½Ù¥‘•È¹}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡É½Ü¤(€€€€€€€€€€€€€€€€€€€€…¹ÍÑÈ¡É½Ü¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôô€‰DÈ‰t(€€€€€€€¥˜ÄÉ}‘¥É•Ðè(€€€€€€€€€€€É•ÑÕÉ¸µ…à¡ÄÉ}‘¥É•Ð°­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤¤(€€€€€€€åÑ‘}ÄÈ€ômÉ½Ü™½ÈÉ½Ü¥¸É½ÝÌ¥˜M½µÁ…¹å…ÑÍAÉ½Ù¥‘•È¹}¥Í}ÄÉ}åÑ¡É½Ü¥t(€€€€€€€¥˜åÑ‘}ÄÈè(€€€€€€€€€€€É•ÑÕÉ¸µ…à¡åÑ‘}ÄÈ°­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤¤(€€€€€€€ÅÕ…ÉÑ•É±ä€ômÉ½Ü™½ÈÉ½Ü¥¸É½ÝÌ¥˜M½µÁ…¹å…ÑÍAÉ½Ù¥‘•È¹}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡É½Ü¥t(€€€€€€€…¹‘¥‘…Ñ•Ì€ôÅÕ…ÉÑ•É±ä½ÈÉ½ÝÌ(€€€€€€€É•ÑÕÉ¸µ…à¡…¹‘¥‘…Ñ•Ì°­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤¤((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}Á•É¥½‘}‘…åÌ¡É½Üè‘¥ÑmÍÑÈ°¹åt¤€´ø¥¹Ðð9½¹”è(€€€€€€€ÑÉäè(€€€€€€€€€€€É•ÑÕÉ¸€¡‘…Ñ”¹™É½µ¥Í½™½Éµ…Ð¡ÍÑÈ¡É½Ýl‰•¹‰t¤¤€´(€€€€€€€€€€€€€€€€€€€‘…Ñ”¹™É½µ¥Í½™½Éµ…Ð¡ÍÑÈ¡É½Ýl‰ÍÑ…ÉÐ‰t¤¤¤¹‘…åÌ(€€€€€€€•á•ÁÐ€¡-•åÉÉ½È°QåÁ•ÉÉ½È°Y…±Õ•ÉÉ½È¤è(€€€€€€€€€€€É•ÑÕÉ¸9½¹”((€€€±…ÍÍµ•Ñ¡½(€€€‘•˜}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡±Ì°É½Üè‘¥ÑmÍÑÈ°¹åt¤€´ø‰½½°è(€€€€€€€‘…åÌ€ô±Ì¹}Á•É¥½‘}‘…åÌ¡É½Ü¤(€€€€€€€É•ÑÕÉ¸€¡É½Ü¹•Ð ‰Á•É¥½‘}ÑåÁ”ˆ¤€ôô€‰UIQ%=8ˆ…¹(€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™½É´ˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôô€ˆÄÀµDˆ…¹(€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤¥¸ì‰DÄˆ°€‰DÈˆ°€‰DÌ‰ô…¹(€€€€€€€€€€€€€€€‘…åÌ¥Ì¹½Ð9½¹”…¹€ØÀ€ðô‘…åÌ€ðô€ÄÈÀ¤((€€€±…ÍÍµ•Ñ¡½(€€€‘•˜}¥Í}ÄÉ}åÑ¡±Ì°É½Üè‘¥ÑmÍÑÈ°¹åt¤€´ø‰½½°è(€€€€€€€‘…åÌ€ô±Ì¹}Á•É¥½‘}‘…åÌ¡É½Ü¤(€€€€€€€É•ÑÕÉ¸€¡É½Ü¹•Ð ‰Á•É¥½‘}ÑåÁ”ˆ¤€ôô€‰UIQ%=8ˆ…¹(€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™½É´ˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôô€ˆÄÀµDˆ…¹(€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôô€‰DÈˆ…¹(€€€€€€€€€€€€€€€‘…åÌ¥Ì¹½Ð9½¹”…¹€ÄÈÀ€ðô‘…åÌ€ðô€ÈÈÀ¤((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}‘¥É•Ñ}ÁÉ½Ù•¹…¹”¡É½Üè‘¥ÑmÍÑÈ°¹åt¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€É•ÍÕ±Ð€ô‘¥Ð¡É½Ü¤(€€€€€€€É•ÍÕ±Ð¹ÕÁ‘…Ñ”¡ì(€€€€€€€€€€€€‰ÍÑ…ÑÕÌˆè€‰-9=]8ˆ°(€€€€€€€€€€€€‰‘•É¥Ù•ˆè…±Í”°(€€€€€€€€€€€€‰µ•Ñ¡½ˆè€‰M}a	I1}%IQ}Pˆ°(€€€€€€€€€€€€‰ÁÉ½Ù•¹…¹”ˆèì(€€€€€€€€€€€€€€€€‰ÍÑ…ÑÕÌˆè€‰-9=]8ˆ°(€€€€€€€€€€€€€€€€‰µ•Ñ¡½ˆè€‰M}a	I1}%IQ}Pˆ°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}™…Ñ}¥‘ÌˆèmÉ½Ü¹•Ð ‰™…Ñ}¥ˆ°€ˆˆ¥t°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…•ÍÍ¥½¹ÌˆèmÉ½Ü¹•Ð ‰…¸ˆ°€ˆˆ¥t¥˜É½Ü¹•Ð ‰…¸ˆ¤•±Í”mt°(€€€€€€€€€€€€€€€€‰…Í}½˜ˆèÉ½Ü¹•Ð ‰•¹ˆ¤°(€€€€€€€€€€€ô°(€€€€€€€ô¤(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ð((€€€±…ÍÍµ•Ñ¡½(€€€‘•˜}É•Í½±Ù•}‘ÕÉ…Ñ¥½¹}µ•ÑÉ¥Œ¡±Ì°…¹‘¥‘…Ñ•Ìè±¥ÍÑm‘¥ÑmÍÑÈ°¹åut°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€Í•±•Ñ•è‘¥ÑmÍÑÈ°¹åt¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€¥˜±Ì¹}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡Í•±•Ñ•¤è(€€€€€€€€€€€É•ÑÕÉ¸±Ì¹}‘¥É•Ñ}ÁÉ½Ù•¹…¹”¡Í•±•Ñ•¤(€€€€€€€¥˜¹½Ð±Ì¹}¥Í}ÄÉ}åÑ¡Í•±•Ñ•¤è(€€€€€€€€€€€É•ÑÕÉ¸±Ì¹}‘¥É•Ñ}ÁÉ½Ù•¹…¹”¡Í•±•Ñ•¤(€€€€€€€ÄÅ}…¹‘¥‘…Ñ•Ì€ômÉ½Ü™½ÈÉ½Ü¥¸…¹‘¥‘…Ñ•Ì¥˜±Ì¹}¥Í}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡É½Ü¤(€€€€€€€€€€€€€€€€€€€€€€€€…¹ÍÑÈ¡É½Ü¹•Ð ‰™Àˆ¤½È€ˆˆ¤¹ÕÁÁ•È ¤€ôô€‰DÄ‰t(€€€€€€€ÄÄ€ôµ…à¡ÄÅ}…¹‘¥‘…Ñ•Ì°­•äõ±…µ‰‘„É½Üè€¡ÍÑÈ¡É½Ü¹•Ð ‰•¹ˆ¤½È€ˆˆ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑÈ¡É½Ü¹•Ð ‰™¥±•ˆ¤½È€ˆˆ¤¤°(€€€€€€€€€€€€€€€€‘•™…Õ±Ðõíô¤(€€€€€€€‘•É¥Ù•€ô‘•É¥Ù•}ÍÑ…¹‘…±½¹•}ÅÕ…ÉÑ•È¡Í•±•Ñ•°ÄÄ¤(€€€€€€€Í½ÕÉ•}¥‘Ì€ô±¥ÍÐ¡‘•É¥Ù•¹•Ð ‰Í½ÕÉ•}™…Ñ}¥‘Ìˆ¤½Èmt¤(€€€€€€€ÁÉ½Ù•¹…¹”€ôì(€€€€€€€€€€€€‰ÍÑ…ÑÕÌˆè‘•É¥Ù•‘l‰ÍÑ…ÑÕÌ‰t°(€€€€€€€€€€€€‰µ•Ñ¡½ˆè‘•É¥Ù•‘l‰µ•Ñ¡½‰t°(€€€€€€€€€€€€‰™½ÉµÕ±„ˆè‘•É¥Ù•‘l‰™½ÉµÕ±„‰t°(€€€€€€€€€€€€‰Í½ÕÉ•}™…Ñ}¥‘ÌˆèÍ½ÕÉ•}¥‘Ì°(€€€€€€€€€€€€‰Í½ÕÉ•}…•ÍÍ¥½¹ÌˆèmÙ…±Õ”™½ÈÙ…±Õ”¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¡Í•±•Ñ•¹•Ð ‰…¸ˆ¤°ÄÄ¹•Ð ‰…¸ˆ¤¤¥˜Ù…±Õ•t°(€€€€€€€€€€€€‰…Í}½˜ˆè‘•É¥Ù•¹•Ð ‰…Í}½˜ˆ¤°(€€€€€€€€€€€€‰½µÁ…É…‰¥±¥Ñäˆè‘•É¥Ù•‘l‰½µÁ…É…‰¥±¥Ñä‰t°(€€€€€€€€€€€€‰É•©•Ñ¥½¹}É•…Í½¹Ìˆè±¥ÍÐ¡‘•É¥Ù•¹•Ð ‰É•©•Ñ¥½¹}É•…Í½¹Ìˆ¤½Èmt¤°(€€€€€€€ô(€€€€€€€¥‘•¹Ñ¥Ñä€ô€‰ðˆ¹©½¥¸¡ÍÑÈ¡Ù…±Õ”¤™½ÈÙ…±Õ”¥¸Í½ÕÉ•}¥‘Ì¤(€€€€€€€É•ÍÕ±Ð€ô‘¥Ð¡Í•±•Ñ•¤ð‘•É¥Ù•(€€€€€€€É•ÍÕ±Ñl‰™…Ñ}¥‰t€ô˜‰I%Y}a	I1}í¡…Í¡±¥ˆ¹Í¡„ÈÔØ¡¥‘•¹Ñ¥Ñä¹•¹½‘” ¤¤¹¡•á‘¥•ÍÐ ¥lèÈÑuôˆ(€€€€€€€É•ÍÕ±Ñl‰ÁÉ½Ù•¹…¹”‰t€ôÁÉ½Ù•¹…¹”(€€€€€€€É•ÍÕ±Ñl‰Í½ÕÉ•}™…Ñ}¥‘Ì‰t€ôÍ½ÕÉ•}¥‘Ì(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ð(4(€€€ÍÑ…Ñ¥µ•Ñ¡½4(€€€‘•˜}‘•É¥Ù”¡½ÕÑÁÕÐè‘¥ÑmÍÑÈ°¹åt¤€´ø‘¥ÑmÍÑÈ°¹åtè4(€€€€€€€‘•˜Ù…±Õ”¡¹…µ”èÍÑÈ¤€´ø™±½…Ðð9½¹”è4(€€€€€€€€€€€É½Ü€ô½ÕÑÁÕÐ¹•Ð¡¹…µ”¤4(€€€€€€€€€€€ÑÉäè4(€€€€€€€€€€€€€€€É•ÑÕÉ¸™±½…Ð¡É½Ýl‰Ù…±Õ”‰t¤¥˜É½Ü…¹É½Ü¹•Ð ‰Ù…±Õ”ˆ¤¥Ì¹½Ð9½¹”•±Í”9½¹”4(€€€€€€€€€€€•á•ÁÐ€¡QåÁ•ÉÉ½È°Y…±Õ•ÉÉ½È¤è4(€€€€€€€€€€€€€€€É•ÑÕÉ¸9½¹”4(€€€€€€€…Í °‘•‰Ð°É•Ù•¹Õ”°É½ÍÌ€ôÙ…±Õ” ‰…Í ˆ¤°Ù…±Õ” ‰‘•‰Ðˆ¤°Ù…±Õ” ‰É•Ù•¹Õ”ˆ¤°Ù…±Õ” ‰É½ÍÍ}ÁÉ½™¥Ðˆ¤4(€€€€€€€½˜°…Á•à€ôÙ…±Õ” ‰½Á•É…Ñ¥¹}…Í¡}™±½Üˆ¤°Ù…±Õ” ‰…Á•àˆ¤4(€€€€€€€‰ÕÉ¸€ô9½¹”4(€€€€€€€¥˜½˜¥Ì¹½Ð9½¹”è4(€€€€€€€€€€€‰ÕÉ¸€ôµ…à À¸À°€µ½˜€¬€¡…Á•à½È€À¸À¤¤4(€€€€€€€ÉÕ¹Ý…ä€ôÉ½Õ¹¡…Í €¼‰ÕÉ¸€¨€ÄÈ°€È¤¥˜…Í ¥Ì¹½Ð9½¹”…¹‰ÕÉ¸…¹‰ÕÉ¸€ø€À•±Í”9½¹”4(€€€€€€€É•ÑÕÉ¸ì‰É½ÍÍ}µ…É¥¹}ÁÐˆèÉ½Õ¹¡É½ÍÌ€¼É•Ù•¹Õ”€¨€ÄÀÀ°€Ð¤4(€€€€€€€€€€€€€€€¥˜É½ÍÌ¥Ì¹½Ð9½¹”…¹É•Ù•¹Õ”…¹É•Ù•¹Õ”€„ô€À•±Í”9½¹”°4(€€€€€€€€€€€€€€€€‰¹•Ñ}…Í ˆè…Í €´‘•‰Ð¥˜…Í ¥Ì¹½Ð9½¹”…¹‘•‰Ð¥Ì¹½Ð9½¹”•±Í”9½¹”°4(€€€€€€€€€€€€€€€€‰…Í¡}‰ÕÉ¸ˆè‰ÕÉ¸°€‰•ÍÑ¥µ…Ñ•‘}ÉÕ¹Ý…å}µ½¹Ñ¡ÌˆèÉÕ¹Ý…åô4(
+        # If a direct Q2 is absent, preserve the existing audited YTD-Q1
+        # derivation as the current quarter and its source provenance.
+        ytd = [row for row in candidates if cls._is_q2_ytd(row)]
+        if ytd:
+            latest_ytd = max(ytd, key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")))
+            direct_q2 = [row for row in series if str(row.get("fp") or "").upper() == "Q2" and
+                         str(row.get("end") or "") == str(latest_ytd.get("end") or "")]
+            if not direct_q2:
+                q1 = [row for row in candidates if cls._is_standalone_quarter(row) and
+                      str(row.get("fp") or "").upper() == "Q1" and
+                      str(row.get("fy") or "") == str(latest_ytd.get("fy") or "")]
+                if q1:
+                    derived = cls._resolve_duration_metric(candidates, latest_ytd)
+                    if derived.get("status") == "KNOWN":
+                        series.append(derived)
+        return sorted(series, key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")))
+
+    @classmethod
+    def _period_metrics(cls, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        revenue = cls._series(rows, "RevenueFromContractWithCustomerExcludingAssessedTax")
+        if not revenue:
+            revenue = cls._series(rows, "Revenues")
+        gross = cls._series(rows, "GrossProfit")
+        operating = cls._series(rows, "OperatingIncomeLoss")
+        ocf = cls._series(rows, "NetCashProvidedByUsedInOperatingActivities")
+        capex = cls._series(rows, "PaymentsToAcquirePropertyPlantAndEquipment")
+
+        def comparable(series: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
+            if len(series) < 3:
+                return (series[-1] if series else None,
+                        series[-2] if len(series) >= 2 else None,
+                        series[-3] if len(series) >= 3 else None)
+            return series[-1], series[-2], series[-3]
+
+        def compatible(a: dict[str, Any] | None, b: dict[str, Any] | None) -> bool:
+            return bool(a and b and a.get("unit") == b.get("unit") and
+                        str(a.get("form") or "").upper() == str(b.get("form") or "").upper() and
+                        a.get("period_type") == b.get("period_type") and
+                        str(a.get("fy") or "") == str(b.get("fy") or ""))
+
+        def raw_value(row: dict[str, Any] | None) -> float | None:
+            try:
+                return float(row["value"]) if row and row.get("value") is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        current, previous, prior_previous = comparable(revenue)
+        metrics: dict[str, Any] = {"comparability": "PASSED"}
+        if compatible(current, previous) and compatible(previous, prior_previous):
+            c, p, pp = raw_value(current), raw_value(previous), raw_value(prior_previous)
+            if c is not None and p not in (None, 0) and pp not in (None, 0):
+                current_growth = (c / p - 1) * 100
+                previous_growth = (p / pp - 1) * 100
+                metrics.update({"revenue_growth_current_pct": current_growth,
+                                "revenue_growth_previous_pct": previous_growth,
+                                "revenue_growth_acceleration_pp": current_growth - previous_growth,
+                                "revenue_growth_provenance": {
+                                    "source_fact_ids": [row.get("fact_id") for row in (current, previous, prior_previous)],
+                                    "current_period": current.get("end"), "previous_period": previous.get("end"),
+                                "period_type": current.get("period_type"), "unit": current.get("unit")}})
+        else:
+            metrics["comparability"] = "FAILED"
+
+        # Growth acceleration is a change in comparable growth rates, not a
+        # single quarter's growth.  Prefer the resolver's current Q2 (direct
+        # fact or audited YTD-Q1 derivation), then compare Q2 and Q1 against
+        # their respective prior fiscal-year periods.
+        revenue_candidates = [row for row in rows if row.get("concept") in {
+            "RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues"} and
+            row.get("period_type") == "DURATION" and
+            str(row.get("form") or "").upper() == "10-Q"]
+        current_revenue = None
+        for concept in ("RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues"):
+            concept_rows = [row for row in revenue_candidates if row.get("concept") == concept]
+            if concept_rows:
+                selected = cls._select_period_aware(concept_rows)
+                current_revenue = cls._resolve_duration_metric(concept_rows, selected) if selected else None
+                if current_revenue:
+                    break
+        if current_revenue:
+            current_fy = str(current_revenue.get("fy") or "")
+            current_fp = str(current_revenue.get("fp") or "").upper()
+            same_fy = [row for row in revenue_candidates if str(row.get("fy") or "") == current_fy and
+                       cls._is_standalone_quarter(row) and str(row.get("end") or "") < str(current_revenue.get("end") or "")]
+            previous_revenue = max(same_fy, key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")), default=None)
+            try:
+                prior_fy = str(int(current_fy) - 1)
+            except (TypeError, ValueError):
+                prior_fy = ""
+            prior_current = max([row for row in revenue_candidates if str(row.get("fy") or "") == prior_fy and
+                                 str(row.get("fp") or "").upper() == current_fp and cls._is_standalone_quarter(row)],
+                                key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")), default=None)
+            previous_fp = str(previous_revenue.get("fp") or "").upper() if previous_revenue else ""
+            prior_previous = max([row for row in revenue_candidates if str(row.get("fy") or "") == prior_fy and
+                                  str(row.get("fp") or "").upper() == previous_fp and cls._is_standalone_quarter(row)],
+                                 key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")), default=None)
+            if (compatible(current_revenue, previous_revenue) and compatible(prior_current, prior_previous) and
+                    current_revenue.get("unit") == prior_current.get("unit") and
+                    previous_revenue.get("unit") == prior_previous.get("unit")):
+                c, p, pc, pp = (raw_value(current_revenue), raw_value(previous_revenue),
+                                raw_value(prior_current), raw_value(prior_previous))
+                if c is not None and p not in (None, 0) and pc is not None and pp not in (None, 0):
+                    current_growth = (c / pc - 1) * 100
+                    previous_growth = (p / pp - 1) * 100
+                    metrics.update({"revenue_growth_current_pct": current_growth,
+                                    "revenue_growth_previous_pct": previous_growth,
+                                    "revenue_growth_acceleration_pp": current_growth - previous_growth,
+                                    "revenue_growth_provenance": {
+                                        "source_fact_ids": [row.get("fact_id") for row in
+                                                             (current_revenue, previous_revenue, prior_current, prior_previous)],
+                                        "source_accessions": [row.get("accn") for row in
+                                                               (current_revenue, previous_revenue, prior_current, prior_previous)],
+                                        "current_period": current_revenue.get("end"),
+                                        "previous_period": previous_revenue.get("end"),
+                                        "prior_year_periods": [prior_current.get("end"), prior_previous.get("end")],
+                                        "period_type": current_revenue.get("period_type"),
+                                        "unit": current_revenue.get("unit")}})
+
+        def margin_pair(numerator: list[dict[str, Any]]) -> tuple[float | None, float | None, dict[str, Any] | None]:
+            n_current, n_previous, _ = comparable(numerator)
+            r_current, r_previous, _ = comparable(revenue)
+            if not compatible(n_current, n_previous) or not compatible(r_current, r_previous):
+                return None, None, None
+            if n_current.get("end") != r_current.get("end") or n_previous.get("end") != r_previous.get("end"):
+                return None, None, None
+            if n_current.get("unit") != r_current.get("unit"):
+                return None, None, None
+            rv_c, rv_p = raw_value(r_current), raw_value(r_previous)
+            nv_c, nv_p = raw_value(n_current), raw_value(n_previous)
+            if rv_c in (None, 0) or rv_p in (None, 0) or nv_c is None or nv_p is None:
+                return None, None, None
+            return nv_c / rv_c * 100, nv_p / rv_p * 100, {
+                "source_fact_ids": [n_current.get("fact_id"), n_previous.get("fact_id"),
+                                    r_current.get("fact_id"), r_previous.get("fact_id")],
+                "current_period": n_current.get("end"), "previous_period": n_previous.get("end")}
+
+        gross_current, gross_previous, gross_provenance = margin_pair(gross)
+        op_current, op_previous, op_provenance = margin_pair(operating)
+        metrics.update({
+            "gross_margin_current_pct": gross_current,
+            "gross_margin_previous_pct": gross_previous,
+            "gross_margin_delta_pp": (gross_current - gross_previous if gross_current is not None and gross_previous is not None else None),
+            "gross_margin_provenance": gross_provenance,
+            "operating_margin_current_pct": op_current,
+            "operating_margin_previous_pct": op_previous,
+            "operating_margin_delta_pp": (op_current - op_previous if op_current is not None and op_previous is not None else None),
+            "operating_margin_provenance": op_provenance,
+        })
+
+        ocf_current, ocf_previous, _ = comparable(ocf)[:3]
+        ocf_c, ocf_p = raw_value(ocf_current), raw_value(ocf_previous)
+        metrics.update({"operating_cash_flow_current": ocf_c,
+                        "operating_cash_flow_previous": ocf_p,
+                        "operating_cash_flow_inflection": (ocf_c - ocf_p if ocf_c is not None and ocf_p is not None else None)})
+        fcf_current, fcf_previous, _ = comparable(capex)[:3]
+        cap_c, cap_p = raw_value(fcf_current), raw_value(fcf_previous)
+        if ocf_c is not None and cap_c is not None and ocf_p is not None and cap_p is not None:
+            fcf_c, fcf_p = ocf_c - cap_c, ocf_p - cap_p
+        else:
+            fcf_c = fcf_p = None
+        metrics.update({"fcf_current": fcf_c, "fcf_previous": fcf_p,
+                        "fcf_inflection": (fcf_c - fcf_p if fcf_c is not None and fcf_p is not None else None)})
+        return metrics
+
+    @classmethod
+    def _debt_ontology(cls, rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+        result: dict[str, dict[str, Any]] = {}
+        for category, concepts in cls.DEBT_CONCEPTS.items():
+            candidates = [row for row in rows
+                          if row.get("concept") in concepts and row.get("period_type") == "INSTANT"]
+            selected = cls._select_period_aware(candidates)
+            if selected is None:
+                result[category] = {"value": None, "status": "UNKNOWN_NOT_AVAILABLE",
+                                    "derived": False, "method": "SEC_XBRL_INSTANT_ONLY"}
+            else:
+                result[category] = dict(selected) | {
+                    "status": "KNOWN", "derived": False,
+                    "source_id": selected.get("fact_id"), "as_of": selected.get("end"),
+                    "method": "SEC_XBRL_INSTANT_ONLY",
+                }
+        included = ("short_term_borrowings", "long_term_borrowings", "convertible_debt")
+        known = [result[name] for name in included if result[name].get("value") is not None]
+        if known:
+            result["financial_debt"] = {
+                "value": sum(float(item["value"]) for item in known), "status": "KNOWN",
+                "derived": True, "method": "SUM_BORROWINGS_AND_CONVERTIBLE",
+                "source_fact_ids": [item.get("fact_id") or item.get("source_id") for item in known],
+                "as_of": max(str(item.get("end") or item.get("as_of") or "") for item in known),
+            }
+        else:
+            result["financial_debt"] = {
+                "value": None, "status": "UNKNOWN_NOT_AVAILABLE", "derived": True,
+                "method": "SUM_BORROWINGS_AND_CONVERTIBLE", "source_fact_ids": [],
+            }
+        result["debt_like_obligations"] = {
+            "value": (sum(float(result[name]["value"]) for name in
+                          ("finance_lease_liability", "operating_lease_liability", "pension_obligations")
+                          if result[name].get("value") is not None) or None),
+            "status": "KNOWN" if any(result[name].get("value") is not None for name in
+                                      ("finance_lease_liability", "operating_lease_liability",
+                                       "pension_obligations")) else "UNKNOWN_NOT_AVAILABLE",
+            "derived": True, "method": "SUM_DEBT_LIKE_OBLIGATIONS",
+        }
+        return result
+
+    @staticmethod
+    def _select_period_aware(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+        if not rows:
+            return None
+        instants = [row for row in rows if row["period_type"] == "INSTANT"]
+        if instants:
+            return max(instants, key=lambda row: (str(row.get("end") or ""),
+                                                  str(row.get("filed") or "")))
+        q2_direct = [row for row in rows
+                     if SECCompanyFactsProvider._is_standalone_quarter(row)
+                     and str(row.get("fp") or "").upper() == "Q2"]
+        if q2_direct:
+            return max(q2_direct, key=lambda row: (str(row.get("end") or ""),
+                                                   str(row.get("filed") or "")))
+        ytd_q2 = [row for row in rows if SECCompanyFactsProvider._is_q2_ytd(row)]
+        if ytd_q2:
+            return max(ytd_q2, key=lambda row: (str(row.get("end") or ""),
+                                                str(row.get("filed") or "")))
+        quarterly = [row for row in rows if SECCompanyFactsProvider._is_standalone_quarter(row)]
+        candidates = quarterly or rows
+        return max(candidates, key=lambda row: (str(row.get("end") or ""),
+                                                str(row.get("filed") or "")))
+
+    @staticmethod
+    def _period_days(row: dict[str, Any]) -> int | None:
+        try:
+            return (date.fromisoformat(str(row["end"])) -
+                    date.fromisoformat(str(row["start"]))).days
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _is_standalone_quarter(cls, row: dict[str, Any]) -> bool:
+        days = cls._period_days(row)
+        return (row.get("period_type") == "DURATION" and
+                str(row.get("form") or "").upper() == "10-Q" and
+                str(row.get("fp") or "").upper() in {"Q1", "Q2", "Q3"} and
+                days is not None and 60 <= days <= 120)
+
+    @classmethod
+    def _is_q2_ytd(cls, row: dict[str, Any]) -> bool:
+        days = cls._period_days(row)
+        return (row.get("period_type") == "DURATION" and
+                str(row.get("form") or "").upper() == "10-Q" and
+                str(row.get("fp") or "").upper() == "Q2" and
+                days is not None and 120 <= days <= 220)
+
+    @staticmethod
+    def _direct_provenance(row: dict[str, Any]) -> dict[str, Any]:
+        result = dict(row)
+        result.update({
+            "status": "KNOWN",
+            "derived": False,
+            "method": "SEC_XBRL_DIRECT_FACT",
+            "provenance": {
+                "status": "KNOWN",
+                "method": "SEC_XBRL_DIRECT_FACT",
+                "source_fact_ids": [row.get("fact_id", "")],
+                "source_accessions": [row.get("accn", "")] if row.get("accn") else [],
+                "as_of": row.get("end"),
+            },
+        })
+        return result
+
+    @classmethod
+    def _resolve_duration_metric(cls, candidates: list[dict[str, Any]],
+                                 selected: dict[str, Any]) -> dict[str, Any]:
+        if cls._is_standalone_quarter(selected):
+            return cls._direct_provenance(selected)
+        if not cls._is_q2_ytd(selected):
+            return cls._direct_provenance(selected)
+        q1_candidates = [row for row in candidates if cls._is_standalone_quarter(row)
+                         and str(row.get("fp") or "").upper() == "Q1"]
+        q1 = max(q1_candidates, key=lambda row: (str(row.get("end") or ""),
+                                                  str(row.get("filed") or "")),
+                 default={})
+        derived = derive_standalone_quarter(selected, q1)
+        source_ids = list(derived.get("source_fact_ids") or [])
+        provenance = {
+            "status": derived["status"],
+            "method": derived["method"],
+            "formula": derived["formula"],
+            "source_fact_ids": source_ids,
+            "source_accessions": [value for value in
+                                   (selected.get("accn"), q1.get("accn")) if value],
+            "as_of": derived.get("as_of"),
+            "comparability": derived["comparability"],
+            "rejection_reasons": list(derived.get("rejection_reasons") or []),
+        }
+        identity = "|".join(str(value) for value in source_ids)
+        result = dict(selected) | derived
+        result["fact_id"] = f"DERIVED_XBRL_{hashlib.sha256(identity.encode()).hexdigest()[:24]}"
+        result["provenance"] = provenance
+        result["source_fact_ids"] = source_ids
+        return result
+
+    @staticmethod
+    def _derive(output: dict[str, Any]) -> dict[str, Any]:
+        def value(name: str) -> float | None:
+            row = output.get(name)
+            try:
+                return float(row["value"]) if row and row.get("value") is not None else None
+            except (TypeError, ValueError):
+                return None
+        cash, debt, revenue, gross = value("cash"), value("debt"), value("revenue"), value("gross_profit")
+        ocf, capex = value("operating_cash_flow"), value("capex")
+        burn = None
+        if ocf is not None:
+            burn = max(0.0, -ocf + (capex or 0.0))
+        runway = round(cash / burn * 12, 2) if cash is not None and burn and burn > 0 else None
+        return {"gross_margin_pct": round(gross / revenue * 100, 4)
+                if gross is not None and revenue and revenue != 0 else None,
+                "net_cash": cash - debt if cash is not None and debt is not None else None,
+                "cash_burn": burn, "estimated_runway_months": runway}
