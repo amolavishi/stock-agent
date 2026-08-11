@@ -37,7 +37,7 @@ class SECCompanyTickerSecurityMasterProvider:
         self.calls = 0
 
     def records(self, as_of: str, refresh: bool = False) -> list[SecurityMasterRecord]:
-        payload = self._load(refresh=refresh)
+        payload = self._load(as_of=as_of, refresh=refresh)
         fields = payload.get("fields", [])
         rows = payload.get("data", [])
         indexes = {name: index for index, name in enumerate(fields)}
@@ -58,7 +58,7 @@ class SECCompanyTickerSecurityMasterProvider:
                 source_as_of=as_of, ingested_at=datetime.now(timezone.utc).isoformat()))
         return records
 
-    def _load(self, refresh: bool = False) -> dict:
+    def _load(self, as_of: str, refresh: bool = False) -> dict:
         self.calls += 1
         if self.cache_path.is_file() and not refresh:
             cached = json.loads(self.cache_path.read_text(encoding="utf-8"))

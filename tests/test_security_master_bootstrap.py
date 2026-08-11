@@ -18,7 +18,10 @@ from stock_agent.discovery.bootstrap import (
 )
 from stock_agent.discovery.health import bootstrap_health
 from stock_agent.discovery.ingestion import InMemoryDiscoveryMarketDataProvider
-from stock_agent.discovery.providers_live import ValidatedSecurityMasterProvider
+from stock_agent.discovery.providers_live import (
+    SECCompanyTickerSecurityMasterProvider,
+    ValidatedSecurityMasterProvider,
+)
 from stock_agent.discovery.schemas import DailyBar, FieldValue, MarketQuote, SecurityMasterRecord
 from stock_agent.discovery.universe import InMemorySecurityMasterProvider, UniverseIntegrityEngine
 
@@ -134,6 +137,39 @@ class SecurityMasterBootstrapTests(unittest.TestCase):
         self.assertTrue(rows["AAAE"]["identity"]["is_etf"])
         self.assertTrue(rows["BBB"]["identity"]["is_preferred"])
         self.assertIsNone(rows["AAAX"]["identity"]["is_common_stock"])
+
+    def test_sec_listing_cache_records_source_as_of_from_records_call(self):
+        payload = {
+            "fields": ["cik", "name", "ticker", "exchange"],
+            "data": [[1, "Alpha Corp", "AAA", "Nasdaq"],
+                     [2, "Beta Corp", "BBB", "NYSE"]],
+        }
+
+        class Response:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return json.dumps(payload).encode("utf-8")
+
+        with tempfile.TemporaryDirectory() as directory:
+            provider = SECCompanyTickerSecurityMasterProvider(
+                "StockAgent/0.6 test@example.com",
+                Path(directory) / "company_tickers_exchange.json",
+                opener=lambda request, timeout=20: Response(),
+            )
+            records = provider.records(AS_OF)
+            cached = json.loads(
+                (Path(directory) / "company_tickers_exchange.json").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual([record.ticker for record in records], ["AAA", "BBB"])
+        self.assertEqual(cached["source_as_of"], AS_OF)
 
     def test_unknown_identity_is_preserved_and_does_not_become_common_stock(self):
         listing = [base_record("UNKNOWN", 1)]
