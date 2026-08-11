@@ -12,6 +12,7 @@ from .diversity import diversity_filter
 from .features import FEATURE_VERSION, build_candidate, known_field, value
 from .fuel import FuelEngine, infer_fuel_events
 from .gates import DiscoveryGateRules, final_candidate_gate, market_screen_gate
+from .health import benchmark_returns_ready
 from .handoff import EvidencePreflight, make_child_request
 from .ingestion import EmptyDiscoveryMarketDataProvider
 from .pareto import pareto_filter
@@ -28,7 +29,7 @@ from .scanners import (AIBottleneckExpansionScanner, CustomerDiversificationScan
 from .sectors import rank_sectors
 from .stage import DiscoveryStageEngine, DiscoveryStageRules
 from .store import DiscoveryStore
-from .tournament import final_selection, scorecard_metadata
+from .tournament import final_selection_diagnostics, scorecard_metadata
 from .universe import EmptySecurityMasterProvider, UniverseIntegrityEngine
 from .expiry import can_promote
 
@@ -215,6 +216,11 @@ class DiscoveryOrchestrator:
                 for reason in reasons:
                     if reason not in candidate.risk_flags:
                         candidate.risk_flags.append(reason)
+            # Fundamental fields can create scanner hits that did not exist
+            # during the market-only pass.  Re-evaluate now, before ranking
+            # and capital preflight, without applying the market-stage
+            # no-hit demotion a second time.
+            self._reevaluate_scanners(market_survivors, context)
         # Re-rank hydrated survivors before selecting expensive capital/SEC
         # preflight.  The first rank is cheap prioritization only.
         rank_candidates(market_survivors)
@@ -286,8 +292,21 @@ class DiscoveryOrchestrator:
         min_feature = float(coverage_rules.get("feature_min_pct", 90))
         min_fundamental = float(coverage_rules.get("fundamental_enrichment_min_pct", 80))
         min_capital = float(coverage_rules.get("capital_preflight_min_pct", 80))
-        if coverage.market_coverage_pct < min_market or coverage.feature_coverage_pct < min_feature:
+        benchmark_returns = self._benchmark_returns(as_of)
+        benchmark_ready = benchmark_returns_ready(benchmark_returns)
+        market_readiness_reason_codes = []
+        if coverage.market_coverage_pct < min_market:
+            market_readiness_reason_codes.append("MARKET_DATA_COVERAGE_INSUFFICIENT")
+        if coverage.feature_coverage_pct < min_feature:
+            market_readiness_reason_codes.append("BAR_FEATURE_COVERAGE_INSUFFICIENT")
+        if not benchmark_ready:
+            market_readiness_reason_codes.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
+        market_scan_ready = not market_readiness_reason_codes
+        if not market_scan_ready and not (coverage.market_coverage_pct >= min_market and
+                                          coverage.feature_coverage_pct >= min_feature):
             status, certification = DiscoveryStatus.BLOCKED_COVERAGE.value, "BLOCKED_COVERAGE"
+        elif not benchmark_ready:
+            status, certification = DiscoveryStatus.BLOCKED_MARKET_DATA.value, "BLOCKED_DATA"
         elif not fundamental_rows or coverage.fundamental_enrichment_coverage_pct < min_fundamental:
             status, certification = DiscoveryStatus.COMPLETED_SHADOW_MARKET_ONLY.value, "SHADOW_MARKET_ONLY"
         elif coverage.capital_preflight_coverage_pct < min_capital:
@@ -296,12 +315,11 @@ class DiscoveryOrchestrator:
             status, certification = DiscoveryStatus.COMPLETED_SHADOW_ENRICHED.value, "SHADOW_ENRICHED"
         else:
             status, certification = DiscoveryStatus.READY_FOR_DEEP_HANDOFF.value, "READY_FOR_DEEP_HANDOFF"
-        benchmark_returns = self._benchmark_returns(as_of)
         bar_counter = max(0, self._counter(self.market_data, "bar_calls", "bar_calls") - bar_before)
         fundamental_calls = max(0, len(getattr(self.fundamental_provider, "calls", [])) - fundamental_before)
         capital_calls = max(0, len(getattr(self.capital_preflight_provider, "calls", [])) - capital_before)
-        market_scan_status = "MARKET_SCAN_READY" if coverage.market_coverage_pct >= min_market and coverage.feature_coverage_pct >= min_feature else "BOOTSTRAP_REQUIRED"
-        enrichment_status = "ENRICHMENT_READY" if fundamental_rows and coverage.fundamental_enrichment_coverage_pct >= min_fundamental else "BOOTSTRAP_REQUIRED"
+        market_scan_status = "MARKET_SCAN_READY" if market_scan_ready else "BOOTSTRAP_REQUIRED"
+        enrichment_status = "ENRICHMENT_READY" if market_scan_ready and fundamental_rows and coverage.fundamental_enrichment_coverage_pct >= min_fundamental else "BOOTSTRAP_REQUIRED"
         deep_handoff_status = ("DEEP_HANDOFF_READY" if enrichment_status == "ENRICHMENT_READY" and
                                coverage.capital_preflight_coverage_pct >= min_capital and
                                (self.cost_limits.get("max_actual_llm_calls") or 0) > 0 else "BOOTSTRAP_REQUIRED")
@@ -326,9 +344,11 @@ class DiscoveryOrchestrator:
                                                  for scanner in self.scanners},
                                  api_telemetry={"quote_batches": int(quote_counter),
                                                 "bar_fetches": int(bar_counter),
-                                 "fundamental_calls": fundamental_calls,
-                                                 "capital_preflight_calls": capital_calls,
-                                                "benchmark_tickers": sorted(benchmark_returns)},
+                                                 "fundamental_calls": fundamental_calls,
+                                                "capital_preflight_calls": capital_calls,
+                                                "benchmark_tickers": sorted(benchmark_returns),
+                                                "benchmark_ready": benchmark_ready,
+                                                "market_readiness_reason_codes": market_readiness_reason_codes},
                                  all_candidates=ranked,
                                  watch_candidates=[item.to_dict() for item in watch_candidates],
                                  rejected_candidates=[item.to_dict() for item in rejected_candidates],
@@ -437,6 +457,16 @@ class DiscoveryOrchestrator:
                 candidate.eligibility = "REVIEW_REQUIRED"
                 if "NO_SCANNER_HIT" not in candidate.risk_flags:
                     candidate.risk_flags.append("NO_SCANNER_HIT")
+
+    def _reevaluate_scanners(self, candidates, context) -> None:
+        """Refresh scanner hits after enrichment without changing stage gates."""
+        for candidate in candidates:
+            candidate.scanner_hits = []
+            for scanner in self.scanners:
+                result = scanner.evaluate(candidate, context)
+                if result.hit:
+                    candidate.scanner_hits.append(result.scanner_name)
+            candidate.gate_results["scanner_stage"] = "FUNDAMENTAL_AWARE"
 
     def deep_analyze(self, result: DiscoveryResult, request, budget: DiscoveryBudgetGuard | None = None) -> list[dict[str, Any]]:
         """Explicit non-shadow handoff through the existing analyze_request call path."""
@@ -562,10 +592,11 @@ class DiscoveryOrchestrator:
         result.deep_analysis_results = self.deep_analyze(result, request, budget)
         result.certified_candidates = [row for row in result.deep_analysis_results if row.get("certified")]
         result.blocked_candidates = [row for row in result.deep_analysis_results if not row.get("certified")]
-        result.final_selection = final_selection(result.certified_candidates, self._portfolio_context())
+        selection = final_selection_diagnostics(result.certified_candidates, self._portfolio_context())
+        result.final_selection = selection["ticker"]
         result.final_selection_status = "EXECUTABLE" if result.final_selection != "NONE" else "NONE"
-        result.final_selection_reason_codes = (["CERTIFIED_CHILD_SELECTED"] if result.final_selection != "NONE"
-                                               else ["NO_CERTIFIED_CHILD"])
+        result.final_selection_reason_codes = list(selection["reason_codes"])
+        result.api_telemetry["final_selection_diagnostics"] = selection
         result.deep_handoff_status = "DEEP_HANDOFF_READY" if result.deep_analysis_results else "BOOTSTRAP_REQUIRED"
         result.budget_status = budget.snapshot()
         result.budget_status["overshoot_semantics"] = "SOFT_PARENT_BUDGET_HARD_CHILD_UNENFORCED"

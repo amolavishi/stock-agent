@@ -102,47 +102,73 @@ def _eligible(candidate: dict) -> bool:
 
 
 def final_selection(candidates: list[dict], portfolio_context: dict | None = None) -> str:
-    certified = [candidate for candidate in candidates if _eligible(candidate)]
+    return final_selection_diagnostics(candidates, portfolio_context)["ticker"]
+
+
+def final_selection_diagnostics(candidates: list[dict], portfolio_context: dict | None = None) -> dict:
+    """Return selection plus auditable reasons for an executable NONE."""
+    certified = [candidate for candidate in candidates if candidate.get("certified") is True]
     if not certified:
-        return "NONE"
+        return {"ticker": "NONE", "reason_codes": ["NO_CERTIFIED_CHILD"],
+                "filtered_candidates": []}
+    eligible = [candidate for candidate in certified if _eligible(candidate)]
+    if not eligible:
+        return {"ticker": "NONE", "reason_codes": ["FINAL_SCORECARD_INELIGIBLE"],
+                "filtered_candidates": [{"ticker": candidate.get("ticker", ""),
+                                         "reason_codes": ["FINAL_SCORECARD_INELIGIBLE"]}
+                                        for candidate in certified]}
     portfolio_context = portfolio_context or {}
     if portfolio_context.get("portfolio_context_status") != "READY":
-        return "NONE"
+        return {"ticker": "NONE", "reason_codes": ["PORTFOLIO_CONTEXT_UNKNOWN"],
+                "filtered_candidates": []}
     if float(portfolio_context.get("remaining_risk_budget_usd", 0) or 0) <= 0:
-        return "NONE"
+        return {"ticker": "NONE", "reason_codes": ["PORTFOLIO_RISK_BUDGET_EXHAUSTED"],
+                "filtered_candidates": []}
     sector_cap = portfolio_context.get("sector_cap_pct")
     existing_sector = portfolio_context.get("existing_sector_exposure_pct", {})
     pending_sector = portfolio_context.get("pending_sector_exposure_pct", {})
     existing_ticker = portfolio_context.get("existing_ticker_exposure_pct", {})
     pending_ticker = portfolio_context.get("pending_ticker_exposure_pct", {})
     filtered = []
-    for candidate in certified:
+    filtered_candidates = []
+    for candidate in eligible:
         ticker = candidate.get("ticker", "")
+        block_reasons = []
         if (float(existing_ticker.get(ticker, 0) or 0) +
                 float(pending_ticker.get(ticker, 0) or 0)) > 0:
-            continue
+            block_reasons.append("PORTFOLIO_TICKER_EXPOSURE_BLOCK")
         sector = candidate.get("sector", "")
         committed_sector = (float(existing_sector.get(sector, 0) or 0) +
                             float(pending_sector.get(sector, 0) or 0))
         if sector_cap is not None and committed_sector >= float(sector_cap):
+            block_reasons.append("PORTFOLIO_SECTOR_CAP_BLOCK")
+        if block_reasons:
+            filtered_candidates.append({"ticker": ticker, "reason_codes": block_reasons})
             continue
         filtered.append(candidate)
-    certified = filtered
-    if not certified:
-        return "NONE"
-    pareto_front = [candidate for candidate in certified if not any(
-        _dominates(other, candidate) for other in certified if other is not candidate)]
+    if not filtered:
+        reason_codes = sorted({reason for item in filtered_candidates
+                               for reason in item["reason_codes"]})
+        reason_codes.append("NO_EXECUTABLE_FINAL")
+        return {"ticker": "NONE", "reason_codes": reason_codes,
+                "filtered_candidates": filtered_candidates}
+    pareto_front = [candidate for candidate in filtered if not any(
+        _dominates(other, candidate) for other in filtered if other is not candidate)]
     if len(pareto_front) == 1:
-        return pareto_front[0]["ticker"]
-    certified = pareto_front
-    winner = certified[0]["ticker"]
-    for candidate in certified[1:]:
-        comparison = compare_candidates(next(item for item in certified if item["ticker"] == winner), candidate)
+        return {"ticker": pareto_front[0]["ticker"],
+                "reason_codes": ["CERTIFIED_CHILD_SELECTED"],
+                "filtered_candidates": filtered_candidates}
+    tournament_candidates = pareto_front
+    winner = tournament_candidates[0]["ticker"]
+    for candidate in tournament_candidates[1:]:
+        comparison = compare_candidates(next(item for item in tournament_candidates if item["ticker"] == winner), candidate)
         if comparison.winner == candidate["ticker"]:
             winner = candidate["ticker"]
         elif comparison.winner == "NONE":
-            return "NONE"
-    return winner
+            return {"ticker": "NONE", "reason_codes": ["TOURNAMENT_NO_WINNER", "NO_EXECUTABLE_FINAL"],
+                    "filtered_candidates": filtered_candidates}
+    return {"ticker": winner, "reason_codes": ["CERTIFIED_CHILD_SELECTED"],
+            "filtered_candidates": filtered_candidates}
 
 
 _PARETO_AXES = SCORECARD_AXES

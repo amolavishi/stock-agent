@@ -203,7 +203,10 @@ class DiscoveryGoldenFixtureTests(unittest.TestCase):
             config = {"report_dir": str(Path(tmp) / "reports"), "discovery": {"enabled": True, "shadow_mode": True}}
             result = DiscoveryOrchestrator(db, config, InMemorySecurityMasterProvider(records), provider).run(as_of=AS_OF)
             after = db.paper_account_state()
-            self.assertEqual(result.status, "COMPLETED_SHADOW_MARKET_ONLY")
+            self.assertEqual(result.status, "BLOCKED_MARKET_DATA")
+            self.assertEqual(result.market_scan_status, "BOOTSTRAP_REQUIRED")
+            self.assertIn("BENCHMARK_DATA_UNAVAILABLE",
+                          result.api_telemetry["market_readiness_reason_codes"])
             self.assertEqual(before["cash"], after["cash"])
             self.assertEqual(before["open_positions"], after["open_positions"])
             self.assertEqual(len(provider.quote_calls), 1)

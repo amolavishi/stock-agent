@@ -5,6 +5,26 @@ from datetime import datetime, timezone
 from .universe import InMemorySecurityMasterProvider, UniverseIntegrityEngine
 
 
+REQUIRED_BENCHMARKS = ("SPY", "QQQ", "IWM")
+MIN_COMPLETED_BENCHMARK_BARS = 21
+MIN_COMPLETED_MARKET_BARS = 20
+
+
+def _completed_bar_count(rows) -> int:
+    return sum(bool(getattr(row, "usable", True)) for row in (rows or []))
+
+
+def benchmark_snapshot_ready(benchmark: dict) -> bool:
+    """Canonical raw benchmark readiness used by the health smoke."""
+    return all(_completed_bar_count(benchmark.get(ticker)) >= MIN_COMPLETED_BENCHMARK_BARS
+               for ticker in REQUIRED_BENCHMARKS)
+
+
+def benchmark_returns_ready(benchmark_returns: dict) -> bool:
+    """Canonical derived benchmark readiness used by a Discovery run."""
+    return all(benchmark_returns.get(ticker) is not None for ticker in REQUIRED_BENCHMARKS)
+
+
 def _sample_tickers(records, limit: int = 3) -> list[str]:
     return [record.ticker for record in records[:limit] if getattr(record, "ticker", "")]
 
@@ -91,19 +111,25 @@ def bootstrap_health(database, security_master=None, market_data=None,
 
     if market_data is not None and tickers and hasattr(market_data, "daily_bars"):
         try:
-            checks["daily_bar_cache"] = bool(market_data.daily_bars(tickers[0], as_of))
+            checks["daily_bar_cache"] = (
+                _completed_bar_count(market_data.daily_bars(tickers[0], as_of)) >=
+                MIN_COMPLETED_MARKET_BARS)
+            if not checks["daily_bar_cache"]:
+                reason_codes.append("BAR_SAMPLE_INSUFFICIENT")
         except Exception:
             reason_codes.append("BAR_SAMPLE_FAILED")
 
     benchmark_provider = benchmark_provider or market_data
     if benchmark_provider is not None and hasattr(benchmark_provider, "benchmark_bars"):
         try:
-            benchmark = benchmark_provider.benchmark_bars(("SPY", "QQQ", "IWM"), as_of)
-            checks["benchmark_data"] = all(benchmark.get(ticker) for ticker in ("SPY", "QQQ", "IWM"))
+            benchmark = benchmark_provider.benchmark_bars(REQUIRED_BENCHMARKS, as_of)
+            checks["benchmark_data"] = benchmark_snapshot_ready(benchmark)
+            if not checks["benchmark_data"]:
+                reason_codes.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
         except Exception:
-            reason_codes.append("BENCHMARK_SAMPLE_FAILED")
+            reason_codes.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
     else:
-        reason_codes.append("BENCHMARK_PROVIDER_MISSING")
+        reason_codes.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
 
     market_ready = all(
         checks[key] for key in ("schema", "security_master", "market_data", "daily_bar_cache", "benchmark_data")

@@ -13,7 +13,9 @@ from stock_agent.discovery.orchestrator import DiscoveryOrchestrator
 from stock_agent.discovery.providers_live import (SECDiscoveryFundamentalProvider,
                                                    TossDiscoveryBenchmarkProvider)
 from stock_agent.discovery.schemas import DailyBar, FieldValue, MarketQuote, SecurityMasterRecord
-from stock_agent.discovery.tournament import compare_candidates, final_selection
+from stock_agent.discovery.health import bootstrap_health
+from stock_agent.discovery.tournament import (compare_candidates, final_selection,
+                                               final_selection_diagnostics)
 from stock_agent.discovery.universe import InMemorySecurityMasterProvider
 from stock_agent.schemas import EvidenceItem
 
@@ -98,6 +100,18 @@ class CapitalFixture:
         } for ticker in tickers}
 
 
+class SelectiveFundamentalFixture(FundamentalFixture):
+    def fundamentals(self, tickers, as_of):
+        rows = super().fundamentals(tickers, as_of)
+        ordinary = rows.get("A")
+        if ordinary is not None:
+            ordinary["revenue_growth_current_pct"] = FieldValue(10.0, "KNOWN", "COMPANYFACTS", as_of)
+            ordinary["revenue_growth_previous_pct"] = FieldValue(10.0, "KNOWN", "COMPANYFACTS", as_of)
+            ordinary["revenue_growth_acceleration_pp"] = FieldValue(0.0, "KNOWN", "COMPANYFACTS", as_of)
+            ordinary["revenue_growth_acceleration"] = FieldValue(0.0, "KNOWN", "COMPANYFACTS", as_of)
+        return rows
+
+
 def live_config(directory: str, preflight_n: int = 1) -> dict:
     return {"report_dir": directory, "discovery": {
         "enabled": True, "shadow_mode": True,
@@ -110,6 +124,16 @@ def live_config(directory: str, preflight_n: int = 1) -> dict:
         "cost": {"max_companyfacts_calls": 20, "max_sec_calls": 20,
                  "max_actual_llm_calls": 0},
     }}
+
+
+def lower_momentum_price_bars(ticker: str) -> list[DailyBar]:
+    prices = [10.0] * 55 + [10.02, 10.04, 10.06, 10.08, 10.10, 10.12]
+    start = datetime(2026, 5, 1, tzinfo=timezone.utc)
+    return [DailyBar(ticker, (start + timedelta(days=index)).date().isoformat(), price,
+                     price * 1.01, price * .99, price, price,
+                     2_000_000 if index == len(prices) - 1 else 1_000_000,
+                     "FIXTURE", AS_OF, AS_OF)
+            for index, price in enumerate(prices)]
 
 
 class DiscoveryMvpV4AuditTests(unittest.TestCase):
@@ -211,6 +235,50 @@ class DiscoveryMvpV4AuditTests(unittest.TestCase):
             self.assertEqual(result.coverage.capital_preflight_coverage_pct, 100.0)
             self.assertAlmostEqual(result.coverage.capital_preflight_scope_pct, 33.3333, places=3)
 
+    def test_fundamental_scanners_reassess_before_capital_preflight_ranking(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fundamental = SelectiveFundamentalFixture()
+            capital = CapitalFixture()
+            market = InMemoryDiscoveryMarketDataProvider(
+                [quote("A"), quote("B")],
+                price_bars("A") + lower_momentum_price_bars("B"))
+            result = DiscoveryOrchestrator(
+                Database(str(Path(directory) / "scanner-order.sqlite")),
+                live_config(directory, preflight_n=1),
+                InMemorySecurityMasterProvider([record("A"), record("B")]),
+                market, fundamental, market, capital).run(as_of=AS_OF, shadow=True)
+            b = next(item for item in result.all_candidates if item.security.ticker == "B")
+            a = next(item for item in result.all_candidates if item.security.ticker == "A")
+            self.assertIn("PROFITABILITY_INFLECTION", b.scanner_hits)
+            self.assertNotIn("PROFITABILITY_INFLECTION", a.scanner_hits)
+            self.assertEqual(capital.calls[-1], ["B"])
+            self.assertEqual(b.capital_preflight_rank, 1)
+            self.assertIsNone(a.capital_preflight_rank)
+
+    def test_health_and_run_both_block_when_benchmark_is_unavailable(self):
+        class BrokenBenchmark:
+            def benchmark_bars(self, tickers, as_of):
+                return {}
+
+        with tempfile.TemporaryDirectory() as directory:
+            records = [record("READY")]
+            market = InMemoryDiscoveryMarketDataProvider(
+                [quote("READY")], price_bars("READY"))
+            db = Database(str(Path(directory) / "benchmark-health.sqlite"))
+            health = bootstrap_health(db, InMemorySecurityMasterProvider(records), market,
+                                      BrokenBenchmark())
+            self.assertEqual(health["status"], "BOOTSTRAP_REQUIRED")
+            self.assertIn("BENCHMARK_DATA_UNAVAILABLE", health["reason_codes"])
+            self.assertIn("MARKET_REGIME_NOT_READY", health["reason_codes"])
+            result = DiscoveryOrchestrator(
+                db, live_config(directory), InMemorySecurityMasterProvider(records),
+                market, FundamentalFixture(), BrokenBenchmark(), CapitalFixture()).run(
+                    as_of=AS_OF, shadow=True)
+            self.assertEqual(result.market_scan_status, "BOOTSTRAP_REQUIRED")
+            self.assertFalse(result.api_telemetry["benchmark_ready"])
+            self.assertIn("BENCHMARK_DATA_UNAVAILABLE",
+                          result.api_telemetry["market_readiness_reason_codes"])
+
     def test_natural_language_discovery_promotion_is_explicit_and_bounded(self):
         for text in ("DISCOVERY DEEP", "DISCOVERY PROMOTE", "DISCOVERY 상위 3개 정밀분석",
                      "방금 DISCOVERY 상위 3개 정밀분석해",
@@ -301,6 +369,26 @@ class DiscoveryMvpV4AuditTests(unittest.TestCase):
                          "market_fresh": True, "no_material_unresolved_blocker": True,
                          "scores": complete_scores}
             self.assertEqual(final_selection([candidate], context), "NONE")
+
+    def test_final_none_reason_codes_identify_portfolio_and_scorecard_blocks(self):
+        complete_scores = {axis: 80 for axis in (
+            "signal_strength", "catalyst_quality", "expectation_gap", "surge_elasticity",
+            "entry_readiness", "capital_structure_safety", "strategy_fit", "data_confidence")}
+        complete_scores["reward_risk"] = 2.0
+        eligible = {"ticker": "BLOCKED", "sector": "Technology", "certified": True,
+                    "decision": "BUY", "risk_hard_filter_pass": True,
+                    "trade_plan_valid": True, "market_fresh": True,
+                    "no_material_unresolved_blocker": True, "scores": complete_scores}
+        sector_block = final_selection_diagnostics(
+            [eligible], {"portfolio_context_status": "READY", "remaining_risk_budget_usd": 1000,
+                         "sector_cap_pct": 25, "existing_sector_exposure_pct": {"Technology": 25}})
+        self.assertEqual(sector_block["ticker"], "NONE")
+        self.assertIn("PORTFOLIO_SECTOR_CAP_BLOCK", sector_block["reason_codes"])
+        self.assertNotIn("NO_CERTIFIED_CHILD", sector_block["reason_codes"])
+        scorecard_block = final_selection_diagnostics(
+            [{**eligible, "scores": {"signal_strength": 90}}],
+            {"portfolio_context_status": "READY", "remaining_risk_budget_usd": 1000})
+        self.assertEqual(scorecard_block["reason_codes"], ["FINAL_SCORECARD_INELIGIBLE"])
 
     def test_capital_negative_states_require_explicit_filing_language(self):
         evidence = [EvidenceItem(

@@ -126,8 +126,8 @@ class DiscoveryMvpAuditTests(unittest.TestCase):
             db = Database(str(Path(directory) / "audit.sqlite"))
             valid = record("VALID")
             market = InMemoryDiscoveryMarketDataProvider(
-                [quote("VALID")], bars("VALID", [10.0] * 10)
-                + [bar for ticker in ("SPY", "QQQ", "IWM") for bar in bars(ticker, [10.0] * 10)])
+                [quote("VALID")], bars("VALID", [10.0] * 21)
+                + [bar for ticker in ("SPY", "QQQ", "IWM") for bar in bars(ticker, [10.0] * 21)])
             health = bootstrap_health(db, InMemorySecurityMasterProvider([valid]), market, market)
             self.assertEqual(health["status"], "MARKET_SCAN_READY")
             self.assertTrue(health["legacy_discovery_ready"])

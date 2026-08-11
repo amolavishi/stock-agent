@@ -259,6 +259,9 @@ class DiscoveryMvpV3AuditTests(unittest.TestCase):
                 promoted.deep_analysis_results[0]["score_provenance"]["capital_structure_safety"]["source_field"],
                 "capital_structure_risk")
             self.assertEqual(promoted.final_selection, "VALID")
+            self.assertEqual(
+                promoted.api_telemetry["final_selection_diagnostics"]["reason_codes"],
+                ["CERTIFIED_CHILD_SELECTED"])
             with db.connect() as connection:
                 rows = {row["ticker"]: row["promotion_status"] for row in connection.execute(
                     "SELECT ticker,promotion_status FROM discovery_candidates WHERE discovery_run_id='RUN'")}
