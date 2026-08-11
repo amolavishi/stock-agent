@@ -1,4 +1,4 @@
-­r‡^Ñf¥–Ø¦{O,yÊ'vÃ®¶›­# Stock Agent PR #7 â€” Security Master Coverage Closure / Live Shadow íŒì •
+# Stock Agent PR #7 â€” Security Master Coverage Closure / Live Shadow íŒì •
 
 ì‹¤í–‰ ê¸°ì¤€: `codex/discovery-mvp-v2`, PR #7 Draft/Open/Unmerged ìœ ì§€
 

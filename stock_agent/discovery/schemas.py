@@ -1,4 +1,4 @@
-≠rá^—f•ñÿ¶{O,y 'v√Æ∂õ≠from __future__ import annotations
+from __future__ import annotations
 
 import hashlib
 import json

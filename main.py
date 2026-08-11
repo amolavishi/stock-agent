@@ -1,4 +1,4 @@
-≠rá^—f•ñÿ¶{Oly 'v√Æ∂õ≠from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json

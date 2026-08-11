@@ -1,4 +1,4 @@
-­r‡^Ñf¥–Ø¦{OlyÊ'vÃ®¶›­from __future__ import annotations
+from __future__ import annotations
 
 """Validated Security Master bootstrap and snapshot lifecycle.
 
@@ -354,4 +354,1396 @@ class SECSubmissionsBulkMetadataProvider:
                 if not json_names:
                     raise SecurityMasterBootstrapError("SEC_BULK_SCHEMA_INVALID")
                 with archive.open(json_names[0]) as handle:
-                    sample = json.loads(handle.read(self.MAÛM7êÚ$z{-®éÜj×vU÷7C Ð¢&V6öç2æVæB‚%4T5U$•E•ôÔ5DU%ô4õdU$tUô”å5Tdd”4”TåB"Ð¢–bÖWG&–72ævWB‚'6V7F÷%ö6÷fW&vU÷7B"Âã’Â6VÆbæÖ–å÷6V7F÷%ö6÷fW&vU÷7C Ð¢&V6öç2æVæB‚%4T5U$•E•ôÔ5DU%õ4T5Dõ%ô4õdU$tUô”å5Tdd”4”TåB"Ð¢&WGW&â&V6öç0Ð Ð¢FVb÷6÷W&6UöÖWFFF‡6VÆbÂ5ööc¢7G"’ÓâF–7E·7G"Âç•Ó ¢FVb6÷W&6Uö5ööb‡&÷f–FW"ÂFVfVÇC¢7G"Ò%Tä´äõtâ"’Óâ7G# ¢fÇVRÒvWFGG"‡&÷f–FW"Â'6÷W&6Uö5ööb"Â""¢–bfÇVS ¢&WGW&â7G"‡fÇVR¢6÷W&6W2ÒvWFGG"‡&÷f–FW"Â%4õU$4U2"ÂæöæR¢–b6÷W&6W3 ¢&WGW&â7G"†vWFGG"‡&÷f–FW"Â'6÷W&6Uö5ööb"ÂFVfVÇB’÷"FVfVÇB¢&WGW&âFVfVÇ@ ¢FVbfWF6†VEöB‡&÷f–FW"’Óâ7G# ¢&WGW&â7G"†vWFGG"‡&÷f–FW"Â&fWF6†VEöB"Â""’÷""" ¢&WGW&â°¢&&6VÆ–æR#¢°¢'6÷W&6R#¢%4T5ôD•$T5Dõ%’"À¢'6÷W&6U÷W&Â#¢vWFGG"‡6VÆbæÆ—7F–æu÷&÷f–FW"Â%U$Â"Â""’À¢'&WVW7FVEö5ööb#¢5ööbÀ¢'6÷W&6Uö5ööb#¢6÷W&6Uö5ööb‡6VÆbæÆ—7F–æu÷&÷f–FW"’À¢&fWF6†VEöB#¢fWF6†VEöB‡6VÆbæÆ—7F–æu÷&÷f–FW"’À¢ÒÀ¢'6V7W&—G•÷G—R#¢°¢'6÷W&6R#¢$ä4DõE$DU%õ5”Ô$ôÅôD•$T5Dõ%’"À¢'6÷W&6U÷W&Ç2#¢Æ—7B†vWFGG"‡6VÆbç6V7W&—G•÷G—U÷&÷f–FW"Â%4õU$4U2"Â·Ò’çfÇVW2‚’’À¢'&WVW7FVEö5ööb#¢5ööbÀ¢'6÷W&6Uö5ööb#¢6÷W&6Uö5ööb‡6VÆbç6V7W&—G•÷G—U÷&÷f–FW"’À¢&fWF6†VEöB#¢fWF6†VEöB‡6VÆbç6V7W&—G•÷G—U÷&÷f–FW"’À¢ÒÀ¢'W&–öF–5ö6÷fW%÷vR#¢°¢'6÷W&6R#¢%4T5õU$”ôD”5ô4õdU%õtUô”äÄ”äUõ„%$Â"À¢'6÷W&6U÷W&Â#¢&‡GG3¢ò÷wwrç6V2æv÷bô&6†—fW2öVFv"öFFò"À¢'&WVW7FVEö5ööb#¢5ööbÀ¢'6÷W&6Uö5ööb#¢6÷W&6Uö5ööb‡6VÆbæ6÷fW%ö–FVçF—G•÷&÷f–FW"’À¢&fWF6†VEöB#¢fWF6†VEöB‡6VÆbæ6÷fW%ö–FVçF—G•÷&÷f–FW"’À¢&6ÆÇ2#¢–çB†vWFGG"‡6VÆbæ6÷fW%ö–FVçF—G•÷&÷f–FW"Â&6ÆÇ2"Â’÷"’À¢&66†Uö†—G2#¢–çB†vWFGG"‡6VÆbæ6÷fW%ö–FVçF—G•÷&÷f–FW"Â&66†Uö†—G2"Â’÷"’À¢'&W6öÇfVB#¢–çB†vWFGG"‡6VÆbæ6÷fW%ö–FVçF—G•÷&÷f–FW"Â'&W6öÇfVB"Â’÷"’À¢&6öæfÆ–7FVB#¢–çB†vWFGG"‡6VÆbæ6÷fW%ö–FVçF—G•÷&÷f–FW"Â&6öæfÆ–7FVB"Â’÷"’À¢ÒÀ¢'6V7F÷"#¢°¢'6÷W&6R#¢%4T5õ5T$Ô•54”ôå2"À¢'6÷W&6U÷W&Â#¢vWFGG"‡6VÆbç6V7F÷%÷&÷f–FW"Â%U$Â"Â""’–b6VÆbç6V7F÷%÷&÷f–FW"VÇ6R""À¢'&WVW7FVEö5ööb#¢5ööbÀ¢'6÷W&6Uö5ööb#¢6÷W&6Uö5ööb‡6VÆbç6V7F÷%÷&÷f–FW"’À¢&fWF6†VEöB#¢fWF6†VEöB‡6VÆbç6V7F÷%÷&÷f–FW"’À¢&'VÆµöF÷væÆöG2#¢–çB†vWFGG"‡6VÆbç6V7F÷%÷&÷f–FW"Â&'VÆµöF÷væÆöG2"Â’÷"’À¢&–æF—f–GVÅöfÆÆ&6µö6ÆÇ2#¢–çB†vWFGG"‡6VÆbç6V7F÷%÷&÷f–FW"Â&–æF—f–GVÅö6ÆÇ2"Â’÷"’À¢&fÆÆ&6µö66†Uö†—G2#¢–çB†vWFGG"‡6VÆbç6V7F÷%÷&÷f–FW"Â&fÆÆ&6µö66†Uö†—G2"Â’÷"’À¢&'VÆµöW'&÷%÷&V6öåö6öFR#¢7G"†vWFGG"‡6VÆbç6V7F÷%÷&÷f–FW"Â&'VÆµöW'&÷%÷&V6öåö6öFR"Â""’÷"""’À¢ÒÀ¢Ð Ð Ð¦FVb6æ6†÷E÷&V6÷&G2‡–ÆöC¢F–7E·7G"Âç•Ò’ÓâÆ—7Eµ6V7W&—G”Ö7FW%&V6÷&EÓ Ð¢fÆ–FFU÷6æ6†÷B‡–ÆöBÐ¢&WGW&âµ÷&V6÷&Eög&öÕ÷&÷r‡&÷r’f÷"&÷r–â–ÆöBævWB‚'&V6÷&G2"ÂµÒ•ÐÐ Ð Ð¦FVb&VE÷6æ6†÷B‡Fƒ¢7G"ÂF‚’ÓâF–7E·7G"Âç•ÒÂæöæS Ð¢F&vWBÒF‚‡F‚Ð¢–bæ÷BF&vWBæ—5öf–ÆR‚“ Ð¢&WGW&âæöæPÐ¢G'“ Ð¢–ÆöBÒ§6öâæÆöG2‡F&vWBç&VE÷FW‡B†Væ6öF–æsÒ'WFbÓ‚"’Ð¢W†6WB„õ4W'&÷"ÂVæ–6öFTFV6öFTW'&÷"Â§6öâä¥4ôäFV6öFTW'&÷"’2W†3 Ð¢&—6R6V7W&—G”Ö7FW$&ö÷G7G&W'&÷"‚%4T5U$•E•ôÔ5DU%õ4ä4„õEõTå$TD$ÄR"Â7G"†W†2’’g&öÒW†0Ð¢fÆ–FFU÷6æ6†÷B‡–ÆöBÐ¢–ÆöE²'6æ6†÷E÷F‚%ÒÒ7G"‡F&vWBÐ¢–ÆöE²'6æ6†÷Eöf–ÆUö×F–ÖR%ÒÒFFWF–ÖRæg&ö×F–ÖW7F×‡F&vWBç7FB‚’ç7Eö×F–ÖRÂF–ÖW¦öæRçWF2’æ—6öf÷&ÖB‚Ð¢&WGW&â–Æö@Ð Ð Ð¦6Æ726V7W&—G”Ö7FW$&ö÷G7G&6W'f–6S Ð¢""$6öæf–wW&F–öâÖ&÷VæB6W'f–6RW6VB'’&ö÷G7G&÷&Vg&W6‚ö†VÇF‚4Ä’6öÖÖæG2â"" Ð Ð¢FVbõö–æ—Eõò‡6VÆbÂ6öæf–s¢F–7E·7G"Âç•Ò“ Ð¢6VÆbæ6öæf–rÒ6öæf–pÐ¢F—66÷fW'’Ò6öæf–rævWB‚&F—66÷fW'’"Â·ÒÐ¢&ö÷G7G&ÒF—66÷fW'’ævWB‚&&ö÷G7G&"Â·ÒÐ¢7&VFVçF–Ç2Ò6öæf–rævWB‚&7&VFVçF–Ç2"Â·ÒÐ¢6VÆbçW6W%övVçBÒ7G"†7&VFVçF–Ç2ævWB‚'6V5÷W6W%övVçB"Â""’Ð¢6VÆbç6æ6†÷E÷F‚ÒF‚†&ö÷G7G&ævWB‚'6V7W&—G•öÖ7FW%öVç&–6†ÖVçE÷F‚"Â""’Ð¢6VÆbç&uö66†UöF—"ÒF‚†&ö÷G7G&ævWB‚'&uö66†UöF—""Â&FFö66†RöF—66÷fW'’÷6V7W&—G•öÖ7FW"÷&r"’Ð¢6VÆbææ÷&ÖÆ—¦VEö66†UöF—"ÒF‚†&ö÷G7G&ævWB‚&æ÷&ÖÆ—¦VEö66†UöF—""Â&FFö66†RöF—66÷fW'’÷6V7W&—G•öÖ7FW"öæ÷&ÖÆ—¦VB"’Ð¢6VÆbç6V7F÷%ö66†UöF—"ÒF‚†&ö÷G7G&ævWB‚'6V7F÷%ö66†UöF—""Â7G"‡6VÆbç&uö66†UöF—"ò'6V5÷7V&Ö—76–öç2"’’Ð¢6VÆbåö'V–ÆFW#¢6V7W&—G”Ö7FW$&ö÷G7G&'V–ÆFW"ÂæöæRÒæöæPÐ Ð¢FVb'V–ÆFW"‡6VÆb’Óâ6V7W&—G”Ö7FW$&ö÷G7G&'V–ÆFW# ¢–b6VÆbåö'V–ÆFW"—2æ÷BæöæS Ð¢&WGW&â6VÆbåö'V–ÆFW Ð¢–bæ÷B6VÆbçW6W%övVçC Ð¢&—6R6V7W&—G”Ö7FW$&ö÷G7G&W'&÷"‚%4T5õU4U%ôtTåEõ$UT•$TB"Ð¢g&öÒç&÷f–FW'5öÆ—fR–×÷'B4T46ö×ç•F–6¶W%6V7W&—G”Ö7FW%&÷f–FW ¢Æ—7F–ærÒ4T46ö×ç•F–6¶W%6V7W&—G”Ö7FW%&÷f–FW"€¢6VÆbçW6W%övVçBÂ6VÆbç&uö66†UöF—"ò&6ö×ç•÷F–6¶W'5öW†6†ævRæ§6öâ"¢6V7W&—G•÷G—W2Òæ6FG&FW%6V7W&—G•G—U&÷f–FW"‡6VÆbç&uö66†UöF—"ò&æ6F÷G&FW""¢fÆÆ&6µ÷6V7F÷"Ò4T57V&Ö—76–öç4ÖWFFF&÷f–FW"€¢6VÆbçW6W%övVçBÂ6VÆbç6V7F÷%ö66†UöF—"À¢Ö…÷&WVW7G3Ö–çB‡6VÆbæ6öæf–rævWB‚&F—66÷fW'’"Â·Ò’ævWB‚&&ö÷G7G&"Â·Ò’ævWB€¢&Ö…ö—77VW%öÖWFFF÷&WVW7G2"Âó’’À¢Ö…÷'3ÖfÆöB‡6VÆbæ6öæf–rævWB‚'6V5öÖ…÷'2"ÂB’’¢6V7F÷"Ò4T57V&Ö—76–öç46ö×÷6—FTÖWFFF&÷f–FW"€¢4T57V&Ö—76–öç4'VÆ´ÖWFFF&÷f–FW"‡6VÆbçW6W%övVçBÂ6VÆbç&uö66†UöF—"’ÂfÆÆ&6µ÷6V7F÷"¢&ö÷G7G&Ò6VÆbæ6öæf–rævWB‚&F—66÷fW'’"Â·Ò’ævWB‚&&ö÷G7G&"Â·Ò¢'VÆµ÷&÷f–FW"Ò6V7F÷"æ'VÆ°¢6÷fW%÷&÷f–FW"Ò4T5W&–öF–46÷fW$–FVçF—G•&÷f–FW"€¢6VÆbçW6W%övVçBÂ'VÆµ÷&÷f–FW"À¢6VÆbç&uö66†UöF—"ò'6V5ö6÷fW""À¢Ö…÷&WVW7G3Ö–çB†&ö÷G7G&ævWB‚&Ö…ö6÷fW%öf–Æ–æu÷&WVW7G2"Â%óS’’À¢Ö…÷'3ÖfÆöB‡6VÆbæ6öæf–rævWB‚'6V5öÖ…÷'2"ÂB’’À¢¢6VÆbåö'V–ÆFW"Ò6V7W&—G”Ö7FW$&ö÷G7G&'V–ÆFW"€¢Æ—7F–ærÂ6V7W&—G•÷G—W2Â6V7F÷"Â6VÆbç6æ6†÷E÷F‚Â6VÆbç&uö66†UöF—"ÀÐ¢6VÆbææ÷&ÖÆ—¦VEö66†UöF—"ÀÐ¢7W÷'FVEöW†6†ævW3ÕVæ—fW'6T–çFVw&—G”Væv–æRäDTdTÅEôU„4„ätU2ÀÐ¢Ö–åö66WFVCÖ–çB†&ö÷G7G&ævWB‚&Ö–åö66WFVB"Â’’À¢Ö–åö–FVçF—G•ö6÷fW&vU÷7CÖfÆöB†&ö÷G7G&ævWB‚&Ö–åö–FVçF—G•ö6÷fW&vU÷7B"Â“R’’À¢Ö–å÷6V7F÷%ö6÷fW&vU÷7CÖfÆöB†&ö÷G7G&ævWB‚&Ö–å÷6V7F÷%ö6÷fW&vU÷7B"Â“’’À¢6÷fW%ö–FVçF—G•÷&÷f–FW#Ö6÷fW%÷&÷f–FW"À¢¢&WGW&â6VÆbåö'V–ÆFW Ð Ð¢FVb&ö÷G7G&‡6VÆbÂ&Vg&W6ƒ¢&ööÂÒfÇ6R’ÓâF–7E·7G"Âç•Ó Ð¢&WGW&â6VÆbæ'V–ÆFW"‚’æ'V–ÆEöæE÷w&—FR‡&Vg&W6ƒ×&Vg&W6‚Ð Ð¢FVb†VÇF‚‡6VÆbÂFF&6SÔæöæR’ÓâF–7E·7G"Âç•Ó ¢""%&VBÖöæÇ’†VÇFƒ¢—BæWfW"7&VFW2÷"&WÆ6W26æ6†÷Bâ"" Ð¢g&öÒæ†VÇF‚–×÷'B&ö÷G7G&ö†VÇF€Ð Ð¢–ÆöBÒ&VE÷6æ6†÷B‡6VÆbç6æ6†÷E÷F‚’–b6VÆbç6æ6†÷E÷F‚æ—5öf–ÆR‚’VÇ6RæöæPÐ¢&V6öç3¢Æ—7E·7G%ÒÒµÐÐ¢–b–ÆöB—2æöæS Ð¢&V6öç2æVæB‚%4T5U$•E•ôÔ5DU%õ4ä4„õEôÔ•54”är"Ð¢&V6÷&G2ÒµÐÐ¢VÇ6S Ð¢&V6÷&G2Ò6æ6†÷E÷&V6÷&G2‡–ÆöBÐ¢g&öÒçVæ—fW'6R–×÷'B–äÖVÖ÷'•6V7W&—G”Ö7FW%&÷f–FW Ð¢6V7W&—G•öÖ7FW"Ò–äÖVÖ÷'•6V7W&—G”Ö7FW%&÷f–FW"‡&V6÷&G2Ð Ð¢7&VFVçF–Ç2Ò6VÆbæ6öæf–rævWB‚&7&VFVçF–Ç2"Â·ÒÐ¢Ö&¶WEöFFÒæöæPÐ¢&Væ6†Ö&µ÷&÷f–FW"ÒæöæPÐ¢–bæ÷B7&VFVçF–Ç2ævWB‚'F÷75öö¶W’"’÷"æ÷B7&VFVçF–Ç2ævWB‚'F÷75ö÷6V7&WB"“ Ð¢&V6öç2æVæB‚%Dõ55ô5$TDTåD”Å5õ$UT•$TB"Ð¢VÆ–b6VÆbæ6öæf–rævWB‚&Ö&¶WEöFF÷&÷f–FW""Â6VÆbæ6öæf–rævWB‚'&÷f–FW""Â'F÷72"’’ÓÒ'F÷72# Ð¢g&öÒâçF÷72–×÷'BF÷746Æ–Vç@Ð¢g&öÒç&÷f–FW'5öÆ—fR–×÷'BF÷74F—66÷fW'”&Væ6†Ö&µ&÷f–FW"ÂF÷74F—66÷fW'”Ö&¶WDFF&÷f–FW Ð¢Ö&¶WEöFFÒF÷74F—66÷fW'”Ö&¶WDFF&÷f–FW"€Ð¢F÷746Æ–VçB†7&VFVçF–Ç2ævWB‚'F÷75öö¶W’"Â""’Â7&VFVçF–Ç2ævWB‚'F÷75ö÷6V7&WB"Â""’’Ð¢&Væ6†Ö&µ÷&÷f–FW"ÒF÷74F—66÷fW'”&Væ6†Ö&µ&÷f–FW"†Ö&¶WEöFFÐ¢gVæFÖVçFÂÒæöæP¢6—FÂÒæöæP¢–bæ÷B6VÆbçW6W%övVçC ¢&V6öç2æVæB‚%4T5õU4U%ôtTåEõ$UT•$TB"¢VÇ6S ¢g&öÒç&÷f–FW'5öÆ—fR–×÷'B4T4F—66÷fW'”6—FÅ&VfÆ–v‡E&÷f–FW"Â4T4F—66÷fW'”gVæFÖVçFÅ&÷f–FW ¢66†UöF—"Ò6VÆbæ6öæf–rævWB‚&F—66÷fW'’"Â·Ò’ævWB‚&&ö÷G7G&"Â·Ò’ævWB‚&gVæFÖVçFÅö66†UöF—""Â""¢gVæFÖVçFÂÒ4T4F—66÷fW'”gVæFÖVçFÅ&÷f–FW"‡6VÆbçW6W%övVçBÂ66†UöF—"¢6—FÂÒ4T4F—66÷fW'”6—FÅ&VfÆ–v‡E&÷f–FW"‡6VÆbçW6W%övVçBÂ6VÆbç6V7F÷%ö66†UöF—" Ð¢–bFF&6R—2æöæS Ð¢g&öÒâæFF&6R–×÷'BFF&6PÐ¢FF&6RÒFF&6R‡6VÆbæ6öæf–u²&FF&6U÷F‚%ÒÐ¢&W7VÇBÒ&ö÷G7G&ö†VÇF‚€Ð¢FF&6RÂ6V7W&—G•öÖ7FW"ÂÖ&¶WEöFFÂ&Væ6†Ö&µ÷&÷f–FW"ÀÐ¢Ö–åö66WFVCÖ–çB‡6VÆbæ6öæf–rævWB‚&F—66÷fW'’"Â·Ò’ævWB‚&&ö÷G7G&"Â·Ò’ævWB‚&Ö–åö66WFVB"Â’’ÀÐ¢Ö–åö–FVçF—G•ö6÷fW&vU÷7CÖfÆöB‡6VÆbæ6öæf–rævWB‚&F—66÷fW'’"Â·Ò’ævWB‚&&ö÷G7G&"Â·Ò’ævWB€Ð¢&Ö–åö–FVçF—G•ö6÷fW&vU÷7B"Â“R’’ÀÐ¢Ö–å÷6V7F÷%ö6÷fW&vU÷7CÖfÆöB‡6VÆbæ6öæf–rævWB‚&F—66÷fW'’"Â·Ò’ævWB‚&&ö÷G7G&"Â·Ò’ævWB€Ð¢&Ö–å÷6V7F÷%ö6÷fW&vU÷7B"Â“’’ÀÐ¢gVæFÖVçFÅ÷&÷f–FW#ÖgVæFÖVçFÂÂ6—FÅ÷&VfÆ–v‡E÷&÷f–FW#Ö6—FÂÀÐ¢Ö…ö7GVÅöÆÆÕö6ÆÇ3Ö–çB‡6VÆbæ6öæf–rævWB‚&F—66÷fW'’"Â·Ò’ævWB‚&6÷7B"Â·Ò’ævWB€Ð¢&Ö…ö7GVÅöÆÆÕö6ÆÇ2"Â’÷"’Â–æ—F–Æ—¦UöFF&6SÔfÇ6RÀÐ¢Ð¢&W7VÇE²'6æ6†÷B%ÒÒ°¢&W†—7G2#¢–ÆöB—2æ÷BæöæRÀ¢'F‚#¢7G"‡6VÆbç6æ6†÷E÷F‚’À¢&vVæW&FVEöB#¢–ÆöBævWB‚&vVæW&FVEöB"Â""’–b–ÆöBVÇ6R""ÀÐ¢'6÷W&6Uö5ööb#¢–ÆöBævWB‚'6÷W&6Uö5ööb"Â""’–b–ÆöBVÇ6R""ÀÐ¢&ÖWG&–72#¢–ÆöBævWB‚&ÖWG&–72"Â·Ò’–b–ÆöBVÇ6R·ÒÀ¢Ð¢6æF–FFU÷F‚Ò6VÆbç6æ6†÷E÷F‚çv—F…öæÖR‚'6V7W&—G•öÖ7FW%ö6æF–FFRæ§6öâ"¢F–væ÷7F–75÷F‚Ò6VÆbç6æ6†÷E÷F‚çv—F…öæÖR‚'6V7W&—G•öÖ7FW%ö'V–ÆEöF–væ÷7F–72æ§6öâ"¢6æF–FFRÒæöæP¢F–væ÷7F–72ÒæöæP¢G'“ ¢6æF–FFRÒ&VE÷6æ6†÷B†6æF–FFU÷F‚’–b6æF–FFU÷F‚æ—5öf–ÆR‚’VÇ6RæöæP¢W†6WB6V7W&—G”Ö7FW$&ö÷G7G&W'&÷# ¢6æF–FFRÒæöæP¢G'“ ¢F–væ÷7F–72Ò§6öâæÆöG2†F–væ÷7F–75÷F‚ç&VE÷FW‡B†Væ6öF–æsÒ'WFbÓ‚"’’À¢–bF–væ÷7F–75÷F‚æ—5öf–ÆR‚’VÇ6RæöæP¢W†6WB„õ4W'&÷"ÂVæ–6öFTFV6öFTW'&÷"Â§6öâä¥4ôäFV6öFTW'&÷"“ ¢F–væ÷7F–72ÒæöæP¢&W7VÇE²'V&Æ–6F–öâ%ÒÒ°¢&7F—fU÷7FGW2#¢$5D•dR"–b–ÆöB—2æ÷BæöæRVÇ6R$Ô•54”är"À¢&6æF–FFU÷7FGW2#¢6æF–FFRævWB‚'7FGW2"Â""’–b6æF–FFRVÇ6R""À¢&6æF–FFUöÖWG&–72#¢6æF–FFRævWB‚&ÖWG&–72"Â·Ò’–b6æF–FFRVÇ6R·ÒÀ¢&F–væ÷7F–72#¢F–væ÷7F–72÷"·ÒÀ¢&7F—fUöÆ¶u÷&W6W'fVB#¢–ÆöB—2æ÷BæöæRÀ¢Ð¢&W7VÇE²&7&VFVçF–Ç2%ÒÒ°¢'6V5÷W6W%övVçB#¢%$TE’"–b6VÆbçW6W%övVçBVÇ6R$$Äô4´TB"ÀÐ¢'F÷72#¢%$TE’"–b7&VFVçF–Ç2ævWB‚'F÷75öö¶W’"’æB7&VFVçF–Ç2ævWB‚'F÷75ö÷6V7&WB"’VÇ6R$$Äô4´TB"ÀÐ¢Ð¢&W7VÇE²'&÷f–FW%÷&VF–æW72%ÒÒ°¢'6V7W&—G•öÖ7FW"#¢°¢&6öæf–wW&VB#¢G'VRÀ¢&6öç7G'V7FVB#¢G'VRÀ¢'6×ÆUöW†V7WFVB#¢&ööÂ‡&V6÷&G2’À¢'6×ÆU÷&VG’#¢&ööÂ‡&W7VÇBævWB‚'6V7W&—G•öÖ7FW""ÂfÇ6R’’À¢&&Æö6¶VEö'’#¢€¢%4ä4„õEôÔ•54”är ¢–bæ÷B–ÆöBæBæ÷B6æF–FFP¢VÇ6R7G"‚†6æF–FFR÷"·Ò’ævWB‚'7FGW2"’÷"%4ä4„õEôÔ•54”är"¢–bæ÷B–ÆöBVÇ6R" ¢’À¢ÒÀ¢'F÷72#¢°¢&6öæf–wW&VB#¢&ööÂ†7&VFVçF–Ç2ævWB‚'F÷75öö¶W’"’æB7&VFVçF–Ç2ævWB‚'F÷75ö÷6V7&WB"’’À¢&6öç7G'V7FVB#¢Ö&¶WEöFF—2æ÷BæöæRÀ¢'G&ç7÷'B#¢%$TE’"–bÖ&¶WEöFF—2æ÷BæöæRVÇ6R$$Äô4´TB"À¢'6×ÆUöW†V7WFVB#¢fÇ6RÀ¢'6×ÆU÷&VG’#¢fÇ6RÀ¢&&Æö6¶VEö'’#¢%4T5U$•E•ôÔ5DU%ôäõEõ$TE’"–bæ÷B&V6÷&G2VÇ6R""À¢ÒÀ¢&gVæFÖVçFÂ#¢°¢&6öæf–wW&VB#¢&ööÂ‡6VÆbçW6W%övVçB’À¢&6öç7G'V7FVB#¢gVæFÖVçFÂ—2æ÷BæöæRÀ¢'6×ÆUöW†V7WFVB#¢fÇ6RÀ¢'6×ÆU÷&VG’#¢fÇ6RÀ¢&&Æö6¶VEö'’#¢%4T5U$•E•ôÔ5DU%ôäõEõ$TE’"–bæ÷B&V6÷&G2VÇ6R""À¢ÒÀ¢&6—FÂ#¢°¢&6öæf–wW&VB#¢&ööÂ‡6VÆbçW6W%övVçB’À¢&6öç7G'V7FVB#¢6—FÂ—2æ÷BæöæRÀ¢'6×ÆUöW†V7WFVB#¢fÇ6RÀ¢'6×ÆU÷&VG’#¢fÇ6RÀ¢&&Æö6¶VEö'’#¢%4T5U$•E•ôÔ5DU%ôäõEõ$TE’"–bæ÷B&V6÷&G2VÇ6R""À¢ÒÀ¢Ð¢–bgVæFÖVçFÂ—2æ÷BæöæS ¢&W7VÇE²'&V6öåö6öFW2%ÒÒ¶6öFRf÷"6öFR–â&W7VÇBævWB‚'&V6öåö6öFW2"ÂµÒ¢–b6öFRÒ$eTäDÔTåDÅõ$õd”DU%ôÔ•54”är%Ð¢–bæ÷B&V6÷&G3 ¢&W7VÇE²'&V6öåö6öFW2%ÒæVæB‚$eTäDÔTåDÅõ4ÕÄUô$Äô4´TEõ4T5U$•E•ôÔ5DU""¢–b6—FÂ—2æ÷BæöæS ¢&W7VÇE²'&V6öåö6öFW2%ÒÒ¶6öFRf÷"6öFR–â&W7VÇBævWB‚'&V6öåö6öFW2"ÂµÒ¢–b6öFRÒ$4•DÅõ$TdÄ”t…Eõ$õd”DU%ôÔ•54”är%Ð¢–bæ÷B&V6÷&G3 ¢&W7VÇE²'&V6öåö6öFW2%ÒæVæB‚$4•DÅõ4ÕÄUô$Äô4´TEõ4T5U$•E•ôÔ5DU""¢–b&V6÷&G2æBÖ&¶WEöFF—2æ÷BæöæS ¢&W7VÇE²'&÷f–FW%÷&VF–æW72%Õ²'F÷72%Õ²'6×ÆUöW†V7WFVB%ÒÒG'VP¢–bæ÷B&V6÷&G2æBÖ&¶WEöFF—2æ÷BæöæS ¢&W7VÇE²'&V6öåö6öFW2%ÒÒ¶6öFRf÷"6öFR–â&W7VÇBævWB‚'&V6öåö6öFW2"ÂµÒ¢–b6öFRÒ$Ô$´UEôDDõ4ÕÄUõTäd”Ä$ÄR%Ð¢&W7VÇE²'&V6öåö6öFW2%ÒæVæB‚$4äD”DDUõTõDUõ4ÕÄUô$Äô4´TEõ4T5U$•E•ôÔ5DU""¢–bæ÷B&V6÷&G2æBgVæFÖVçFÂ—2æ÷BæöæS ¢&W7VÇE²'&V6öåö6öFW2%ÒÒ¶6öFRf÷"6öFR–â&W7VÇBævWB‚'&V6öåö6öFW2"ÂµÒ¢–b6öFRÒ$eTäDÔTåDÅô$Äô4´TEôÔ$´UEô$ôõE5E$%Ð¢–bæ÷B&V6÷&G2æB6—FÂ—2æ÷BæöæS ¢&W7VÇE²'&V6öåö6öFW2%ÒÒ¶6öFRf÷"6öFR–â&W7VÇBævWB‚'&V6öåö6öFW2"ÂµÒ¢–b6öFRÒ$4•DÅõ$TdÄ”t…Eô$Äô4´TEôÔ$´UEô$ôõE5E$%Ð¢&W7VÇE²'&V6öåö6öFW2%ÒÒ6÷'FVB‡6WB‡&W7VÇBævWB‚'&V6öåö6öFW2"ÂµÒ’²&V6öç2’¢–b&W7VÇBævWB‚'7FGW2"’ÓÒ$DTUô„äDôdeõ$TE’"æB&V6öç3 Ð¢&W7VÇE²'7FGW2%ÒÒ$$ôõE5E$õ$UT•$TB Ð¢&W7VÇE²&6öÖÖæB%ÒÒ&F—66÷fW'’Ö†VÇF‚ Ð¢&WGW&â&W7VÇ@Ð
+                    sample = json.loads(handle.read(self.MAX_ENTRY_BYTES + 1).decode("utf-8"))
+                if not isinstance(sample, dict) or not any(
+                        key in sample for key in ("sic", "sicDescription", "name", "tickers", "exchanges")):
+                    raise SecurityMasterBootstrapError("SEC_BULK_SCHEMA_INVALID")
+                return json_names
+        except SecurityMasterBootstrapError:
+            raise
+        except (OSError, zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise SecurityMasterBootstrapError("SEC_BULK_INVALID", str(exc)) from exc
+
+    def _load(self, refresh: bool = False) -> Path:
+        self.archive_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.archive_path.is_file() and not refresh:
+            self._validate_archive(self.archive_path)
+            metadata = _read_json_cache(self.metadata_path) or {}
+            self.source_as_of = str(metadata.get("source_as_of") or "UNKNOWN")
+            self.fetched_at = str(metadata.get("fetched_at") or "")
+            self.cache_hits += 1
+            return self.archive_path
+        request = urllib.request.Request(self.URL, headers={"User-Agent": self.user_agent, "Accept": "application/zip"})
+        temporary = self.archive_path.with_name(f".{self.archive_path.name}.{os.getpid()}.tmp")
+        self.calls += 1
+        self.bulk_downloads += 1
+        try:
+            with self.opener(request, timeout=self.timeout) as response, temporary.open("wb") as handle:
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    handle.write(chunk)
+                handle.flush()
+                os.fsync(handle.fileno())
+            self._validate_archive(temporary)
+            fetched_at = _now()
+            headers = getattr(response, "headers", {})
+            get_header = getattr(headers, "get", lambda name, default=None: default)
+            self.source_as_of = str(get_header("Last-Modified") or get_header("ETag") or "UNKNOWN")
+            self.fetched_at = fetched_at
+            raw = temporary.read_bytes()
+            _write_json_atomic(self.metadata_path, {
+                "source": "SEC_SUBMISSIONS_BULK",
+                "source_url": self.URL,
+                "source_as_of": self.source_as_of,
+                "fetched_at": fetched_at,
+                "checksum": _checksum(raw),
+                "size": len(raw),
+                "schema_version": "security_master_bulk_v1",
+            })
+            os.replace(temporary, self.archive_path)
+            return self.archive_path
+        except SecurityMasterBootstrapError:
+            self.failed += 1
+            raise
+        except (OSError, urllib.error.URLError) as exc:
+            self.failed += 1
+            raise SecurityMasterBootstrapError("SEC_BULK_DOWNLOAD_FAILED", str(exc)) from exc
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+
+    def profiles(self, records: Iterable[SecurityMasterRecord], refresh: bool = False) -> dict[str, dict[str, Any]]:
+        archive_path = self._load(refresh=refresh)
+        by_cik = {_normalise_cik(record.cik): record for record in records if _normalise_cik(record.cik)}
+        result: dict[str, dict[str, Any]] = {}
+        processed = 0
+        with zipfile.ZipFile(archive_path) as archive:
+            names = {Path(name).name.upper(): name for name in archive.namelist()}
+            for cik, record in by_cik.items():
+                member = names.get(f"CIK{cik}.JSON")
+                if not member:
+                    self.unmatched += 1
+                    continue
+                try:
+                    with archive.open(member) as handle:
+                        payload = json.loads(handle.read(self.MAX_ENTRY_BYTES + 1).decode("utf-8"))
+                    if not isinstance(payload, dict):
+                        raise ValueError("SEC bulk issuer payload is not an object")
+                    result[cik] = {
+                        "cik": cik,
+                        "sic": str(payload.get("sic") or ""),
+                        "sic_description": str(payload.get("sicDescription") or ""),
+                        "company_name": str(payload.get("name") or record.company_name),
+                        "source": "SEC_SUBMISSIONS_BULK",
+                        "source_url": self.URL,
+                        "source_as_of": self.source_as_of,
+                    }
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+                    self.failed += 1
+                processed += 1
+                if callable(self.progress_callback) and (processed % 100 == 0 or processed == len(by_cik)):
+                    self.progress_callback("SEC_METADATA", processed, len(by_cik), self.cache_hits,
+                                           self.bulk_downloads, self.failed, self.unmatched)
+        return result
+
+    @staticmethod
+    def _latest_periodic_from_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
+        """Select a periodic filing by filed/acceptance time, never accession order."""
+        recent = payload.get("filings", {}).get("recent", {})
+        forms = recent.get("form", [])
+        accessions = recent.get("accessionNumber", [])
+        filed_dates = recent.get("filingDate", [])
+        acceptance = recent.get("acceptanceDateTime", [])
+        documents = recent.get("primaryDocument", [])
+        rows: list[dict[str, Any]] = []
+        for index, form in enumerate(forms):
+            if str(form or "").upper() not in {"10-Q", "10-K", "20-F", "40-F"}:
+                continue
+            accession = str(accessions[index] if index < len(accessions) else "")
+            filed_at = str(filed_dates[index] if index < len(filed_dates) else "")
+            accepted_at = str(acceptance[index] if index < len(acceptance) else "")
+            document = str(documents[index] if index < len(documents) else "")
+            if accession and filed_at and document:
+                rows.append({"form": str(form).upper(), "accession": accession,
+                             "filed_at": filed_at, "acceptance_datetime": accepted_at,
+                             "primary_document": document})
+        return max(rows, key=lambda row: (row["filed_at"], row["acceptance_datetime"], row["accession"])) if rows else None
+
+    def latest_periodic(self, records: Iterable[SecurityMasterRecord], refresh: bool = False) -> dict[str, dict[str, Any]]:
+        archive_path = self._load(refresh=refresh)
+        by_cik = {_normalise_cik(record.cik): record for record in records if _normalise_cik(record.cik)}
+        result: dict[str, dict[str, Any]] = {}
+        with zipfile.ZipFile(archive_path) as archive:
+            names = {Path(name).name.upper(): name for name in archive.namelist()}
+            for cik in by_cik:
+                member = names.get(f"CIK{cik}.JSON")
+                if not member:
+                    self.unmatched += 1
+                    continue
+                try:
+                    with archive.open(member) as handle:
+                        payload = json.loads(handle.read(self.MAX_ENTRY_BYTES + 1).decode("utf-8"))
+                    if isinstance(payload, dict):
+                        filing = self._latest_periodic_from_payload(payload)
+                        if filing:
+                            result[cik] = {"cik": cik, **filing, "source": "SEC_SUBMISSIONS_BULK",
+                                           "source_url": self.URL, "source_as_of": self.source_as_of}
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+                    self.failed += 1
+        return result
+
+
+class SECPeriodicCoverIdentityProvider:
+    """Resolve unresolved listings from SEC inline-XBRL security-level facts.
+
+    Only the structured tuple (Security12bTitle, TradingSymbol,
+    SecurityExchangeName) is accepted.  CompanyFacts share counts and issuer
+    names are deliberately not identity evidence for a ticker.
+    """
+
+    PERIODIC_FORMS = {"10-Q", "10-K", "20-F", "40-F"}
+    FACT_NAMES = {
+        "dei:security12btitle": "title",
+        "dei:tradingsymbol": "symbol",
+        "dei:securityexchangename": "exchange",
+    }
+
+    def __init__(self, user_agent: str, bulk_provider: SECSubmissionsBulkMetadataProvider,
+                 cache_dir: str | Path, opener=None, max_requests: int = 2_500,
+                 max_rps: float = 4.0, timeout: float = 30.0):
+        if not user_agent:
+            raise SecurityMasterBootstrapError("SEC_USER_AGENT_REQUIRED")
+        self.user_agent = user_agent
+        self.bulk_provider = bulk_provider
+        self.cache_dir = Path(cache_dir)
+        self.opener = opener or urllib.request.urlopen
+        self.max_requests = max(0, int(max_requests))
+        self.max_rps = max(0.5, min(float(max_rps), 5.0))
+        self.timeout = timeout
+        self.calls = 0
+        self.cache_hits = 0
+        self.failed = 0
+        self.failure_reason_counts: Counter[str] = Counter()
+        self.unmatched = 0
+        self.resolved = 0
+        self.conflicted = 0
+        self.remaining_unknown = 0
+        self.source_as_of = "UNKNOWN"
+        self.fetched_at = ""
+        self._last_request_at = 0.0
+
+    @classmethod
+    def _inline_facts(cls, text: str) -> dict[str, list[dict[str, str]]]:
+        facts: dict[str, list[dict[str, str]]] = defaultdict(list)
+        pattern = re.compile(
+            r"<ix:nonnumeric\b(?P<attrs>[^>]*)>(?P<body>.*?)</ix:nonnumeric\s*>",
+            re.IGNORECASE | re.DOTALL,
+        )
+        attr_pattern = re.compile(r"([A-Za-z_:][\w:.-]*)\s*=\s*([\"'])(.*?)\2", re.DOTALL)
+        for match in pattern.finditer(text):
+            attrs = {key.lower(): value for key, _, value in attr_pattern.findall(match.group("attrs"))}
+            field = cls.FACT_NAMES.get(str(attrs.get("name") or "").lower())
+            if not field:
+                continue
+            value = html.unescape(re.sub(r"<[^>]*>", " ", match.group("body")))
+            value = re.sub(r"\s+", " ", value).strip()
+            if value:
+                facts[field].append({"value": value, "context_ref": str(attrs.get("contextref") or "")})
+        return facts
+
+    @classmethod
+    def parse_cover_page(cls, raw: bytes | str, filing: dict[str, Any],
+                         expected_ticker: str, expected_cik: str,
+                         expected_exchange: str) -> dict[str, Any] | None:
+        text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+        facts = cls._inline_facts(text)
+        grouped: dict[str, dict[str, str]] = defaultdict(dict)
+        for field in cls.FACT_NAMES.values():
+            for item in facts.get(field, []):
+                grouped[item.get("context_ref", "")][field] = item["value"]
+        tuples = [row for row in grouped.values() if all(row.get(field) for field in ("title", "symbol", "exchange"))]
+        if not tuples:
+            return None
+        expected_ticker = str(expected_ticker or "").strip().upper()
+        expected_exchange = _normalise_exchange(expected_exchange)
+        matching = [row for row in tuples if row["symbol"].strip().upper() == expected_ticker]
+        if not matching:
+            return None
+        tuple_row = matching[0]
+        cover_exchange = _normalise_exchange(tuple_row["exchange"])
+        category, identity = _classification_from_name(tuple_row["title"], None)
+        exchange_conflict = bool(cover_exchange and expected_exchange and cover_exchange != expected_exchange)
+        return {
+            "ticker": expected_ticker,
+            "cik": _normalise_cik(expected_cik),
+            "company_name": tuple_row["title"],
+            "exchange": expected_exchange,
+            "security_type": category,
+            "identity": identity,
+            "identity_conflicted": exchange_conflict,
+            "cover_title": tuple_row["title"],
+            "cover_symbol": tuple_row["symbol"].strip().upper(),
+            "cover_exchange": cover_exchange,
+            "source": "SEC_PERIODIC_COVER_PAGE",
+            "source_url": str(filing.get("source_url") or ""),
+            "source_as_of": str(filing.get("filed_at") or ""),
+            "filing_form": str(filing.get("form") or ""),
+            "filing_accession": str(filing.get("accession") or ""),
+            "provenance": {
+                "security_level_tuple": {
+                    "title": tuple_row["title"], "symbol": tuple_row["symbol"],
+                    "exchange": tuple_row["exchange"], "cik": _normalise_cik(expected_cik),
+                    "form": filing.get("form", ""), "filed_at": filing.get("filed_at", ""),
+                }
+            },
+        }
+
+    def _cache_paths(self, filing: dict[str, Any]) -> tuple[Path, Path]:
+        cik = _normalise_cik(filing.get("cik"))
+        accession = re.sub(r"[^0-9A-Za-z]", "", str(filing.get("accession") or "")) or "unknown"
+        base = self.cache_dir / f"CIK{cik}_{accession}"
+        return base.with_suffix(".html"), base.with_suffix(".html.meta.json")
+
+    def _load_document(self, filing: dict[str, Any], refresh: bool = False) -> bytes | None:
+        html_path, meta_path = self._cache_paths(filing)
+        if html_path.is_file() and not refresh:
+            self.cache_hits += 1
+            return html_path.read_bytes()
+        if self.max_requests and self.calls >= self.max_requests:
+            return None
+        elapsed = time.monotonic() - self._last_request_at
+        wait = (1.0 / self.max_rps) - elapsed
+        if wait > 0:
+            time.sleep(wait)
+        self._last_request_at = time.monotonic()
+        cik = _normalise_cik(filing.get("cik"))
+        accession = str(filing.get("accession") or "").replace("-", "")
+        document = str(filing.get("primary_document") or "")
+        url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{document}"
+        request = urllib.request.Request(url, headers={"User-Agent": self.user_agent, "Accept": "text/html"})
+        self.calls += 1
+        try:
+            with self.opener(request, timeout=self.timeout) as response:
+                raw = response.read()
+            _atomic_write_bytes(html_path, raw)
+            _write_json_atomic(meta_path, {
+                "source": "SEC_PERIODIC_COVER_PAGE", "source_url": url,
+                "source_as_of": filing.get("filed_at", ""), "fetched_at": _now(),
+                "checksum": _checksum(raw), "filing": filing,
+            })
+            self.fetched_at = _now()
+            return raw
+        except urllib.error.HTTPError as exc:
+            self.failed += 1
+            self.failure_reason_counts[f"HTTP_{exc.code}"] += 1
+            return None
+        except (OSError, urllib.error.URLError, ValueError) as exc:
+            self.failed += 1
+            self.failure_reason_counts[type(exc).__name__] += 1
+            return None
+
+    def records(self, records: Iterable[SecurityMasterRecord], as_of: str,
+                refresh: bool = False) -> list[dict[str, Any]]:
+        requested = list(records)
+        if not requested:
+            return []
+        filings = self.bulk_provider.latest_periodic(requested, refresh=False)
+        output: list[dict[str, Any]] = []
+        for record in requested:
+            filing = filings.get(_normalise_cik(record.cik))
+            if not filing:
+                self.unmatched += 1
+                continue
+            filing = dict(filing)
+            filing["source_url"] = (
+                f"https://www.sec.gov/Archives/edgar/data/{int(_normalise_cik(record.cik))}/"
+                f"{str(filing.get('accession', '')).replace('-', '')}/{filing.get('primary_document', '')}"
+            )
+            raw = self._load_document(filing, refresh=refresh)
+            if raw is None:
+                continue
+            row = self.parse_cover_page(raw, filing, record.ticker, record.cik, record.exchange)
+            if row is None:
+                continue
+            self.resolved += 1
+            if row.get("identity_conflicted"):
+                self.conflicted += 1
+            output.append(row)
+        self.remaining_unknown = max(0, len(requested) - self.resolved)
+        return output
+
+class SECSubmissionsCompositeMetadataProvider:
+    """Use the official bulk archive first, with bounded cached per-CIK fallback."""
+
+    URL = SECSubmissionsBulkMetadataProvider.URL
+
+    def __init__(self, bulk: SECSubmissionsBulkMetadataProvider,
+                 fallback: "SECSubmissionsMetadataProvider"):
+        self.bulk = bulk
+        self.fallback = fallback
+        self.calls = 0
+        self.failed = 0
+        self.unmatched = 0
+        self.bulk_downloads = 0
+        self.individual_calls = 0
+        self.fallback_cache_hits = 0
+        self.bulk_error_reason_code = ""
+        self.source_as_of = "UNKNOWN"
+        self.fetched_at = ""
+        self.progress_callback = None
+
+    def set_progress_callback(self, callback) -> None:
+        self.progress_callback = callback
+        self.bulk.set_progress_callback(callback)
+
+    def profiles(self, records: Iterable[SecurityMasterRecord], refresh: bool = False) -> dict[str, dict[str, Any]]:
+        records = list(records)
+        try:
+            result = self.bulk.profiles(records, refresh=refresh)
+            self.calls += self.bulk.calls
+            self.failed += self.bulk.failed
+            self.unmatched += self.bulk.unmatched
+            self.bulk_downloads += self.bulk.bulk_downloads
+            self.source_as_of = self.bulk.source_as_of
+            self.fetched_at = self.bulk.fetched_at
+            return result
+        except SecurityMasterBootstrapError as bulk_error:
+            # A failed bulk refresh must not turn one archive failure into a
+            # thousands-request refresh storm.  Use the bounded per-CIK cache
+            # as a last-known-good fallback; a later explicit refresh can retry
+            # the bulk source after operators have inspected the error.
+            result = self.fallback.profiles(records, refresh=False)
+            self.calls += self.fallback.calls
+            self.failed += self.fallback.failed
+            self.unmatched += self.fallback.unmatched
+            self.individual_calls += self.fallback.calls
+            self.fallback_cache_hits += self.fallback.cache_hits
+            self.bulk_error_reason_code = bulk_error.reason_code
+            self.source_as_of = getattr(self.fallback, "source_as_of", "UNKNOWN")
+            self.fetched_at = getattr(self.fallback, "fetched_at", "")
+            result["_bulk_error"] = {"reason_code": bulk_error.reason_code}
+            return {key: value for key, value in result.items() if not key.startswith("_")}
+
+
+class SECSubmissionsMetadataProvider:
+    """Cached official SEC issuer metadata used for SIC/sector enrichment."""
+
+    URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+
+    def __init__(self, user_agent: str, cache_dir: str | Path, opener=None,
+                 max_requests: int = 10_000, max_rps: float = 4.0, timeout: float = 20.0,
+                 max_attempts: int = 3):
+        if not user_agent:
+            raise SecurityMasterBootstrapError("SEC_USER_AGENT_REQUIRED")
+        self.user_agent = user_agent
+        self.cache_dir = Path(cache_dir)
+        self.opener = opener or urllib.request.urlopen
+        self.max_requests = max(0, int(max_requests))
+        self.max_rps = max(0.5, min(float(max_rps), 5.0))
+        self.timeout = timeout
+        self.max_attempts = max(1, int(max_attempts))
+        self.calls = 0
+        self.failed = 0
+        self.unmatched = 0
+        self.cache_hits = 0
+        self.source_as_of = "UNKNOWN"
+        self.fetched_at = ""
+        self._last_request_at = 0.0
+
+    def profiles(self, records: Iterable[SecurityMasterRecord], refresh: bool = False) -> dict[str, dict[str, Any]]:
+        result: dict[str, dict[str, Any]] = {}
+        seen: set[str] = set()
+        for record in records:
+            if record.cik in seen or not record.cik:
+                continue
+            seen.add(record.cik)
+            payload = self.profile(record.cik, refresh=refresh)
+            if payload is None:
+                self.unmatched += 1
+                continue
+            result[record.cik] = {
+                "cik": record.cik,
+                "sic": str(payload.get("sic") or ""),
+                "sic_description": str(payload.get("sicDescription") or ""),
+                "company_name": str(payload.get("name") or ""),
+                "source": "SEC_SUBMISSIONS",
+                "source_url": self.URL.format(cik=record.cik),
+                "source_as_of": str(payload.get("lastUpdate") or ""),
+            }
+        return result
+
+    def profile(self, cik: str, refresh: bool = False) -> dict[str, Any] | None:
+        normalized = _normalise_cik(cik)
+        if not normalized:
+            return None
+        cache_path = self.cache_dir / f"CIK{normalized}.json"
+        if cache_path.is_file() and not refresh:
+            self.cache_hits += 1
+            cached = _read_json_cache(cache_path)
+            if isinstance(cached, dict):
+                self.source_as_of = str(cached.get("lastUpdate") or self.source_as_of)
+            return _read_json_cache(cache_path)
+        if self.max_requests and self.calls >= self.max_requests:
+            return None
+        self._throttle()
+        request = urllib.request.Request(
+            self.URL.format(cik=normalized),
+            headers={"User-Agent": self.user_agent, "Accept": "application/json"},
+        )
+        for attempt in range(1, self.max_attempts + 1):
+            self.calls += 1
+            try:
+                with self.opener(request, timeout=self.timeout) as response:
+                    if getattr(response, "status", 200) != 200:
+                        raise SecurityMasterBootstrapError("SEC_SUBMISSIONS_HTTP_ERROR")
+                    payload = json.loads(response.read().decode("utf-8"))
+                if not isinstance(payload, dict):
+                    raise SecurityMasterBootstrapError("SEC_SUBMISSIONS_INVALID_JSON")
+                source_as_of = str(payload.get("lastUpdate") or "")
+                self.source_as_of = source_as_of or "UNKNOWN"
+                self.fetched_at = _now()
+                _write_json_cache(cache_path, payload, "SEC_SUBMISSIONS", source_as_of)
+                return payload
+            except SecurityMasterBootstrapError:
+                self.failed += 1
+                if attempt == self.max_attempts:
+                    return None
+            except (OSError, urllib.error.URLError, json.JSONDecodeError):
+                self.failed += 1
+                if attempt == self.max_attempts:
+                    return None
+            time.sleep(min(2.0, 0.25 * (2 ** (attempt - 1))))
+        return None
+
+    def _throttle(self) -> None:
+        interval = 1.0 / self.max_rps
+        elapsed = time.monotonic() - self._last_request_at
+        if elapsed < interval:
+            time.sleep(interval - elapsed)
+        self._last_request_at = time.monotonic()
+
+
+def _record_from_row(row: dict[str, Any]) -> SecurityMasterRecord:
+    return SecurityMasterRecord(
+        security_id=str(row.get("security_id") or f"SEC-{row.get('cik', '')}-{row.get('ticker', '')}"),
+        ticker=str(row.get("ticker") or "").upper(),
+        company_name=str(row.get("company_name") or ""),
+        cik=_normalise_cik(row.get("cik")),
+        exchange=_normalise_exchange(row.get("exchange")),
+        security_type=str(row.get("security_type") or "UNKNOWN"),
+        country=str(row.get("country") or "US").upper(),
+        is_common_stock=row.get("is_common_stock"), is_etf=row.get("is_etf"),
+        is_unit=row.get("is_unit"), is_warrant=row.get("is_warrant"),
+        is_preferred=row.get("is_preferred"), is_adr=row.get("is_adr"),
+        is_test_issue=row.get("is_test_issue"),
+        sector_canonical=str(row.get("sector_canonical") or "UNKNOWN"),
+        industry_canonical=str(row.get("industry_canonical") or "UNKNOWN"),
+        sic=str(row.get("sic") or ""), sic_description=str(row.get("sic_description") or ""),
+        active_status=str(row.get("active_status") or "ACTIVE").upper(),
+        source=str(row.get("source") or "SEC_DIRECTORY+VALIDATED_ENRICHMENT"),
+        source_as_of=str(row.get("source_as_of") or ""),
+        ingested_at=str(row.get("ingested_at") or ""),
+        themes=tuple(row.get("themes") or ()),
+    )
+
+
+def validate_snapshot(payload: dict[str, Any]) -> None:
+    if not isinstance(payload, dict) or payload.get("schema_version") != "security_master_enrichment_v1":
+        raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_SCHEMA_INVALID")
+    rows = payload.get("records")
+    if not isinstance(rows, list):
+        raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_RECORDS_INVALID")
+    seen_tickers: set[str] = set()
+    seen_identity: set[tuple[str, str]] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_RECORD_INVALID")
+        ticker = str(row.get("ticker") or "").upper()
+        raw_cik = str(row.get("cik") or "").strip()
+        if raw_cik and (not raw_cik.isdigit() or len(raw_cik) > 10):
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_MALFORMED_CIK")
+        cik = _normalise_cik(raw_cik)
+        exchange = _normalise_exchange(row.get("exchange"))
+        if not ticker:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_EMPTY_TICKER")
+        if ticker in seen_tickers:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_DUPLICATE_TICKER")
+        seen_tickers.add(ticker)
+        # SEC's baseline can contain a blank exchange.  That is an unknown
+        # listing attribute, not a reason to discard the whole snapshot.  The
+        # executable-universe filter rejects it as MISSING_EXCHANGE; snapshot
+        # validation only rejects malformed/non-normalizable values.
+        if cik and not re.fullmatch(r"\d{10}", cik):
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_MALFORMED_CIK")
+        identity_key = (cik, ticker)
+        if identity_key in seen_identity:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_DUPLICATE_IDENTITY")
+        seen_identity.add(identity_key)
+        true_flags = []
+        test_issue = row.get("is_test_issue")
+        if test_issue is not None and not isinstance(test_issue, bool):
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_BOOLEAN_INVALID")
+        states = row.get("identity_states") or {}
+        provenance = row.get("provenance") or {}
+        for flag in IDENTITY_FLAGS:
+            value = row.get(flag)
+            if value is not None and not isinstance(value, bool):
+                raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_BOOLEAN_INVALID")
+            if value is not None:
+                if value is True:
+                    true_flags.append(flag)
+                state = states.get(flag, {}) if isinstance(states, dict) else {}
+                source_rows = provenance.get(flag, []) if isinstance(provenance, dict) else []
+                if state.get("state") != "KNOWN" or not source_rows:
+                    raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_PROVENANCE_MISSING")
+        if len(true_flags) > 1:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_CONTRADICTORY_FLAGS")
+        if not str(row.get("sector_canonical") or "").strip():
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_SECTOR_INVALID")
+        security_type = str(row.get("security_type") or "UNKNOWN").upper()
+        if security_type not in SECURITY_TYPES:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_SECURITY_TYPE_INVALID")
+
+
+class SecurityMasterBootstrapBuilder:
+    """Build and atomically publish a validated, provenance-bearing snapshot."""
+
+    def __init__(self, listing_provider, security_type_provider, sector_provider=None,
+                 snapshot_path: str | Path = "data/discovery/security_master_enrichment.json",
+                 raw_cache_dir: str | Path = "data/cache/discovery/security_master/raw",
+                 normalized_cache_dir: str | Path = "data/cache/discovery/security_master/normalized",
+                 supported_exchanges: Iterable[str] | None = None,
+                 min_accepted: int = 1, min_identity_coverage_pct: float = 95.0,
+                 min_sector_coverage_pct: float = 90.0,
+                 lock_ttl_seconds: int = 6 * 60 * 60,
+                 cover_identity_provider=None):
+        self.listing_provider = listing_provider
+        self.security_type_provider = security_type_provider
+        self.sector_provider = sector_provider
+        self.snapshot_path = Path(snapshot_path)
+        self.raw_cache_dir = Path(raw_cache_dir)
+        self.normalized_cache_dir = Path(normalized_cache_dir)
+        self.supported_exchanges = {str(item).upper() for item in (supported_exchanges or SUPPORTED_EXCHANGES)}
+        self.min_accepted = int(min_accepted)
+        self.min_identity_coverage_pct = float(min_identity_coverage_pct)
+        self.min_sector_coverage_pct = float(min_sector_coverage_pct)
+        self.cover_identity_provider = cover_identity_provider
+        self.candidate_path = self.snapshot_path.with_name("security_master_candidate.json")
+        self.failed_candidate_path = self.snapshot_path.with_name("security_master_failed_candidate.json")
+        self.diagnostics_path = self.snapshot_path.with_name("security_master_build_diagnostics.json")
+        self.progress_path = self.snapshot_path.with_name("security_master_build_progress.json")
+        self.lock_path = self.snapshot_path.with_name("security_master_build.lock")
+        self.lock_ttl_seconds = max(60, int(lock_ttl_seconds))
+        self._current_build_id = ""
+        self._current_started_at = ""
+        self._identity_diagnostics: dict[str, Any] = {}
+
+    def _progress(self, stage: str, processed: int = 0, total: int = 0,
+                  cached: int = 0, downloaded: int = 0, failed: int = 0,
+                  unknown: int = 0, conflicted: int = 0, **extra) -> None:
+        existing = _read_json_cache(self.progress_path) or {}
+        if not self._current_build_id:
+            self._current_build_id = f"SMB_{datetime.now(timezone.utc):%Y%m%d%H%M%S%f}_{os.getpid()}"
+            self._current_started_at = _now()
+        manifest = {
+            "build_id": self._current_build_id,
+            "started_at": self._current_started_at,
+            "source_versions": existing.get("source_versions", {}),
+            "stage": stage,
+            "processed": int(processed), "total": int(total),
+            "cached": int(cached), "downloaded": int(downloaded),
+            "failed": int(failed), "unknown": int(unknown), "conflicted": int(conflicted),
+            "elapsed": extra.pop("elapsed", None),
+            "last_checkpoint": _now(),
+            **extra,
+        }
+        _write_json_atomic(self.progress_path, manifest)
+
+    @contextmanager
+    def _build_lock(self):
+        self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+        for _ in range(2):
+            try:
+                fd = os.open(str(self.lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                try:
+                    os.write(fd, json.dumps({"pid": os.getpid(), "started_at": _now()}).encode("utf-8"))
+                finally:
+                    os.close(fd)
+                break
+            except FileExistsError:
+                try:
+                    age = time.time() - self.lock_path.stat().st_mtime
+                except OSError:
+                    age = 0
+                if age <= self.lock_ttl_seconds:
+                    raise SecurityMasterBootstrapError("SECURITY_MASTER_BUILD_ALREADY_RUNNING")
+                self.lock_path.unlink(missing_ok=True)
+        try:
+            yield
+        finally:
+            self.lock_path.unlink(missing_ok=True)
+
+    def build(self, as_of: str | None = None, refresh: bool = False) -> dict[str, Any]:
+        as_of = as_of or _now()
+        self._progress("BASELINE", refresh=bool(refresh), requested_as_of=as_of)
+        baseline = self._records(self.listing_provider, as_of, refresh)
+        if not baseline:
+            raise SecurityMasterBootstrapError("SEC_DIRECTORY_EMPTY")
+        self._progress("SECURITY_TYPE", processed=len(baseline), total=len(baseline))
+        type_rows = self._records(self.security_type_provider, as_of, refresh)
+        type_groups = self._join_type_rows(baseline, type_rows)
+
+        prelim_records = []
+        for base in baseline:
+            group = type_groups.get(base.ticker, [])
+            merged = self._merge_type_group(group)
+            prelim_records.append(self._row_from_base(base, merged, as_of))
+
+        identity_before_supported = [
+            row for row in prelim_records
+            if row.get("exchange") in self.supported_exchanges
+        ]
+        unresolved = [
+            base for base, row in zip(baseline, prelim_records)
+            if row.get("exchange") in self.supported_exchanges
+            and not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+        ]
+        identity_before_by_ticker = {row.get("ticker"): row for row in prelim_records}
+        self._identity_diagnostics = self._build_identity_diagnostics(
+            baseline, type_rows, prelim_records, unresolved)
+        if self.cover_identity_provider is not None and unresolved:
+            self._progress("SEC_PERIODIC_COVER_PAGE", processed=0, total=len(unresolved),
+                           unknown=len(unresolved))
+            cover_rows = self.cover_identity_provider.records(unresolved, as_of, refresh=refresh)
+            type_rows = list(type_rows) + list(cover_rows)
+            type_groups = self._join_type_rows(baseline, type_rows)
+            prelim_records = [
+                self._row_from_base(base, self._merge_type_group(type_groups.get(base.ticker, [])), as_of)
+                for base in baseline
+            ]
+            self._identity_diagnostics["identity_resolved_by_sec_cover_page"] = sum(
+                1 for after in prelim_records
+                for before in [identity_before_by_ticker.get(after.get("ticker"), {})]
+                if before.get("exchange") in self.supported_exchanges
+                and not all(before.get(flag) is not None for flag in IDENTITY_FLAGS)
+                and all(after.get(flag) is not None for flag in IDENTITY_FLAGS)
+            )
+            self._identity_diagnostics["identity_remaining_unknown"] = sum(
+                1 for row in prelim_records
+                if row.get("exchange") in self.supported_exchanges
+                and not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+            )
+            self._identity_diagnostics["identity_conflicted"] = sum(
+                bool(row.get("identity_conflicted")) for row in prelim_records
+            )
+            after_unresolved = [
+                base for base, row in zip(baseline, prelim_records)
+                if row.get("exchange") in self.supported_exchanges
+                and not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+            ]
+            after_diagnostics = self._build_identity_diagnostics(
+                baseline, type_rows, prelim_records, after_unresolved)
+            self._identity_diagnostics["buckets_after_cover_page"] = after_diagnostics.get("buckets", {})
+
+        sector_records = [
+            _record_from_row(row) for row in prelim_records
+            if row["exchange"] in self.supported_exchanges
+            and row.get("is_common_stock") is True
+            and all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+        ]
+        issuer_profiles: dict[str, dict[str, Any]] = {}
+        if self.sector_provider is not None and sector_records:
+            setter = getattr(self.sector_provider, "set_progress_callback", None)
+            if callable(setter):
+                setter(lambda stage, processed, total, cached, downloaded, failed, unknown:
+                       self._progress(stage, processed, total, cached, downloaded, failed, unknown))
+            issuer_profiles = self.sector_provider.profiles(sector_records, refresh=refresh)
+        self._progress("SNAPSHOT_VALIDATION", processed=len(prelim_records), total=len(prelim_records),
+                       unknown=sum(not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+                                   for row in prelim_records),
+                       conflicted=sum(bool(row.get("identity_conflicted")) for row in prelim_records))
+
+        rows: list[dict[str, Any]] = []
+        for row in prelim_records:
+            profile = issuer_profiles.get(_normalise_cik(row.get("cik")), {})
+            sic = str(profile.get("sic") or row.get("sic") or "")
+            sic_description = str(profile.get("sic_description") or row.get("sic_description") or "")
+            sector = sector_from_sic(sic) if sic else "UNKNOWN"
+            if sector == "UNKNOWN" and row.get("sector_canonical") not in {None, "UNKNOWN"}:
+                sector = str(row["sector_canonical"])
+            row["sic"] = sic
+            row["sic_description"] = sic_description
+            row["sector_canonical"] = sector
+            row["industry_canonical"] = sector if sector != "UNKNOWN" else "UNKNOWN"
+            row.setdefault("provenance", {})["sector_canonical"] = ([{
+                "source": profile.get("source", "SEC_SUBMISSIONS"),
+                "source_url": profile.get("source_url", ""),
+                "source_as_of": profile.get("source_as_of", as_of),
+                "sic": sic,
+                "mapping_version": "SEC_SIC_RANGE_V2",
+            }] if sic else [])
+            rows.append(row)
+
+        payload = {
+            "schema_version": "security_master_enrichment_v1",
+            "generated_at": _now(),
+            "source_as_of": as_of,
+            "records": rows,
+            "sources": self._source_metadata(as_of),
+        }
+        metrics = self._metrics(payload)
+        payload["metrics"] = metrics
+        validate_snapshot(payload)
+        return payload
+
+    def build_and_write(self, as_of: str | None = None, refresh: bool = False) -> dict[str, Any]:
+        self._current_build_id = ""
+        self._current_started_at = ""
+        with self._build_lock():
+            self._progress("BUILDING", refresh=bool(refresh), requested_as_of=as_of or _now())
+            try:
+                payload = self.build(as_of=as_of, refresh=refresh)
+                # Re-validate before any candidate or active publication.
+                validate_snapshot(payload)
+                payload["status"] = self._readiness_status(payload["metrics"])
+                payload["reason_codes"] = self._readiness_reasons(payload["metrics"])
+                payload["publication"] = {
+                    "active": payload["status"] == "SECURITY_MASTER_READY",
+                    "candidate_path": str(self.candidate_path),
+                    "active_path": str(self.snapshot_path),
+                }
+                _write_json_atomic(self.candidate_path, payload)
+                _write_json_atomic(self.diagnostics_path, {
+                    "status": payload["status"],
+                    "reason_codes": payload["reason_codes"],
+                    "metrics": payload["metrics"],
+                    "generated_at": payload["generated_at"],
+                    "source_as_of": payload["source_as_of"],
+                })
+                if payload["status"] != "SECURITY_MASTER_READY":
+                    _write_json_atomic(self.failed_candidate_path, payload)
+                    self._progress("COVERAGE_INSUFFICIENT", processed=len(payload["records"]),
+                                   total=len(payload["records"]), status=payload["status"],
+                                   reason_codes=payload["reason_codes"])
+                    payload["snapshot_path"] = str(self.snapshot_path) if self.snapshot_path.is_file() else ""
+                    return payload
+                normalized = self.normalized_cache_dir / "security_master_normalized.json"
+                normalized_payload = {
+                    "schema_version": "security_master_normalized_v1",
+                    "source": "SEC_DIRECTORY+NASDAQ_TRADER+SEC_SUBMISSIONS",
+                    "fetched_at": payload["generated_at"],
+                    "generated_at": payload["generated_at"],
+                    "source_as_of": payload["source_as_of"],
+                    "checksum": _checksum(json.dumps(payload["records"], sort_keys=True, ensure_ascii=False).encode("utf-8")),
+                    "records": payload["records"],
+                    "metrics": payload["metrics"],
+                }
+                _write_json_atomic(normalized, normalized_payload)
+                _atomic_write_bytes(
+                    self.snapshot_path,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2).encode("utf-8"),
+                )
+                payload["snapshot_path"] = str(self.snapshot_path)
+                payload["normalized_cache_path"] = str(normalized)
+                self._progress("ACTIVE", processed=len(payload["records"]), total=len(payload["records"]),
+                               status=payload["status"], reason_codes=payload["reason_codes"])
+                return payload
+            except Exception as exc:
+                reason = getattr(exc, "reason_code", "SECURITY_MASTER_BUILD_FAILED")
+                self._progress("FAILED", status="FAILED", reason_codes=[reason], error=str(exc))
+                _write_json_atomic(self.diagnostics_path, {
+                    "status": "FAILED", "reason_codes": [reason], "error": str(exc),
+                    "failed_at": _now(), "active_snapshot_preserved": self.snapshot_path.is_file(),
+                })
+                raise
+
+    def refresh(self, as_of: str | None = None) -> dict[str, Any]:
+        return self.build_and_write(as_of=as_of, refresh=True)
+
+    def _records(self, provider, as_of: str, refresh: bool) -> list[Any]:
+        try:
+            return list(provider.records(as_of, refresh=refresh))
+        except TypeError:
+            return list(provider.records(as_of))
+
+    @staticmethod
+    def _join_type_rows(baseline: list[SecurityMasterRecord], rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+        by_cik_ticker: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        by_cik: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        by_ticker: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in rows:
+            ticker = str(row.get("ticker") or "").upper()
+            cik = _normalise_cik(row.get("cik"))
+            if not ticker:
+                continue
+            row = dict(row)
+            row["ticker"] = ticker
+            row["cik"] = cik
+            by_ticker[ticker].append(row)
+            if cik:
+                by_cik_ticker[(cik, ticker)].append(row)
+                by_cik[cik].append(row)
+        joined: dict[str, list[dict[str, Any]]] = {}
+        for base in baseline:
+            candidates = by_cik_ticker.get((_normalise_cik(base.cik), base.ticker), []) if base.cik else []
+            if not candidates and base.cik and len(by_cik.get(_normalise_cik(base.cik), [])) == 1:
+                candidate = by_cik[_normalise_cik(base.cik)][0]
+                if str(candidate.get("ticker") or "").upper() == base.ticker:
+                    candidates = [candidate]
+            if not candidates:
+                ticker_candidates = by_ticker.get(base.ticker, [])
+                # A source-provided CIK mismatch is an identity blocker, not
+                # permission to fall back to a ticker-only join.  A ticker-only
+                # join remains valid only when the source itself has no CIK.
+                if base.cik and any(row.get("cik") and row.get("cik") != _normalise_cik(base.cik)
+                                    for row in ticker_candidates):
+                    candidates = []
+                else:
+                    candidates = ticker_candidates
+            # Multiple official listings for the same symbol are allowed only
+            # when their type classifications agree; _merge_type_group handles
+            # conflicts as UNKNOWN rather than silently selecting one.
+            joined[base.ticker] = candidates
+        return joined
+
+    @staticmethod
+    def _merge_type_group(group: list[dict[str, Any]]) -> dict[str, Any]:
+        if not group:
+            return {"security_type": "UNKNOWN", "identity": {flag: None for flag in IDENTITY_FLAGS},
+                    "provenance": {flag: [] for flag in IDENTITY_FLAGS}, "conflicted": False,
+                    "sources": []}
+        merged: dict[str, Any] = {
+            "security_type": "UNKNOWN", "identity": {}, "provenance": {}, "conflicted": False,
+            "sources": group,
+        }
+        merged["conflicted"] = any(bool(row.get("identity_conflicted")) for row in group)
+        for flag in IDENTITY_FLAGS:
+            values = {row.get("identity", {}).get(flag) for row in group
+                      if row.get("identity", {}).get(flag) is not None}
+            if len(values) > 1:
+                merged["identity"][flag] = None
+                merged["conflicted"] = True
+            elif values:
+                merged["identity"][flag] = next(iter(values))
+            else:
+                merged["identity"][flag] = None
+            merged["provenance"][flag] = [{
+                "source": row.get("source", ""), "source_url": row.get("source_url", ""),
+                "source_as_of": row.get("source_as_of", ""),
+                "value": row.get("identity", {}).get(flag),
+            } for row in group if row.get("identity", {}).get(flag) is not None]
+        test_issue_values = {row.get("is_test_issue") for row in group
+                             if row.get("is_test_issue") is not None}
+        if test_issue_values == {True}:
+            merged["is_test_issue"] = True
+        elif test_issue_values == {False}:
+            merged["is_test_issue"] = False
+        else:
+            merged["is_test_issue"] = None
+        categories = {str(row.get("security_type") or "UNKNOWN") for row in group}
+        known_categories = categories - {"UNKNOWN"}
+        if len(known_categories) == 1:
+            merged["security_type"] = next(iter(known_categories))
+        elif len(known_categories) > 1:
+            merged["security_type"] = "UNKNOWN"
+            merged["conflicted"] = True
+        return merged
+
+    @staticmethod
+    def _row_from_base(base: SecurityMasterRecord, merged: dict[str, Any], as_of: str) -> dict[str, Any]:
+        identity = merged["identity"]
+        conflict = bool(merged.get("conflicted"))
+        states = {
+            flag: {"state": "UNKNOWN_CONFLICTED" if conflict and identity.get(flag) is None
+                   else "KNOWN" if identity.get(flag) is not None else "UNKNOWN_NOT_AVAILABLE"}
+            for flag in IDENTITY_FLAGS
+        }
+        return {
+            "security_id": base.security_id,
+            "ticker": base.ticker,
+            "company_name": base.company_name,
+            "cik": _normalise_cik(base.cik),
+            "exchange": _normalise_exchange(base.exchange),
+            "country": base.country,
+            "active_status": base.active_status,
+            "security_type": merged.get("security_type", "UNKNOWN"),
+            "is_test_issue": merged.get("is_test_issue"),
+            **identity,
+            "sector_canonical": "UNKNOWN",
+            "industry_canonical": "UNKNOWN",
+            "sic": "",
+            "sic_description": "",
+            "source": "SEC_DIRECTORY+NASDAQ_TRADER",
+            "source_as_of": as_of,
+            "ingested_at": _now(),
+            "identity_states": states,
+            "provenance": merged.get("provenance", {}),
+            "identity_conflicted": conflict,
+            "identity_sources": [
+                {"source": row.get("source", ""), "source_url": row.get("source_url", ""),
+                 "source_as_of": row.get("source_as_of", ""),
+                 "cover_title": row.get("cover_title", ""),
+                 "cover_symbol": row.get("cover_symbol", ""),
+                 "cover_exchange": row.get("cover_exchange", ""),
+                 "filing_form": row.get("filing_form", ""),
+                 "filing_accession": row.get("filing_accession", ""),
+                 "identity_conflicted": bool(row.get("identity_conflicted"))}
+                for row in merged.get("sources", [])
+            ],
+        }
+
+    @classmethod
+    def _build_identity_diagnostics(cls, baseline: list[SecurityMasterRecord],
+                                    type_rows: list[dict[str, Any]],
+                                    prelim_records: list[dict[str, Any]],
+                                    unresolved: list[SecurityMasterRecord]) -> dict[str, Any]:
+        by_ticker: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in type_rows:
+            by_ticker[str(row.get("ticker") or "").upper()].append(row)
+        base_by_ticker = {record.ticker: record for record in baseline}
+        buckets = {letter: {"count": 0, "examples": []} for letter in "ABCDEFGHIJ"}
+        labels = {
+            "A": "NO_OFFICIAL_NASDAQ_ROW", "B": "OFFICIAL_ROW_NAME_TYPE_AMBIGUOUS",
+            "C": "ONLY_ETF_FIELD_KNOWN", "D": "CIK_MISMATCH",
+            "E": "EXCHANGE_MISMATCH", "F": "MULTIPLE_OFFICIAL_CONFLICT",
+            "G": "FOREIGN_OR_DEPOSITARY_AMBIGUITY", "H": "CLASS_SHARE_AMBIGUITY",
+            "I": "BLANK_OR_MALFORMED_NAME", "J": "OTHER",
+        }
+        for record in unresolved:
+            rows = by_ticker.get(record.ticker, [])
+            nasdaq_rows = [row for row in rows if str(row.get("source_name") or "").upper() == "NASDAQ"]
+            mismatch_cik = any(
+                _normalise_cik(row.get("cik")) and _normalise_cik(row.get("cik")) != _normalise_cik(record.cik)
+                for row in rows
+            )
+            mismatch_exchange = any(
+                _normalise_exchange(row.get("exchange")) and
+                _normalise_exchange(row.get("exchange")) != _normalise_exchange(record.exchange)
+                for row in rows
+            )
+            names = " ".join(str(row.get("company_name") or "") for row in rows).upper()
+            known = set()
+            for row in rows:
+                known.update(flag for flag in IDENTITY_FLAGS if row.get("identity", {}).get(flag) is not None)
+            if mismatch_cik:
+                bucket = "D"
+            elif mismatch_exchange:
+                bucket = "E"
+            elif len(rows) > 1 and any(row.get("identity_conflicted") for row in rows):
+                bucket = "F"
+            elif not nasdaq_rows:
+                bucket = "A"
+            elif not names.strip():
+                bucket = "I"
+            elif re.search(r"ADR|ADS|DEPOSITARY|FOREIGN|ORDINARY", names):
+                bucket = "G"
+            elif re.search(r"\bCLASS\s+[A-Z0-9]", names) and not re.search(r"COMMON", names):
+                bucket = "H"
+            elif known and known <= {"is_etf"}:
+                bucket = "C"
+            elif any(str(row.get("security_type") or "UNKNOWN") == "UNKNOWN" for row in nasdaq_rows):
+                bucket = "B"
+            else:
+                bucket = "J"
+            entry = buckets[bucket]
+            entry["count"] += 1
+            if len(entry["examples"]) < 20:
+                entry["examples"].append(record.ticker)
+        total = len(unresolved)
+        return {
+            "total": total,
+            "buckets": {
+                labels[key]: {"count": value["count"],
+                              "pct": round(value["count"] / total * 100, 4) if total else 0.0,
+                              "examples": value["examples"]}
+                for key, value in buckets.items()
+                if value["count"]
+            },
+            "identity_known_before_supported_count": sum(
+                1 for row in prelim_records
+                if row.get("exchange") in SUPPORTED_EXCHANGES
+                and all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+            ),
+            "identity_resolved_by_sec_cover_page": 0,
+            "identity_remaining_unknown": total,
+            "identity_conflicted": 0,
+        }
+
+    def _metrics(self, payload: dict[str, Any]) -> dict[str, Any]:
+        rows = payload["records"]
+        records = [_record_from_row(row) for row in rows]
+        supported = [row for row in records if row.exchange.upper() in self.supported_exchanges]
+        identity_known_global = sum(self._identity_known(row) for row in records)
+        identity_known_supported = sum(self._identity_known(row) for row in supported)
+        conflict_count = sum(bool(row.get("identity_conflicted")) for row in rows)
+        integrity = UniverseIntegrityEngine(exchanges=set(self.supported_exchanges)).build(
+            InMemorySecurityMasterProvider(records), payload["source_as_of"])
+        health = integrity["health"]
+        accepted = integrity["records"]
+        sector_known = sum(row.sector_canonical.upper() != "UNKNOWN" for row in accepted)
+        raw_count = len(records)
+        supported_count = len(supported)
+        source_matches = sum(bool(row.get("identity_sources")) for row in rows)
+        sic_known = sum(bool(str(row.sic or "").strip()) for row in accepted)
+        sector_unknown_due_missing_sic = sum(
+            not str(row.sic or "").strip() for row in accepted
+            if str(row.sector_canonical or "UNKNOWN").upper() == "UNKNOWN"
+        )
+        sector_unknown_due_mapper_gap = sum(
+            bool(str(row.sic or "").strip()) for row in accepted
+            if str(row.sector_canonical or "UNKNOWN").upper() == "UNKNOWN"
+        )
+        identity_supported_pct = round(identity_known_supported / supported_count * 100, 4) if supported_count else 0.0
+        sector_pct = round(sector_known / len(accepted) * 100, 4) if accepted else 0.0
+        identity_status = "IDENTITY_READY" if identity_supported_pct >= self.min_identity_coverage_pct else "IDENTITY_COVERAGE_INSUFFICIENT"
+        sector_status = "SECTOR_READY" if sector_pct >= self.min_sector_coverage_pct else "SECTOR_COVERAGE_INSUFFICIENT"
+        diagnostics = dict(self._identity_diagnostics)
+        diagnostics.setdefault("identity_known_before_supported_count", identity_known_supported)
+        diagnostics.setdefault("identity_resolved_by_sec_cover_page", 0)
+        diagnostics.setdefault("identity_remaining_unknown", supported_count - identity_known_supported)
+        diagnostics.setdefault("identity_conflicted", conflict_count)
+        return {
+            "raw_count": raw_count,
+            "supported_exchange_scope_count": supported_count,
+            "identity_known_global_count": identity_known_global,
+            "identity_coverage_global_pct": round(identity_known_global / raw_count * 100, 4) if raw_count else 0.0,
+            "identity_known_supported_count": identity_known_supported,
+            "identity_coverage_supported_scope_pct": identity_supported_pct,
+            # Backward-compatible alias; readiness uses the explicit supported metric.
+            "identity_coverage_pct": round(identity_known_global / raw_count * 100, 4) if raw_count else 0.0,
+            "accepted_common_stock_count": len(accepted),
+            "sic_known_count": sic_known,
+            "sic_coverage_pct": round(sic_known / len(accepted) * 100, 4) if accepted else 0.0,
+            "sector_known_count": sector_known,
+            "sector_coverage_pct": sector_pct,
+            "sector_unknown_due_missing_sic": sector_unknown_due_missing_sic,
+            "sector_unknown_due_mapper_gap": sector_unknown_due_mapper_gap,
+            "unknown_identity_count": sum(not self._identity_known(row) for row in records),
+            "identity_conflict_count": conflict_count,
+            "duplicate_count": health.get("duplicate_count", 0),
+            "rejection_counts": dict(integrity.get("rejected", {})),
+            "source_matches": source_matches,
+            "source_unmatched": raw_count - source_matches,
+            "source_conflicted": conflict_count,
+            "security_type_source_calls": int(getattr(self.security_type_provider, "calls", 0) or 0),
+            "identity_known_before_supported_count": diagnostics.get("identity_known_before_supported_count", 0),
+            "identity_resolved_by_sec_cover_page": diagnostics.get("identity_resolved_by_sec_cover_page", 0),
+            "identity_remaining_unknown": diagnostics.get("identity_remaining_unknown", 0),
+            "identity_unknown_buckets": diagnostics.get("buckets", {}),
+            "identity_unknown_buckets_after_cover_page": diagnostics.get("buckets_after_cover_page", {}),
+            "identity_conflicted_after_cover_page": diagnostics.get("identity_conflicted", conflict_count),
+            "identity_readiness": identity_status,
+            "sector_readiness": sector_status,
+            "security_master_readiness": "SECURITY_MASTER_READY" if (
+                identity_status == "IDENTITY_READY" and sector_status == "SECTOR_READY"
+                and len(accepted) >= self.min_accepted
+            ) else "SECURITY_MASTER_COVERAGE_INSUFFICIENT",
+            "cover_page_calls": int(getattr(self.cover_identity_provider, "calls", 0) or 0),
+            "cover_page_cache_hits": int(getattr(self.cover_identity_provider, "cache_hits", 0) or 0),
+            "cover_page_resolved": int(getattr(self.cover_identity_provider, "resolved", 0) or 0),
+            "cover_page_conflicted": int(getattr(self.cover_identity_provider, "conflicted", 0) or 0),
+            "cover_page_failed": int(getattr(self.cover_identity_provider, "failed", 0) or 0),
+            "cover_page_failure_reasons": dict(getattr(
+                self.cover_identity_provider, "failure_reason_counts", {}) or {}),
+            "sector_source_calls": int(getattr(self.sector_provider, "calls", 0) or 0),
+            "sector_source_failed": int(getattr(self.sector_provider, "failed", 0) or 0),
+            "sector_source_unmatched": int(getattr(self.sector_provider, "unmatched", 0) or 0),
+            "security_master_ready": self._readiness_status({
+                "accepted_common_stock_count": len(accepted),
+                "identity_coverage_supported_scope_pct": round(
+                    identity_known_supported / supported_count * 100, 4) if supported_count else 0.0,
+                "sector_coverage_pct": round(sector_known / len(accepted) * 100, 4) if accepted else 0.0,
+            }) == "SECURITY_MASTER_READY",
+        }
+
+    @staticmethod
+    def _identity_known(record: SecurityMasterRecord) -> bool:
+        return all(getattr(record, flag) is not None for flag in IDENTITY_FLAGS)
+
+    def _readiness_status(self, metrics: dict[str, Any]) -> str:
+        if (metrics.get("accepted_common_stock_count", 0) >= self.min_accepted
+                and metrics.get("identity_coverage_supported_scope_pct", 0.0) >= self.min_identity_coverage_pct
+                and metrics.get("sector_coverage_pct", 0.0) >= self.min_sector_coverage_pct):
+            return "SECURITY_MASTER_READY"
+        return "SECURITY_MASTER_COVERAGE_INSUFFICIENT"
+
+    def _readiness_reasons(self, metrics: dict[str, Any]) -> list[str]:
+        reasons = []
+        if metrics.get("accepted_common_stock_count", 0) < self.min_accepted:
+            reasons.append("SECURITY_MASTER_ACCEPTED_COUNT_INSUFFICIENT")
+        if metrics.get("identity_coverage_supported_scope_pct", 0.0) < self.min_identity_coverage_pct:
+            reasons.append("SECURITY_MASTER_COVERAGE_INSUFFICIENT")
+        if metrics.get("sector_coverage_pct", 0.0) < self.min_sector_coverage_pct:
+            reasons.append("SECURITY_MASTER_SECTOR_COVERAGE_INSUFFICIENT")
+        return reasons
+
+    def _source_metadata(self, as_of: str) -> dict[str, Any]:
+        def source_as_of(provider, default: str = "UNKNOWN") -> str:
+            value = getattr(provider, "source_as_of", "")
+            if value:
+                return str(value)
+            sources = getattr(provider, "SOURCES", None)
+            if sources:
+                return str(getattr(provider, "source_as_of", default) or default)
+            return default
+
+        def fetched_at(provider) -> str:
+            return str(getattr(provider, "fetched_at", "") or "")
+
+        return {
+            "baseline": {
+                "source": "SEC_DIRECTORY",
+                "source_url": getattr(self.listing_provider, "URL", ""),
+                "requested_as_of": as_of,
+                "source_as_of": source_as_of(self.listing_provider),
+                "fetched_at": fetched_at(self.listing_provider),
+            },
+            "security_type": {
+                "source": "NASDAQ_TRADER_SYMBOL_DIRECTORY",
+                "source_urls": list(getattr(self.security_type_provider, "SOURCES", {}).values()),
+                "requested_as_of": as_of,
+                "source_as_of": source_as_of(self.security_type_provider),
+                "fetched_at": fetched_at(self.security_type_provider),
+            },
+            "periodic_cover_page": {
+                "source": "SEC_PERIODIC_COVER_PAGE_INLINE_XBRL",
+                "source_url": "https://www.sec.gov/Archives/edgar/data/",
+                "requested_as_of": as_of,
+                "source_as_of": source_as_of(self.cover_identity_provider),
+                "fetched_at": fetched_at(self.cover_identity_provider),
+                "calls": int(getattr(self.cover_identity_provider, "calls", 0) or 0),
+                "cache_hits": int(getattr(self.cover_identity_provider, "cache_hits", 0) or 0),
+                "resolved": int(getattr(self.cover_identity_provider, "resolved", 0) or 0),
+                "conflicted": int(getattr(self.cover_identity_provider, "conflicted", 0) or 0),
+            },
+            "sector": {
+                "source": "SEC_SUBMISSIONS",
+                "source_url": getattr(self.sector_provider, "URL", "") if self.sector_provider else "",
+                "requested_as_of": as_of,
+                "source_as_of": source_as_of(self.sector_provider),
+                "fetched_at": fetched_at(self.sector_provider),
+                "bulk_downloads": int(getattr(self.sector_provider, "bulk_downloads", 0) or 0),
+                "individual_fallback_calls": int(getattr(self.sector_provider, "individual_calls", 0) or 0),
+                "fallback_cache_hits": int(getattr(self.sector_provider, "fallback_cache_hits", 0) or 0),
+                "bulk_error_reason_code": str(getattr(self.sector_provider, "bulk_error_reason_code", "") or ""),
+            },
+        }
+
+
+def snapshot_records(payload: dict[str, Any]) -> list[SecurityMasterRecord]:
+    validate_snapshot(payload)
+    return [_record_from_row(row) for row in payload.get("records", [])]
+
+
+def read_snapshot(path: str | Path) -> dict[str, Any] | None:
+    target = Path(path)
+    if not target.is_file():
+        return None
+    try:
+        payload = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SecurityMasterBootstrapError("SECURITY_MASTER_SNAPSHOT_UNREADABLE", str(exc)) from exc
+    validate_snapshot(payload)
+    payload["snapshot_path"] = str(target)
+    payload["snapshot_file_mtime"] = datetime.fromtimestamp(target.stat().st_mtime, timezone.utc).isoformat()
+    return payload
+
+
+class SecurityMasterBootstrapService:
+    """Configuration-bound service used by bootstrap/refresh/health CLI commands."""
+
+    def __init__(self, config: dict[str, Any]):
+        self.config = config
+        discovery = config.get("discovery", {})
+        bootstrap = discovery.get("bootstrap", {})
+        credentials = config.get("credentials", {})
+        self.user_agent = str(credentials.get("sec_user_agent", ""))
+        self.snapshot_path = Path(bootstrap.get("security_master_enrichment_path", ""))
+        self.raw_cache_dir = Path(bootstrap.get("raw_cache_dir", "data/cache/discovery/security_master/raw"))
+        self.normalized_cache_dir = Path(bootstrap.get("normalized_cache_dir", "data/cache/discovery/security_master/normalized"))
+        self.sector_cache_dir = Path(bootstrap.get("sector_cache_dir", str(self.raw_cache_dir / "sec_submissions")))
+        self._builder: SecurityMasterBootstrapBuilder | None = None
+
+    def builder(self) -> SecurityMasterBootstrapBuilder:
+        if self._builder is not None:
+            return self._builder
+        if not self.user_agent:
+            raise SecurityMasterBootstrapError("SEC_USER_AGENT_REQUIRED")
+        from .providers_live import SECCompanyTickerSecurityMasterProvider
+        listing = SECCompanyTickerSecurityMasterProvider(
+            self.user_agent, self.raw_cache_dir / "company_tickers_exchange.json")
+        security_types = NasdaqTraderSecurityTypeProvider(self.raw_cache_dir / "nasdaq_trader")
+        fallback_sector = SECSubmissionsMetadataProvider(
+            self.user_agent, self.sector_cache_dir,
+            max_requests=int(self.config.get("discovery", {}).get("bootstrap", {}).get(
+                "max_issuer_metadata_requests", 10_000)),
+            max_rps=float(self.config.get("sec_max_rps", 4)))
+        sector = SECSubmissionsCompositeMetadataProvider(
+            SECSubmissionsBulkMetadataProvider(self.user_agent, self.raw_cache_dir), fallback_sector)
+        bootstrap = self.config.get("discovery", {}).get("bootstrap", {})
+        bulk_provider = sector.bulk
+        cover_provider = SECPeriodicCoverIdentityProvider(
+            self.user_agent, bulk_provider,
+            self.raw_cache_dir / "sec_cover",
+            max_requests=int(bootstrap.get("max_cover_filing_requests", 2_500)),
+            max_rps=float(self.config.get("sec_max_rps", 4)),
+        )
+        self._builder = SecurityMasterBootstrapBuilder(
+            listing, security_types, sector, self.snapshot_path, self.raw_cache_dir,
+            self.normalized_cache_dir,
+            supported_exchanges=UniverseIntegrityEngine.DEFAULT_EXCHANGES,
+            min_accepted=int(bootstrap.get("min_accepted", 1)),
+            min_identity_coverage_pct=float(bootstrap.get("min_identity_coverage_pct", 95)),
+            min_sector_coverage_pct=float(bootstrap.get("min_sector_coverage_pct", 90)),
+            cover_identity_provider=cover_provider,
+        )
+        return self._builder
+
+    def bootstrap(self, refresh: bool = False) -> dict[str, Any]:
+        return self.builder().build_and_write(refresh=refresh)
+
+    def health(self, database=None) -> dict[str, Any]:
+        """Read-only health: it never creates or replaces a snapshot."""
+        from .health import bootstrap_health
+
+        payload = read_snapshot(self.snapshot_path) if self.snapshot_path.is_file() else None
+        reasons: list[str] = []
+        if payload is None:
+            reasons.append("SECURITY_MASTER_SNAPSHOT_MISSING")
+            records = []
+        else:
+            records = snapshot_records(payload)
+        from .universe import InMemorySecurityMasterProvider
+        security_master = InMemorySecurityMasterProvider(records)
+
+        credentials = self.config.get("credentials", {})
+        market_data = None
+        benchmark_provider = None
+        if not credentials.get("toss_app_key") or not credentials.get("toss_app_secret"):
+            reasons.append("TOSS_CREDENTIALS_REQUIRED")
+        elif self.config.get("market_data_provider", self.config.get("provider", "toss")) == "toss":
+            from ..toss import TossClient
+            from .providers_live import TossDiscoveryBenchmarkProvider, TossDiscoveryMarketDataProvider
+            market_data = TossDiscoveryMarketDataProvider(
+                TossClient(credentials.get("toss_app_key", ""), credentials.get("toss_app_secret", "")))
+            benchmark_provider = TossDiscoveryBenchmarkProvider(market_data)
+        fundamental = None
+        capital = None
+        if not self.user_agent:
+            reasons.append("SEC_USER_AGENT_REQUIRED")
+        else:
+            from .providers_live import SECDiscoveryCapitalPreflightProvider, SECDiscoveryFundamentalProvider
+            cache_dir = self.config.get("discovery", {}).get("bootstrap", {}).get("fundamental_cache_dir", "")
+            fundamental = SECDiscoveryFundamentalProvider(self.user_agent, cache_dir)
+            capital = SECDiscoveryCapitalPreflightProvider(self.user_agent, self.sector_cache_dir)
+
+        if database is None:
+            from ..database import Database
+            database = Database(self.config["database_path"])
+        result = bootstrap_health(
+            database, security_master, market_data, benchmark_provider,
+            min_accepted=int(self.config.get("discovery", {}).get("bootstrap", {}).get("min_accepted", 1)),
+            min_identity_coverage_pct=float(self.config.get("discovery", {}).get("bootstrap", {}).get(
+                "min_identity_coverage_pct", 95)),
+            min_sector_coverage_pct=float(self.config.get("discovery", {}).get("bootstrap", {}).get(
+                "min_sector_coverage_pct", 90)),
+            fundamental_provider=fundamental, capital_preflight_provider=capital,
+            max_actual_llm_calls=int(self.config.get("discovery", {}).get("cost", {}).get(
+                "max_actual_llm_calls", 0) or 0), initialize_database=False,
+        )
+        result["snapshot"] = {
+            "exists": payload is not None,
+            "path": str(self.snapshot_path),
+            "generated_at": payload.get("generated_at", "") if payload else "",
+            "source_as_of": payload.get("source_as_of", "") if payload else "",
+            "metrics": payload.get("metrics", {}) if payload else {},
+        }
+        candidate_path = self.snapshot_path.with_name("security_master_candidate.json")
+        diagnostics_path = self.snapshot_path.with_name("security_master_build_diagnostics.json")
+        candidate = None
+        diagnostics = None
+        try:
+            candidate = read_snapshot(candidate_path) if candidate_path.is_file() else None
+        except SecurityMasterBootstrapError:
+            candidate = None
+        try:
+            diagnostics = json.loads(diagnostics_path.read_text(encoding="utf-8")) \
+                if diagnostics_path.is_file() else None
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            diagnostics = None
+        result["publication"] = {
+            "active_status": "ACTIVE" if payload is not None else "MISSING",
+            "candidate_status": candidate.get("status", "") if candidate else "",
+            "candidate_metrics": candidate.get("metrics", {}) if candidate else {},
+            "diagnostics": diagnostics or {},
+            "active_lkg_preserved": payload is not None,
+        }
+        result["credentials"] = {
+            "sec_user_agent": "READY" if self.user_agent else "BLOCKED",
+            "toss": "READY" if credentials.get("toss_app_key") and credentials.get("toss_app_secret") else "BLOCKED",
+        }
+        result["provider_readiness"] = {
+            "security_master": {
+                "configured": True,
+                "constructed": True,
+                "sample_executed": bool(records),
+                "sample_ready": bool(result.get("security_master", False)),
+                "blocked_by": (
+                    "SNAPSHOT_MISSING"
+                    if not payload and not candidate
+                    else str((candidate or {}).get("status") or "SNAPSHOT_MISSING")
+                    if not payload else ""
+                ),
+            },
+            "toss": {
+                "configured": bool(credentials.get("toss_app_key") and credentials.get("toss_app_secret")),
+                "constructed": market_data is not None,
+                "transport": "READY" if market_data is not None else "BLOCKED",
+                "sample_executed": False,
+                "sample_ready": False,
+                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "",
+            },
+            "fundamental": {
+                "configured": bool(self.user_agent),
+                "constructed": fundamental is not None,
+                "sample_executed": False,
+                "sample_ready": False,
+                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "",
+            },
+            "capital": {
+                "configured": bool(self.user_agent),
+                "constructed": capital is not None,
+                "sample_executed": False,
+                "sample_ready": False,
+                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "",
+            },
+        }
+        if fundamental is not None:
+            result["reason_codes"] = [code for code in result.get("reason_codes", [])
+                                       if code != "FUNDAMENTAL_PROVIDER_MISSING"]
+            if not records:
+                result["reason_codes"].append("FUNDAMENTAL_SAMPLE_BLOCKED_SECURITY_MASTER")
+        if capital is not None:
+            result["reason_codes"] = [code for code in result.get("reason_codes", [])
+                                       if code != "CAPITAL_PREFLIGHT_PROVIDER_MISSING"]
+            if not records:
+                result["reason_codes"].append("CAPITAL_SAMPLE_BLOCKED_SECURITY_MASTER")
+        if records and market_data is not None:
+            result["provider_readiness"]["toss"]["sample_executed"] = True
+        if not records and market_data is not None:
+            result["reason_codes"] = [code for code in result.get("reason_codes", [])
+                                       if code != "MARKET_DATA_SAMPLE_UNAVAILABLE"]
+            result["reason_codes"].append("CANDIDATE_QUOTE_SAMPLE_BLOCKED_SECURITY_MASTER")
+        if not records and fundamental is not None:
+            result["reason_codes"] = [code for code in result.get("reason_codes", [])
+                                       if code != "FUNDAMENTAL_BLOCKED_MARKET_BOOTSTRAP"]
+        if not records and capital is not None:
+            result["reason_codes"] = [code for code in result.get("reason_codes", [])
+                                       if code != "CAPITAL_PREFLIGHT_BLOCKED_MARKET_BOOTSTRAP"]
+        result["reason_codes"] = sorted(set(result.get("reason_codes", []) + reasons))
+        if result.get("status") == "DEEP_HANDOFF_READY" and reasons:
+            result["status"] = "BOOTSTRAP_REQUIRED"
+        result["command"] = "discovery-health"
+        return result

@@ -1,4 +1,4 @@
-�r�^�f��ئ{O,y�'vî���# Stock Agent PR #7 — Live Shadow Operational Bootstrap 실행 결과
+# Stock Agent PR #7 — Live Shadow Operational Bootstrap 실행 결과
 
 작성 시각: 2026-08-11 KST  
 브랜치: `codex/discovery-mvp-v2`  
