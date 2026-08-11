@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from stock_agent.command_parser import CommandInterpreter
 from stock_agent.capital_structure import build_capital_structure
@@ -9,7 +10,8 @@ from stock_agent.database import Database
 from stock_agent.discovery.features import build_candidate
 from stock_agent.discovery.ingestion import InMemoryDiscoveryMarketDataProvider
 from stock_agent.discovery.orchestrator import DiscoveryOrchestrator
-from stock_agent.discovery.providers_live import TossDiscoveryBenchmarkProvider
+from stock_agent.discovery.providers_live import (SECDiscoveryFundamentalProvider,
+                                                   TossDiscoveryBenchmarkProvider)
 from stock_agent.discovery.schemas import DailyBar, FieldValue, MarketQuote, SecurityMasterRecord
 from stock_agent.discovery.tournament import compare_candidates, final_selection
 from stock_agent.discovery.universe import InMemorySecurityMasterProvider
@@ -48,15 +50,38 @@ class FundamentalFixture:
     def fundamentals(self, tickers, as_of):
         self.calls.append(list(tickers))
         return {ticker: {
+            # This is intentionally the same field family emitted by
+            # SECDiscoveryFundamentalProvider.  Deep ANALYZE scorecard axes
+            # are not available during Discovery hydration.
+            "revenue_growth_current_pct": FieldValue(30.0, "KNOWN", "COMPANYFACTS", as_of),
+            "revenue_growth_previous_pct": FieldValue(18.0, "KNOWN", "COMPANYFACTS", as_of),
             "primary_financial_evidence": FieldValue(True, "KNOWN", "COMPANYFACTS", as_of),
             "revenue_growth_acceleration_pp": FieldValue(12.0, "KNOWN", "COMPANYFACTS", as_of,
                                                             source_ids=(f"SEC_{ticker}_REV",)),
+            "revenue_growth_acceleration": FieldValue(12.0, "KNOWN", "COMPANYFACTS", as_of,
+                                                       source_ids=(f"SEC_{ticker}_REV",)),
+            "gross_margin_current_pct": FieldValue(60.0, "KNOWN", "COMPANYFACTS", as_of),
+            "gross_margin_previous_pct": FieldValue(56.0, "KNOWN", "COMPANYFACTS", as_of),
             "gross_margin_delta_pp": FieldValue(4.0, "KNOWN", "COMPANYFACTS", as_of,
                                                  source_ids=(f"SEC_{ticker}_GM",)),
+            "margin_delta": FieldValue(4.0, "KNOWN", "COMPANYFACTS", as_of,
+                                        source_ids=(f"SEC_{ticker}_GM",)),
+            "operating_margin_current_pct": FieldValue(12.0, "KNOWN", "COMPANYFACTS", as_of),
+            "operating_margin_previous_pct": FieldValue(8.0, "KNOWN", "COMPANYFACTS", as_of),
+            "operating_margin_delta_pp": FieldValue(4.0, "KNOWN", "COMPANYFACTS", as_of),
+            "fcf_current": FieldValue(8.0, "KNOWN", "COMPANYFACTS", as_of),
+            "fcf_previous": FieldValue(4.0, "KNOWN", "COMPANYFACTS", as_of),
+            "fcf_inflection": FieldValue(4.0, "KNOWN", "COMPANYFACTS", as_of),
             "operating_cash_flow_current": FieldValue(10.0, "KNOWN", "COMPANYFACTS", as_of),
-            "expectation_gap": FieldValue(80.0, "KNOWN", "COMPANYFACTS", as_of),
-            "surge_elasticity": FieldValue(80.0, "KNOWN", "COMPANYFACTS", as_of),
-            "strategy_fit": FieldValue(80.0, "KNOWN", "COMPANYFACTS", as_of),
+            "operating_cash_flow_previous": FieldValue(7.0, "KNOWN", "COMPANYFACTS", as_of),
+            "operating_cash_flow_inflection": FieldValue(3.0, "KNOWN", "COMPANYFACTS", as_of),
+            "operating_cash_flow": FieldValue(10.0, "KNOWN", "COMPANYFACTS", as_of),
+            "cash": FieldValue(100.0, "KNOWN", "COMPANYFACTS", as_of),
+            "shares_outstanding": FieldValue(75_471_698.0, "KNOWN", "COMPANYFACTS", as_of),
+            "trailing_revenue_usd": FieldValue(500.0, "KNOWN", "COMPANYFACTS", as_of),
+            "financial_evidence_ids": FieldValue([f"SEC_{ticker}_FACTS"], "KNOWN", "COMPANYFACTS", as_of),
+            "capital_overhang_status": FieldValue(None, "UNKNOWN_NOT_FETCHED", "SEC_PREFLIGHT_REQUIRED", as_of),
+            "companyfacts_as_of": FieldValue(as_of, "KNOWN", "COMPANYFACTS", as_of),
         } for ticker in tickers}
 
 
@@ -67,7 +92,9 @@ class CapitalFixture:
         self.calls.append(list(tickers))
         return {ticker: {
             "capital_overhang_status": FieldValue("CLEAR", "KNOWN", "SEC_EDGAR", as_of),
-            "capital_structure_safety": FieldValue(80.0, "KNOWN", "SEC_EDGAR", as_of),
+            "offering_type": FieldValue("UNKNOWN_OFFERING", "KNOWN", "SEC_EDGAR", as_of),
+            "primary_financial_evidence": FieldValue(True, "KNOWN", "SEC_COMPANYFACTS", as_of),
+            "offering_event_count": FieldValue(0, "KNOWN", "SEC_EDGAR", as_of),
         } for ticker in tickers}
 
 
@@ -106,6 +133,10 @@ class DiscoveryMvpV4AuditTests(unittest.TestCase):
             self.assertEqual(item.gate_results.get("capital_preflight_status"), "READY")
             self.assertEqual(item.gate_results.get("final_candidate_gate"), "PASS")
             self.assertEqual(item.discovery_bucket, "P1_DEEP_ANALYSIS")
+            self.assertNotIn("expectation_gap", item.fields)
+            self.assertNotIn("surge_elasticity", item.fields)
+            self.assertNotIn("strategy_fit", item.fields)
+            self.assertNotIn("capital_structure_safety", item.fields)
             self.assertEqual(result.api_telemetry["funnel"]["final_fuel_pass"], 1)
 
     def test_market_flow_without_fundamental_fails_only_after_hydration_attempt(self):
@@ -124,6 +155,48 @@ class DiscoveryMvpV4AuditTests(unittest.TestCase):
             self.assertEqual(item.gate_results.get("final_fuel_status"), "FAIL")
             self.assertEqual(item.gate_results.get("final_candidate_gate"), "INELIGIBLE")
             self.assertEqual(item.discovery_bucket, "REJECT")
+
+    def test_actual_sec_fundamental_provider_shape_reaches_p1_without_deep_axes(self):
+        facts = {
+            "normalized_facts": [{"fact_id": "SEC_SHAPE_REV", "filed": "2026-08-01"}],
+            "period_metrics": {
+                "revenue_growth_current_pct": 30.0,
+                "revenue_growth_previous_pct": 18.0,
+                "revenue_growth_acceleration_pp": 12.0,
+                "gross_margin_current_pct": 60.0,
+                "gross_margin_previous_pct": 56.0,
+                "gross_margin_delta_pp": 4.0,
+                "operating_margin_current_pct": 12.0,
+                "operating_margin_previous_pct": 8.0,
+                "operating_margin_delta_pp": 4.0,
+                "fcf_current": 8.0,
+                "fcf_previous": 4.0,
+                "fcf_inflection": 4.0,
+                "operating_cash_flow_current": 10.0,
+                "operating_cash_flow_previous": 7.0,
+                "operating_cash_flow_inflection": 3.0,
+            },
+            "revenue": {"value": 500.0},
+            "cash": {"value": 100.0},
+            "shares_outstanding": {"value": 75_471_698.0},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            fundamental = SECDiscoveryFundamentalProvider("Agent test@example.com", directory)
+            with patch.object(fundamental.provider, "facts", return_value=facts):
+                provider_shape = fundamental.fundamentals(["SHAPE"], AS_OF)["SHAPE"]
+                market = InMemoryDiscoveryMarketDataProvider(
+                    [quote("SHAPE")], price_bars("SHAPE"))
+                result = DiscoveryOrchestrator(
+                    Database(str(Path(directory) / "provider-shape.sqlite")),
+                    live_config(directory), InMemorySecurityMasterProvider([record("SHAPE")]),
+                    market, fundamental, market, CapitalFixture()).run(as_of=AS_OF, shadow=True)
+            self.assertNotIn("expectation_gap", provider_shape)
+            self.assertNotIn("surge_elasticity", provider_shape)
+            self.assertNotIn("strategy_fit", provider_shape)
+            self.assertNotIn("capital_structure_safety", provider_shape)
+            item = next(candidate for candidate in result.all_candidates
+                        if candidate.security.ticker == "SHAPE")
+            self.assertEqual(item.discovery_bucket, "P1_DEEP_ANALYSIS")
 
     def test_preflight_coverage_is_success_over_requested_and_scope_is_separate(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -162,15 +235,72 @@ class DiscoveryMvpV4AuditTests(unittest.TestCase):
         complete_scores["reward_risk"] = 2.0
         complete = {**sparse, "ticker": "COMPLETE", "scores": complete_scores}
         self.assertNotEqual(compare_candidates(sparse, complete).winner, "SPARSE")
-        self.assertEqual(final_selection([sparse, complete], {"remaining_risk_budget_usd": 1000}), "COMPLETE")
+        portfolio = {"portfolio_context_status": "READY", "remaining_risk_budget_usd": 1000}
+        self.assertEqual(final_selection([sparse, complete], portfolio), "COMPLETE")
         partial_scores = {**complete_scores}
         partial_scores.pop("strategy_fit")
-        partial_scores.update({"signal_strength": 95, "catalyst_quality": 95, "expectation_gap": 95})
+        partial_scores.update({"signal_strength": 80, "catalyst_quality": 80, "expectation_gap": 80})
         partial = {**complete, "ticker": "PARTIAL", "scores": partial_scores}
         self.assertEqual(compare_candidates(partial, complete).winner, "COMPLETE")
-        self.assertEqual(final_selection([partial, complete], {"remaining_risk_budget_usd": 1000}), "COMPLETE")
+        self.assertEqual(final_selection([partial, complete], portfolio), "COMPLETE")
         low_rr = {**complete, "ticker": "LOW_RR", "scores": {**complete_scores, "reward_risk": 1.4}}
-        self.assertEqual(final_selection([low_rr], {"remaining_risk_budget_usd": 1000}), "NONE")
+        self.assertEqual(final_selection([low_rr], portfolio), "NONE")
+
+    def test_scorecard_coverage_is_not_an_automatic_winner(self):
+        a_scores = {axis: 60 for axis in (
+            "signal_strength", "catalyst_quality", "expectation_gap", "surge_elasticity",
+            "entry_readiness", "capital_structure_safety", "strategy_fit", "data_confidence")}
+        a_scores["reward_risk"] = 2.0
+        b_scores = {axis: 95 for axis in (
+            "signal_strength", "catalyst_quality", "expectation_gap", "surge_elasticity",
+            "entry_readiness", "capital_structure_safety", "data_confidence")}
+        b_scores["reward_risk"] = 2.0
+        a = {"ticker": "A", "certified": True, "decision": "BUY",
+             "risk_hard_filter_pass": True, "trade_plan_valid": True,
+             "market_fresh": True, "no_material_unresolved_blocker": True,
+             "scores": a_scores}
+        b = {**a, "ticker": "B", "scores": b_scores}
+        self.assertEqual(compare_candidates(a, b).winner, "B")
+
+    def test_fuel_fail_candidate_never_consumes_capital_preflight_slot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            orchestrator = DiscoveryOrchestrator(
+                Database(str(Path(directory) / "preflight-filter.sqlite")),
+                live_config(directory, preflight_n=1))
+            failed = build_candidate(record("FAIL"), quote("FAIL"), price_bars("FAIL"), "RUN", AS_OF)
+            failed.eligibility = "INELIGIBLE"
+            failed.composite_score = 95
+            failed.size_bucket = "LARGE"
+            failed.gate_results.update({"fuel_gate": "FAIL", "fundamental_hydration_status": "READY",
+                                        "final_candidate_gate": "INELIGIBLE"})
+            passed = build_candidate(record("PASS"), quote("PASS"), price_bars("PASS"), "RUN", AS_OF)
+            passed.eligibility = "ELIGIBLE"
+            passed.composite_score = 80
+            passed.size_bucket = "SMALL_MID"
+            passed.gate_results.update({"fuel_gate": "PASS", "fundamental_hydration_status": "READY",
+                                       "final_candidate_gate": "PASS"})
+            rows = orchestrator._capital_preflight_candidates(
+                [failed, passed], 1, {"max_same_sector": 2, "max_same_theme": 2,
+                                     "max_same_size_bucket": 2})
+            self.assertEqual([item.security.ticker for item in rows], ["PASS"])
+
+    def test_portfolio_context_failure_is_fail_closed_for_final_selection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = Database(str(Path(directory) / "portfolio-error.sqlite"))
+            orchestrator = DiscoveryOrchestrator(db, {"paper": {"max_sector_exposure_pct": 25}})
+            with patch.object(db, "paper_account_state", side_effect=RuntimeError("db unavailable")):
+                context = orchestrator._portfolio_context()
+            self.assertEqual(context["portfolio_context_status"], "UNKNOWN")
+            self.assertEqual(context["remaining_risk_budget_usd"], 0.0)
+            complete_scores = {axis: 80 for axis in (
+                "signal_strength", "catalyst_quality", "expectation_gap", "surge_elasticity",
+                "entry_readiness", "capital_structure_safety", "strategy_fit", "data_confidence")}
+            complete_scores["reward_risk"] = 2.0
+            candidate = {"ticker": "SAFE_NONE", "certified": True, "decision": "BUY",
+                         "risk_hard_filter_pass": True, "trade_plan_valid": True,
+                         "market_fresh": True, "no_material_unresolved_blocker": True,
+                         "scores": complete_scores}
+            self.assertEqual(final_selection([candidate], context), "NONE")
 
     def test_capital_negative_states_require_explicit_filing_language(self):
         evidence = [EvidenceItem(

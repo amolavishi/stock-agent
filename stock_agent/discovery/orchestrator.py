@@ -223,11 +223,8 @@ class DiscoveryOrchestrator:
         # Layer C: expensive offering/capital semantics only for the evidence
         # preflight slice, never for the complete market universe.
         preflight_n = int(self.config.get("discovery", {}).get("shortlist", {}).get("evidence_preflight_n", 8))
-        preflight_rows = diversity_filter(
-            sorted(market_survivors, key=lambda item: (-item.composite_score, item.security.ticker)),
-            int(diversity.get("max_same_sector", preflight_n)),
-            int(diversity.get("max_same_theme", preflight_n)),
-            int(diversity.get("max_same_size_bucket", preflight_n)))[:preflight_n]
+        preflight_rows = self._capital_preflight_candidates(
+            market_survivors, preflight_n, diversity)
         for index, candidate in enumerate(preflight_rows, 1):
             candidate.capital_preflight_rank = index
         capital_before = len(getattr(self.capital_preflight_provider, "calls", [])) if self.capital_preflight_provider else 0
@@ -388,6 +385,26 @@ class DiscoveryOrchestrator:
         chosen = {item.security.ticker for item in selected}
         selected.extend(item for item in candidates if item.security.ticker not in chosen)
         return selected[:limit]
+
+    @staticmethod
+    def _capital_preflight_candidates(market_survivors, limit: int, diversity: dict[str, Any]):
+        """Select SEC preflight rows only from candidates still eligible.
+
+        Fundamental hydration is intentionally cheap relative to targeted SEC
+        evidence.  A candidate that already failed the final fuel gate must
+        never consume a capital-preflight slot, even when its stale/composite
+        score is high.
+        """
+        eligible = [item for item in market_survivors
+                    if item.eligibility == "ELIGIBLE"
+                    and item.gate_results.get("fuel_gate") == "PASS"
+                    and item.gate_results.get("fundamental_hydration_status") == "READY"
+                    and item.gate_results.get("final_candidate_gate") == "PASS"]
+        return diversity_filter(
+            sorted(eligible, key=lambda item: (-item.composite_score, item.security.ticker)),
+            int(diversity.get("max_same_sector", limit)),
+            int(diversity.get("max_same_theme", limit)),
+            int(diversity.get("max_same_size_bucket", limit)))[:limit]
 
     def _apply_market_paths(self, candidates, context, as_of, demote_no_hit: bool = True) -> None:
         sectors = rank_sectors(candidates)
@@ -571,12 +588,18 @@ class DiscoveryOrchestrator:
         try:
             state = self.database.paper_account_state()
         except Exception:
-            return {}
+            return {
+                "portfolio_context_status": "UNKNOWN",
+                "portfolio_context_reason_codes": ["PORTFOLIO_CONTEXT_UNKNOWN"],
+                "remaining_risk_budget_usd": 0.0,
+            }
         equity = max(0.01, float(state.get("equity", 0) or 0))
         def pct_map(values):
             return {key: round(float(value or 0) / equity * 100, 4)
                     for key, value in (values or {}).items()}
         return {
+            "portfolio_context_status": "READY",
+            "portfolio_context_reason_codes": [],
             "remaining_risk_budget_usd": max(0.0, float(state.get("risk_budget", 0)) -
                                                float(state.get("portfolio_risk_used", 0))),
             "existing_sector_exposure_pct": pct_map(state.get("sector_exposure")),
@@ -620,7 +643,23 @@ class DiscoveryOrchestrator:
                     scores[axis] = float(raw)
                     provenance[axis] = {"source_run_id": source_run_id, "source_component": "RESEARCH",
                                        "source_field": axis, "source_as_of": source_as_of}
+            # ResearchAnalysis exposes capital_structure_risk.  The final
+            # scorecard uses the inverse safety axis; this is a deterministic
+            # semantic transformation, not a proxy or a confidence reuse.
+            risk = getattr(research_obj, "capital_structure_risk", None)
+            if isinstance(risk, (int, float)) and not isinstance(risk, bool):
+                risk = max(0.0, min(100.0, float(risk)))
+                scores["capital_structure_safety"] = 100.0 - risk
+                provenance["capital_structure_safety"] = {
+                    "source_run_id": source_run_id,
+                    "source_component": "RESEARCH",
+                    "source_field": "capital_structure_risk",
+                    "source_as_of": source_as_of,
+                    "transformation": "100 - capital_structure_risk",
+                }
             for axis in ("capital_structure_safety", "data_confidence"):
+                if axis == "capital_structure_safety" and axis in scores:
+                    continue
                 detail = score_details.get(axis)
                 if isinstance(detail, dict) and detail.get("value") is not None:
                     scores[axis] = float(detail["value"])

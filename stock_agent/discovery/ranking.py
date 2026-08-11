@@ -4,10 +4,16 @@ from .features import known_field, value
 from .schemas import CandidateFeatureSnapshot
 
 
-DEFAULT_WEIGHTS = {"signal_strength": 0.10, "catalyst_quality": 0.16, "expectation_gap": 0.12,
-                   "surge_elasticity": 0.08, "entry_readiness": 0.14, "fundamental_inflection": 0.12,
-                   "sector_regime_fit": 0.08, "capital_structure_safety": 0.08,
-                   "liquidity_quality": 0.05, "strategy_fit": 0.05}
+# These are Discovery-stage axes only.  Deep ANALYZE values such as
+# expectation_gap, surge_elasticity, strategy_fit, and
+# capital_structure_safety are deliberately not required here because the
+# live SEC/market providers do not produce them before the child analysis.
+# The final tournament has its own scorecard and remains strict about those
+# certified-analysis axes.
+DEFAULT_WEIGHTS = {"signal_strength": 0.20, "catalyst_quality": 0.20,
+                   "entry_readiness": 0.15, "fundamental_inflection": 0.15,
+                   "sector_regime_fit": 0.10, "liquidity_quality": 0.10,
+                   "relative_strength": 0.10}
 
 
 def preliminary_priority_score(candidate: CandidateFeatureSnapshot) -> tuple[float, float]:
@@ -79,14 +85,11 @@ def rank_candidates(candidates: list[CandidateFeatureSnapshot], weights: dict[st
         raw_scores = {
             "signal_strength": min(100, len(candidate.scanner_hits) * 25 + len(candidate.signal_families) * 15),
             "catalyst_quality": min(100, len(candidate.fuel_events) * 35),
-            "expectation_gap": _feature_score(candidate, "expectation_gap"),
-            "surge_elasticity": _feature_score(candidate, "surge_elasticity"),
             "entry_readiness": _entry_readiness(candidate),
             "fundamental_inflection": _fundamental_score(candidate),
             "sector_regime_fit": _feature_score(candidate, "sector_regime_fit"),
-            "capital_structure_safety": _feature_score(candidate, "capital_structure_safety"),
             "liquidity_quality": _liquidity_score(candidate),
-            "strategy_fit": _feature_score(candidate, "strategy_fit"),
+            "relative_strength": _relative_strength(candidate),
         }
         known_weight = sum(weights.get(key, 0) for key, score in raw_scores.items() if score is not None)
         total_weight = sum(weights.values()) or 1.0
@@ -142,3 +145,10 @@ def _liquidity_score(candidate) -> float | None:
     if not known_field(candidate, "adv20_usd"):
         return None
     return min(100.0, float(value(candidate, "adv20_usd")) / 1_000_000)
+
+
+def _relative_strength(candidate) -> float | None:
+    """Convert the production market return into a bounded ranking axis."""
+    if not known_field(candidate, "return_20d_pct"):
+        return None
+    return min(100.0, max(0.0, 50.0 + float(value(candidate, "return_20d_pct")) * 2))

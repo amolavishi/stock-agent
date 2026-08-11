@@ -37,6 +37,15 @@ def scorecard_metadata(scores: dict, min_coverage_pct: float = DEFAULT_MIN_SCORE
 def compare_candidates(a: dict, b: dict) -> PairwiseComparison:
     if a.get("certified") is not True or b.get("certified") is not True:
         return PairwiseComparison("NONE", "NONE", ("CERTIFICATION_REQUIRED",), (), ())
+    a_eligible = _eligible(a)
+    b_eligible = _eligible(b)
+    if a_eligible != b_eligible:
+        winner = a if a_eligible else b
+        loser = b if a_eligible else a
+        return PairwiseComparison(winner["ticker"], loser["ticker"],
+                                  ("FINAL_ELIGIBILITY_ADVANTAGE",), (), ())
+    if not a_eligible:
+        return PairwiseComparison("NONE", "NONE", ("FINAL_ELIGIBILITY_REQUIRED",), (), ())
     axes = ("signal_strength", "catalyst_quality", "expectation_gap", "surge_elasticity",
             "entry_readiness", "capital_structure_safety", "strategy_fit", "data_confidence")
     a_meta = scorecard_metadata(a.get("scores", {}), a.get("min_scorecard_coverage_pct", DEFAULT_MIN_SCORECARD_COVERAGE_PCT))
@@ -45,17 +54,6 @@ def compare_candidates(a: dict, b: dict) -> PairwiseComparison:
     b_coverage = float(b.get("final_scorecard_coverage_pct", b_meta["final_scorecard_coverage_pct"]))
     a_known = {axis for axis in SCORECARD_AXES if _numeric(a.get("scores", {}).get(axis)) is not None}
     b_known = {axis for axis in SCORECARD_AXES if _numeric(b.get("scores", {}).get(axis)) is not None}
-    if a_known != b_known:
-        if a_coverage > b_coverage:
-            return PairwiseComparison(a["ticker"], b["ticker"],
-                                      ("SCORECARD_COVERAGE_ADVANTAGE",), (), ())
-        if b_coverage > a_coverage:
-            return PairwiseComparison(b["ticker"], a["ticker"],
-                                      ("SCORECARD_COVERAGE_ADVANTAGE",), (), ())
-        return PairwiseComparison("NONE", "NONE", ("SCORECARD_NOT_COMPARABLE_MISSINGNESS",), (), ())
-    if abs(a_coverage - b_coverage) >= 20:
-        winner, loser = (a, b) if a_coverage > b_coverage else (b, a)
-        return PairwiseComparison(winner["ticker"], loser["ticker"], ("SCORECARD_COVERAGE_ADVANTAGE",), (), ())
     shared = [axis for axis in axes if _numeric(a.get("scores", {}).get(axis)) is not None and
               _numeric(b.get("scores", {}).get(axis)) is not None]
     if not shared:
@@ -63,6 +61,10 @@ def compare_candidates(a: dict, b: dict) -> PairwiseComparison:
     a_score = sum(_numeric(a["scores"][axis]) for axis in shared) / len(shared)
     b_score = sum(_numeric(b["scores"][axis]) for axis in shared) / len(shared)
     if a_score == b_score:
+        if a_coverage != b_coverage:
+            winner, loser = (a, b) if a_coverage > b_coverage else (b, a)
+            return PairwiseComparison(winner["ticker"], loser["ticker"],
+                                      ("SCORECARD_COVERAGE_TIE_BREAK",), (), ())
         return PairwiseComparison("NONE", "NONE", ("NO_MATERIAL_ADVANTAGE",), (), ())
     winner, loser = (a, b) if a_score > b_score else (b, a)
     winner_rr = _numeric(winner.get("scores", {}).get("reward_risk"))
@@ -104,7 +106,9 @@ def final_selection(candidates: list[dict], portfolio_context: dict | None = Non
     if not certified:
         return "NONE"
     portfolio_context = portfolio_context or {}
-    if float(portfolio_context.get("remaining_risk_budget_usd", 1) or 0) <= 0:
+    if portfolio_context.get("portfolio_context_status") != "READY":
+        return "NONE"
+    if float(portfolio_context.get("remaining_risk_budget_usd", 0) or 0) <= 0:
         return "NONE"
     sector_cap = portfolio_context.get("sector_cap_pct")
     existing_sector = portfolio_context.get("existing_sector_exposure_pct", {})
@@ -147,13 +151,12 @@ _PARETO_AXES = SCORECARD_AXES
 def _dominates(a: dict, b: dict) -> bool:
     a_meta = scorecard_metadata(a.get("scores", {}), a.get("min_scorecard_coverage_pct", DEFAULT_MIN_SCORECARD_COVERAGE_PCT))
     b_meta = scorecard_metadata(b.get("scores", {}), b.get("min_scorecard_coverage_pct", DEFAULT_MIN_SCORECARD_COVERAGE_PCT))
-    a_coverage = float(a.get("final_scorecard_coverage_pct", a_meta["final_scorecard_coverage_pct"]))
-    b_coverage = float(b.get("final_scorecard_coverage_pct", b_meta["final_scorecard_coverage_pct"]))
-    if b_coverage - a_coverage >= 20:
-        return False
     a_known = {axis for axis in SCORECARD_AXES if _numeric(a.get("scores", {}).get(axis)) is not None}
     b_known = {axis for axis in SCORECARD_AXES if _numeric(b.get("scores", {}).get(axis)) is not None}
-    if b_known - a_known:
+    # Coverage is an eligibility/confidence signal, not an automatic Pareto
+    # win.  Candidates with different known-axis sets must be compared by
+    # actual shared score quality in compare_candidates().
+    if a_known != b_known:
         return False
     shared = [axis for axis in _PARETO_AXES
               if _numeric(a.get("scores", {}).get(axis)) is not None

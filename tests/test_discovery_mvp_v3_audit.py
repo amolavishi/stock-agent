@@ -23,7 +23,7 @@ from stock_agent.discovery.schemas import (CoverageMetrics, DailyBar, DiscoveryC
 from stock_agent.discovery.universe import InMemorySecurityMasterProvider
 from stock_agent.discovery.tournament import compare_candidates, final_selection
 from stock_agent.readiness import DataReadinessPreflight
-from stock_agent.schemas import EvidenceItem, UserRequest, now_iso
+from stock_agent.schemas import EvidenceItem, ResearchAnalysis, UserRequest, now_iso
 from stock_agent.sec import SECCompanyFactsProvider
 
 
@@ -209,11 +209,13 @@ class DiscoveryMvpV3AuditTests(unittest.TestCase):
                                                   important_data_warnings=[]),
                  "decision": SimpleNamespace(decision="BUY", trade_plan=plan),
                  "risk": SimpleNamespace(hard_filter_pass=True, trade_plan=plan),
-                 "research": SimpleNamespace(signal_strength=80, catalyst_quality=70,
-                                             expectation_gap=60, surge_elasticity=65,
-                                             entry_readiness=75, strategy_fit=80,
-                                             score_details={"capital_structure_safety": {"value": 80},
-                                                            "data_confidence": {"value": 80}})}
+                 "research": ResearchAnalysis(
+                     ticker="VALID", market_regime="RISK_ON", sector="Technology",
+                     signal_strength=80, catalyst_quality=70, expectation_gap=60,
+                     surge_elasticity=65, entry_readiness=75,
+                     capital_structure_risk=20, strategy_fit=80,
+                     bull_case=[], bear_case=[], suggested_decision="BUY",
+                     confidence=80, evidence_ids=[])}
         with tempfile.TemporaryDirectory() as directory:
             db = Database(str(Path(directory) / "promotion.sqlite"))
             db.init()
@@ -242,7 +244,8 @@ class DiscoveryMvpV3AuditTests(unittest.TestCase):
                     "max_llm_output_tokens": 1000, "max_estimated_cost_usd": 1,
                     "max_child_analysis_runs": 3}}},
                 handoff=lambda request: calls.append(request) or child)
-            with patch.object(orchestrator, "_portfolio_context", return_value={"remaining_risk_budget_usd": 1000}):
+            with patch.object(orchestrator, "_portfolio_context", return_value={
+                    "portfolio_context_status": "READY", "remaining_risk_budget_usd": 1000}):
                 orchestrator.store.save_run(result, AS_OF, AS_OF)
                 request = UserRequest("REQ", "MSG", "USER", AS_OF, "DISCOVERY DEEP RUN",
                                       "DISCOVERY_DEEP_HANDOFF", [], paper_action_enabled=False,
@@ -251,6 +254,10 @@ class DiscoveryMvpV3AuditTests(unittest.TestCase):
             self.assertEqual([request.intent for request in calls], ["ANALYZE"])
             self.assertEqual([item.security.ticker for item in promoted.candidates], ["VALID"])
             self.assertEqual(promoted.deep_analysis_results[0]["analysis_run_id"], "CHILD_PROMOTED")
+            self.assertEqual(promoted.deep_analysis_results[0]["scores"]["capital_structure_safety"], 80.0)
+            self.assertEqual(
+                promoted.deep_analysis_results[0]["score_provenance"]["capital_structure_safety"]["source_field"],
+                "capital_structure_risk")
             self.assertEqual(promoted.final_selection, "VALID")
             with db.connect() as connection:
                 rows = {row["ticker"]: row["promotion_status"] for row in connection.execute(
@@ -307,11 +314,16 @@ class DiscoveryMvpV3AuditTests(unittest.TestCase):
         self.assertEqual(outputs[1]["reason_codes"], ["MAX_LLM_CALLS_PER_DISCOVERY"])
 
     def test_final_tournament_uses_actual_scorecard_and_zero_risk_budget_returns_none(self):
-        a = eligible_final("A", {"signal_strength": 80, "expectation_gap": 80})
-        b = eligible_final("B", {"signal_strength": 70})
+        complete = {axis: 80 for axis in (
+            "signal_strength", "catalyst_quality", "expectation_gap", "surge_elasticity",
+            "entry_readiness", "capital_structure_safety", "strategy_fit", "data_confidence")}
+        complete["reward_risk"] = 2.0
+        a = eligible_final("A", complete)
+        b = eligible_final("B", {**complete, "signal_strength": 70})
         comparison = compare_candidates(a, b)
         self.assertEqual(comparison.winner, "A")
-        self.assertEqual(final_selection([a], {"remaining_risk_budget_usd": 0}), "NONE")
+        self.assertEqual(final_selection([a], {
+            "portfolio_context_status": "READY", "remaining_risk_budget_usd": 0}), "NONE")
         self.assertEqual(final_selection([], {}), "NONE")
 
     def test_latest_periodic_filing_uses_filed_at_not_accession_lexical_order(self):

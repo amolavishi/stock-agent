@@ -150,7 +150,9 @@ class DiscoveryMvpAuditTests(unittest.TestCase):
         self.assertEqual(final_selection([{**eligible, "ticker": "A",
                                           "scores": complete_scorecard},
                                          {"ticker": "B", "certified": False,
-                                          "scores": {"data_confidence": 100}}]), "A")
+                                          "scores": {"data_confidence": 100}}], {
+                                             "portfolio_context_status": "READY",
+                                             "remaining_risk_budget_usd": 1000}), "A")
 
 
 if __name__ == "__main__":
