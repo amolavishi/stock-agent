@@ -34,6 +34,40 @@ from .universe import EmptySecurityMasterProvider, UniverseIntegrityEngine
 from .expiry import can_promote
 
 
+PROMOTABLE_DISCOVERY_STATUSES = frozenset({
+    DiscoveryStatus.COMPLETED_SHADOW_ENRICHED.value,
+    DiscoveryStatus.READY_FOR_DEEP_HANDOFF.value,
+})
+
+
+def source_run_promotion_reason_codes(status: str) -> list[str]:
+    """Return fail-closed diagnostics for a stored Discovery source run.
+
+    Promotion is an allowlist policy: only completed, enriched source runs
+    may reach candidate-level checks.  New or malformed statuses therefore
+    default to blocked instead of being implicitly treated as ready.
+    """
+    status_value = getattr(status, "value", status)
+    if status_value in PROMOTABLE_DISCOVERY_STATUSES:
+        return []
+    status_code = str(status_value or "UNKNOWN").upper()
+    reasons = ["SOURCE_RUN_NOT_PROMOTABLE", f"SOURCE_STATUS_{status_code}"]
+    if status_value in {
+        DiscoveryStatus.BOOTSTRAP_REQUIRED.value,
+        DiscoveryStatus.BLOCKED_DATA.value,
+        DiscoveryStatus.BLOCKED_COVERAGE.value,
+        DiscoveryStatus.BLOCKED_MARKET_DATA.value,
+        DiscoveryStatus.BLOCKED_COST.value,
+        DiscoveryStatus.FAILED.value,
+        DiscoveryStatus.CANCELLED.value,
+        DiscoveryStatus.COMPLETED_SHADOW_MARKET_ONLY.value,
+    }:
+        reasons.append("SOURCE_RUN_NOT_COMPLETED")
+    if status_value == DiscoveryStatus.BLOCKED_MARKET_DATA.value:
+        reasons.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
+    return reasons
+
+
 class DiscoveryOrchestrator:
     """Phase-1 deterministic pipeline.  It is read-only with respect to PAPER."""
 
@@ -555,8 +589,29 @@ class DiscoveryOrchestrator:
         if not payload:
             raise ValueError("DISCOVERY_SOURCE_RUN_NOT_FOUND")
         result = DiscoveryResult.from_dict(payload)
-        if result.status in {DiscoveryStatus.BLOCKED_DATA.value, DiscoveryStatus.BLOCKED_COVERAGE.value}:
-            result.final_selection_reason_codes = ["SOURCE_RUN_NOT_COMPLETED"]
+        source_reasons = source_run_promotion_reason_codes(result.status)
+        if source_reasons:
+            # Source readiness is a prerequisite for all candidate checks.
+            # Clear any stale promotion payload and return without entering
+            # the child-analysis path or mutating the source run in storage.
+            result.deep_analysis_results = []
+            result.certified_candidates = []
+            result.blocked_candidates = []
+            result.analysis_links = []
+            result.final_selection = "NONE"
+            result.final_selection_status = "NONE"
+            result.final_selection_reason_codes = source_reasons
+            result.deep_handoff_status = "BOOTSTRAP_REQUIRED"
+            result.api_telemetry["promotion_source_run"] = {
+                "status": result.status,
+                "promotable": False,
+                "reason_codes": source_reasons,
+            }
+            result.api_telemetry.setdefault("funnel", {}).update({
+                "deep_analyzed": 0,
+                "certified": 0,
+                "final": "NONE",
+            })
             return result
         as_of = now_iso()
         candidates = []
