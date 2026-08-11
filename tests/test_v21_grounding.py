@@ -45,6 +45,41 @@ class ClaimEvidenceContractTests(unittest.TestCase):
                  "evidence_ids": ["SEC_8K"]}
             ], evidence)
 
+    def test_sec_filing_supports_capital_structure_claim(self):
+        evidence = [EvidenceItem(
+            "SEC_8K", "IONQ", "SEC", "EX-99", "2026-08-06", "Transaction Details", "u", "B",
+            "CLASSIFIED_FILING", "terms of the agreement shareholders are receiving shares at close with issuance",
+        )]
+        validate_claim_evidence([{
+            "claim": "the transaction changes the capital structure",
+            "domain": "CAPITAL_STRUCTURE", "claim_type": "CAPITAL",
+            "minimum_evidence_grade": "B", "evidence_ids": ["SEC_8K"],
+        }], evidence)
+
+    def test_companyfacts_supports_financial_fact_claim(self):
+        evidence = [EvidenceItem(
+            "XBRL_FACT_1", "IONQ", "XBRL_FACT", "COMPANYFACTS", "2026-08-10",
+            "IONQ CompanyFacts", "u", "B", "XBRL_FACTS",
+            "revenue=100 gross_margin_pct=42", normalized_fact="revenue=100 gross_margin_pct=42",
+        )]
+        validate_claim_evidence([{
+            "claim": "revenue is 100",
+            "domain": "FINANCIAL_FACT", "claim_type": "NUMERIC",
+            "minimum_evidence_grade": "B", "evidence_ids": ["XBRL_FACT_1"],
+        }], evidence)
+
+    def test_supporting_materiality_keeps_full_claim_validation(self):
+        evidence = [EvidenceItem(
+            "SEC_FACT", "IONQ", "SEC", "10-Q", "2026-08-10", "Revenue", "u", "B",
+            "FINANCIAL", "revenue growth and gross margin facts",
+        )]
+        validate_claim_evidence([{
+            "claim": "supporting revenue fact",
+            "materiality": "SUPPORTING", "domain": "FINANCIAL_FACT",
+            "claim_type": "FACT", "minimum_evidence_grade": "B",
+            "evidence_ids": ["SEC_FACT"],
+        }], evidence)
+
     def test_financial_claim_requires_semantically_relevant_evidence(self):
         evidence = [EvidenceItem(
             "SEC_EVENT", "INOD", "SEC", "8-K", "2026-08-06", "8-K", "u", "B",

@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .schemas import EvidenceItem, now_iso
+from .readiness import classify_offering_event
 
 
 @dataclass
@@ -63,6 +64,7 @@ class CapitalStructureSnapshot:
     estimated_fields: list[str] = field(default_factory=list)
     evidence_ids: list[str] = field(default_factory=list)
     integrity_conflicts: list[dict[str, Any]] = field(default_factory=list)
+    offering_events: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def atm_capacity(self) -> float | None:
@@ -96,7 +98,18 @@ class CapitalStructureSnapshot:
         payload["recent_atm_usage"] = self.recent_atm_usage
         payload["warrants"] = self.warrants
         payload["convertibles"] = self.convertibles
+        payload["capital_overhang_status"] = self.capital_overhang_status
         return payload
+
+    @property
+    def capital_overhang_status(self) -> str:
+        if self.atm_active.value is True or self.convertible_outstanding.value is True:
+            return "HIGH_RISK"
+        if self.warrant_outstanding.value is not None:
+            return "REVIEW_REQUIRED"
+        if any(event.get("offering_type") == "SELLING_STOCKHOLDER_RESALE" for event in self.offering_events):
+            return "CLEAR"
+        return "UNKNOWN"
 
 
 def _fact_value(facts: dict[str, Any], name: str) -> float | None:
@@ -164,6 +177,8 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
         text = (item.normalized_fact or item.summary or "").lower()
         if not text:
             continue
+        snapshot.offering_events.append(classify_offering_event(
+            item.document_type, text, item.accession, item.filed_at or item.published_at))
         if any(term in text for term in ("at-the-market", "at the market", "equity distribution agreement")):
             snapshot.atm_active = _provenance(item, True, "KNOWN", text,
                                                "EXPLICIT_ATM_AGREEMENT_LANGUAGE", 95)

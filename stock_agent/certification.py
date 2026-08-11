@@ -77,6 +77,9 @@ class RequiredDataContract:
             )
             if latest is None:
                 result.failures.append("LATEST_MATERIAL_PERIODIC_FILING_MISSING")
+            elif str(getattr(latest, "readiness_state", "")) == "READY_PARTIAL":
+                result.failures.extend(getattr(latest, "readiness_reason_codes", []) or [
+                    "LATEST_MATERIAL_PERIODIC_FILING_PARTIAL"])
             elif str(getattr(latest, "lifecycle_status", "DISCOVERED")) != "READY_FOR_ANALYSIS":
                 result.failures.append("LATEST_MATERIAL_PERIODIC_FILING_NOT_READY")
 

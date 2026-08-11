@@ -17,7 +17,7 @@ OUTPUT_TABLES = {"research_outputs", "critic_outputs", "risk_outputs", "chairman
 
 
 class Database:
-    SCHEMA_VERSION = 22
+    SCHEMA_VERSION = 24
 
     def __init__(self, path: str, busy_timeout_ms: int = 5000, wal: bool = True):
         self.path = Path(path)
@@ -155,6 +155,8 @@ class Database:
             self._migrate_v21_telemetry(c)
             self._migrate_v21_account_identity_and_financial_cancellation(c)
             self._migrate_v22_risk_provenance(c)
+            self._migrate_v23_discovery(c)
+            self._migrate_v24_discovery_mvp(c)
 
     @staticmethod
     def _ensure_run_columns(c: sqlite3.Connection) -> None:
@@ -639,6 +641,137 @@ class Database:
               AND (risk_provenance_json IS NULL OR risk_provenance_json IN ('','{}'))""")
         c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
             22, now_iso(), "v2.2 PAPER position and pending-order risk provenance"))
+
+    @staticmethod
+    def _migrate_v23_discovery(c: sqlite3.Connection) -> None:
+        """Additive Discovery source-of-truth tables; never mutates PAPER state."""
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS discovery_runs (
+            discovery_run_id TEXT PRIMARY KEY, request_id TEXT, mode TEXT NOT NULL,
+            requested_sector TEXT, intensity TEXT NOT NULL, as_of TEXT NOT NULL,
+            rule_version TEXT NOT NULL, feature_version TEXT NOT NULL, code_sha TEXT,
+            universe_snapshot_id TEXT, status TEXT NOT NULL, certification_status TEXT NOT NULL,
+            coverage_pct REAL, started_at TEXT NOT NULL, finished_at TEXT,
+            error_code TEXT, payload_json TEXT NOT NULL DEFAULT '{}'
+        );
+        CREATE TABLE IF NOT EXISTS universe_securities (
+            universe_snapshot_id TEXT NOT NULL, security_id TEXT NOT NULL, ticker TEXT NOT NULL,
+            payload_json TEXT NOT NULL, PRIMARY KEY(universe_snapshot_id, security_id)
+        );
+        CREATE TABLE IF NOT EXISTS universe_snapshots (
+            universe_snapshot_id TEXT PRIMARY KEY, as_of TEXT NOT NULL, mode TEXT NOT NULL,
+            raw_count INTEGER NOT NULL, accepted_count INTEGER NOT NULL, rejected_json TEXT NOT NULL,
+            payload_json TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS daily_bars (
+            ticker TEXT NOT NULL, session_date TEXT NOT NULL, open REAL, high REAL, low REAL,
+            close REAL, adjusted_close REAL, volume INTEGER, source TEXT NOT NULL,
+            observed_at TEXT NOT NULL, ingested_at TEXT NOT NULL, quality_status TEXT NOT NULL,
+            PRIMARY KEY(ticker, session_date, source)
+        );
+        CREATE TABLE IF NOT EXISTS sector_snapshots (
+            discovery_run_id TEXT NOT NULL, sector_or_theme TEXT NOT NULL,
+            feature_json TEXT NOT NULL, rotation_score REAL, rotation_phase TEXT NOT NULL,
+            coverage_pct REAL, PRIMARY KEY(discovery_run_id, sector_or_theme)
+        );
+        CREATE TABLE IF NOT EXISTS candidate_feature_snapshots (
+            discovery_run_id TEXT NOT NULL, ticker TEXT NOT NULL, as_of TEXT NOT NULL,
+            feature_version TEXT NOT NULL, payload_json TEXT NOT NULL, payload_hash TEXT NOT NULL,
+            PRIMARY KEY(discovery_run_id, ticker)
+        );
+        CREATE TABLE IF NOT EXISTS scanner_hits (
+            discovery_run_id TEXT NOT NULL, ticker TEXT NOT NULL, scanner TEXT NOT NULL,
+            scanner_version TEXT NOT NULL, hit INTEGER NOT NULL, strength REAL NOT NULL,
+            reason_codes_json TEXT NOT NULL, signal_families_json TEXT NOT NULL,
+            unknown_fields_json TEXT NOT NULL, payload_json TEXT NOT NULL,
+            PRIMARY KEY(discovery_run_id, ticker, scanner)
+        );
+        CREATE TABLE IF NOT EXISTS catalyst_events (
+            event_id TEXT PRIMARY KEY, ticker TEXT NOT NULL, event_type TEXT NOT NULL,
+            event_at TEXT, first_seen_at TEXT, expiry_at TEXT, half_life_days REAL,
+            source_evidence_id TEXT, materiality TEXT, status TEXT NOT NULL, payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS discovery_candidates (
+            discovery_run_id TEXT NOT NULL, ticker TEXT NOT NULL, stage TEXT NOT NULL,
+            eligibility TEXT NOT NULL, discovery_bucket TEXT NOT NULL, composite_score REAL,
+            reason_codes_json TEXT NOT NULL, unknown_fields_json TEXT NOT NULL,
+            risk_flags_json TEXT NOT NULL, payload_json TEXT NOT NULL,
+            PRIMARY KEY(discovery_run_id, ticker)
+        );
+        CREATE TABLE IF NOT EXISTS discovery_packets (
+            discovery_run_id TEXT PRIMARY KEY, packet_hash TEXT NOT NULL,
+            payload_json TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS discovery_analysis_links (
+            discovery_run_id TEXT NOT NULL, ticker TEXT NOT NULL, analysis_run_id TEXT NOT NULL,
+            created_at TEXT NOT NULL, PRIMARY KEY(discovery_run_id, ticker)
+        );
+        CREATE TABLE IF NOT EXISTS backtest_runs (
+            backtest_run_id TEXT PRIMARY KEY, rule_version TEXT NOT NULL,
+            feature_version TEXT NOT NULL, as_of_start TEXT, as_of_end TEXT,
+            status TEXT NOT NULL, survivorship_bias_risk TEXT NOT NULL, payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS backtest_results (
+            backtest_run_id TEXT NOT NULL, ticker TEXT NOT NULL, as_of TEXT NOT NULL,
+            horizon_days INTEGER NOT NULL, payload_json TEXT NOT NULL,
+            PRIMARY KEY(backtest_run_id, ticker, as_of, horizon_days)
+        );
+        CREATE INDEX IF NOT EXISTS idx_discovery_runs_status ON discovery_runs(status, started_at);
+        CREATE INDEX IF NOT EXISTS idx_discovery_candidates_bucket ON discovery_candidates(discovery_run_id, discovery_bucket);
+        CREATE INDEX IF NOT EXISTS idx_daily_bars_cutoff ON daily_bars(ticker, session_date);
+        """)
+        c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
+            23, now_iso(), "v2.3 additive Discovery universe, cache, screening, audit and backtest schema"))
+
+    @staticmethod
+    def _migrate_v24_discovery_mvp(c: sqlite3.Connection) -> None:
+        Database._ensure_columns(c, "discovery_runs", {
+            "identity_coverage_pct": "REAL DEFAULT 0",
+            "feature_coverage_pct": "REAL DEFAULT 0",
+            "sector_coverage_pct": "REAL DEFAULT 0",
+            "fundamental_enrichment_coverage_pct": "REAL DEFAULT 0",
+            "capital_preflight_coverage_pct": "REAL DEFAULT 0",
+            "final_selection": "TEXT DEFAULT 'NONE'",
+            "final_selection_status": "TEXT DEFAULT 'NONE'",
+            "final_selection_reason_codes_json": "TEXT NOT NULL DEFAULT '[]'",
+            "budget_json": "TEXT NOT NULL DEFAULT '{}'",
+        })
+        Database._ensure_columns(c, "discovery_candidates", {
+            "screen_layer": "TEXT DEFAULT 'MARKET'",
+            "preflight_status": "TEXT DEFAULT 'NOT_FETCHED'",
+            "analysis_status": "TEXT DEFAULT 'NOT_REQUESTED'",
+            "certification_status": "TEXT DEFAULT 'NOT_APPLICABLE'",
+        })
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS discovery_provider_calls (
+            discovery_run_id TEXT NOT NULL, provider TEXT NOT NULL, operation TEXT NOT NULL,
+            batch_no INTEGER NOT NULL DEFAULT 0, requested_count INTEGER NOT NULL DEFAULT 0,
+            returned_count INTEGER NOT NULL DEFAULT 0, failed_count INTEGER NOT NULL DEFAULT 0,
+            cache_hits INTEGER NOT NULL DEFAULT 0, started_at TEXT NOT NULL, finished_at TEXT,
+            payload_json TEXT NOT NULL DEFAULT '{}',
+            PRIMARY KEY(discovery_run_id, provider, operation, batch_no)
+        );
+        CREATE TABLE IF NOT EXISTS periodic_readiness (
+            run_id TEXT NOT NULL, ticker TEXT NOT NULL, evidence_id TEXT NOT NULL,
+            document_type TEXT NOT NULL, accession TEXT, readiness_state TEXT NOT NULL,
+            reason_codes_json TEXT NOT NULL, numeric_claims_status TEXT NOT NULL,
+            source_hash TEXT, created_at TEXT NOT NULL,
+            PRIMARY KEY(run_id, evidence_id)
+        );
+        CREATE TABLE IF NOT EXISTS offering_semantic_events (
+            run_id TEXT NOT NULL, ticker TEXT NOT NULL, evidence_id TEXT NOT NULL,
+            offering_type TEXT NOT NULL, status TEXT NOT NULL, economic_effect TEXT,
+            new_share_creation_possible INTEGER, issuer_receives_proceeds INTEGER,
+            remaining_capacity REAL, used_amount REAL, confidence INTEGER NOT NULL DEFAULT 0,
+            reason_codes_json TEXT NOT NULL, source_accession TEXT, filed_at TEXT,
+            payload_json TEXT NOT NULL DEFAULT '{}',
+            PRIMARY KEY(run_id, evidence_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_discovery_provider_calls_run ON discovery_provider_calls(discovery_run_id);
+        CREATE INDEX IF NOT EXISTS idx_periodic_readiness_ticker ON periodic_readiness(ticker, readiness_state);
+        """)
+        c.execute("INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?)", (
+            24, now_iso(), "v2.4 Discovery bootstrap, enrichment, readiness and final-selection provenance"))
 
     def start_run(self, run_id: str, ticker: str, mode: str, request_id: str = "",
                   analysis_intensity: str = "NORMAL") -> str:
@@ -1469,6 +1602,64 @@ class Database:
                 certification.run_id))
             c.execute("UPDATE user_requests SET status='COMPLETED',run_id=?,updated_at=? WHERE request_id=?",
                       (certification.run_id, timestamp, request_id))
+
+    def finalize_data_blocked_analysis(self, run_id: str, request_id: str, ticker: str,
+                                       certification: CertificationResult, report_path: str,
+                                       diagnostics: dict[str, Any]) -> None:
+        """Persist a deterministic pre-debate blocker without fabricating agent output."""
+        timestamp = now_iso()
+        with self.connect() as c:
+            c.execute("""INSERT INTO run_manifests(run_id,ticker,payload_json,created_at)
+                VALUES(?,?,?,?) ON CONFLICT(run_id) DO UPDATE SET payload_json=excluded.payload_json,
+                created_at=excluded.created_at""", (run_id, ticker, json.dumps({
+                    "run_id": run_id, "ticker": ticker, "final_decision": "NO_CERTIFIED_ACTION",
+                    "code_version": "DATA_READINESS_PREFLIGHT", "db_schema_version": self.SCHEMA_VERSION,
+                    "diagnostics": diagnostics}, ensure_ascii=False), timestamp))
+            c.execute("""INSERT INTO report_artifacts(
+                run_id,ticker_label,markdown_path,publish_status,publish_attempts,last_error,created_at)
+                VALUES(?,?,?,?,?,?,?) ON CONFLICT(run_id) DO UPDATE SET markdown_path=excluded.markdown_path,
+                publish_status='PENDING',last_error=''""",
+                (run_id, ticker, report_path, "PENDING", 0, "", timestamp))
+            c.execute("""INSERT INTO outbox_events(
+                event_id,aggregate_type,aggregate_id,event_type,payload_json,status,created_at)
+                VALUES(?,?,?,?,?,'PENDING',?) ON CONFLICT(aggregate_id,event_type) DO NOTHING""",
+                (f"OUT_REPORT_{run_id}", "ANALYSIS_RUN", run_id, "REPORT_READY",
+                 json.dumps({"run_id": run_id, "ticker": ticker,
+                             "report_path": report_path,
+                             "certification_status": certification.certification_status}, ensure_ascii=False), timestamp))
+            self._upsert_certification(c, certification)
+            c.execute("""UPDATE analysis_runs SET finished_at=?,status='SUCCESS',
+                execution_status='SUCCESS',analysis_status='BLOCKED',certification_status=?,
+                side_effect_status='WITHHELD',certified_action='NO_CERTIFIED_ACTION',
+                final_decision='NO_CERTIFIED_ACTION',final_confidence=NULL,debate_status='NOT_STARTED',
+                round_count=0,delivery_status='PENDING',llm_call_count=0 WHERE run_id=?""",
+                (timestamp, certification.certification_status, run_id))
+            c.execute("UPDATE user_requests SET status='COMPLETED',run_id=?,updated_at=? WHERE request_id=?",
+                      (run_id, timestamp, request_id))
+
+    def save_periodic_readiness(self, run_id: str, ticker: str, item: Any, assessment: dict[str, Any]) -> None:
+        with self.connect() as c:
+            c.execute("""INSERT OR REPLACE INTO periodic_readiness(
+                run_id,ticker,evidence_id,document_type,accession,readiness_state,
+                reason_codes_json,numeric_claims_status,source_hash,created_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?)""", (run_id, ticker, item.evidence_id,
+                item.document_type, item.accession, assessment.get("state", "UNKNOWN"),
+                json.dumps(assessment.get("reason_codes", [])), assessment.get("numeric_claims", "UNKNOWN"),
+                item.raw_document_hash, now_iso()))
+
+    def save_offering_semantic_event(self, run_id: str, ticker: str, item: Any, event: dict[str, Any]) -> None:
+        with self.connect() as c:
+            c.execute("""INSERT OR REPLACE INTO offering_semantic_events(
+                run_id,ticker,evidence_id,offering_type,status,economic_effect,
+                new_share_creation_possible,issuer_receives_proceeds,remaining_capacity,
+                used_amount,confidence,reason_codes_json,source_accession,filed_at,payload_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (run_id, ticker, item.evidence_id,
+                event.get("offering_type", "UNKNOWN_OFFERING"), event.get("status", "UNKNOWN"),
+                event.get("economic_effect", ""), event.get("new_share_creation_possible"),
+                event.get("issuer_receives_proceeds"), event.get("remaining_capacity"),
+                event.get("used_amount"), int(event.get("confidence", 0)),
+                json.dumps(event.get("reason_codes", [])), event.get("source_accession", item.accession),
+                event.get("filed_at", item.filed_at), json.dumps(event, ensure_ascii=False)))
 
     @staticmethod
     def _risk_provenance(effect: dict[str, Any]) -> dict[str, Any]:

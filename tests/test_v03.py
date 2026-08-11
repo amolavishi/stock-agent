@@ -7,8 +7,9 @@ from pathlib import Path
 from stock_agent.claim_validation import validate_claim_evidence
 from stock_agent.database import Database
 from stock_agent.discord_runtime import should_process_user
-from stock_agent.hermes import HermesError, extract_json, extract_role_json
-from stock_agent.hermes_agents import _normalize_critic_collections, _normalize_scores
+from stock_agent.hermes import HermesError, HermesResponse, extract_json, extract_role_json
+from stock_agent.hermes_agents import (HermesResearchAgent, _normalize_critic_collections,
+                                       _normalize_scores)
 from stock_agent.market import MockMarketDataProvider
 from stock_agent.market_regime import MarketRegimeEngine
 from stock_agent.paper import PaperPortfolio
@@ -73,6 +74,86 @@ class HermesAndSecurityTests(unittest.TestCase):
                 '"evidence_conflicts":[],"critic_decision":"WAIT","confidence":65}')
         value = extract_role_json(text, "critic")
         self.assertEqual(value["critic_decision"], "WAIT")
+
+    def test_incomplete_role_json_is_left_for_bounded_agent_repair(self):
+        value = extract_role_json('{"suggested_decision":"WAIT","confidence":40}', "research")
+        self.assertEqual(value["suggested_decision"], "WAIT")
+
+    def test_research_agent_repairs_incomplete_cli_candidate(self):
+        class RepairAdapter:
+            def __init__(self):
+                self.calls = 0
+
+            def invoke_json(self, prompt, role):
+                self.calls += 1
+                if self.calls == 1:
+                    return HermesResponse({"suggested_decision": "WAIT", "confidence": 40},
+                                          "fake", "fake")
+                return HermesResponse({
+                    "market_regime": "NEUTRAL", "sector": "TECHNOLOGY",
+                    "signal_strength": 40, "catalyst_quality": 40,
+                    "expectation_gap": 40, "surge_elasticity": 40,
+                    "entry_readiness": 30, "capital_structure_risk": 50,
+                    "strategy_fit": 40, "bull_case": ["supported upside"],
+                    "bear_case": ["supported downside"], "suggested_decision": "WAIT",
+                    "confidence": 40, "evidence_ids": [], "claims": [],
+                    "current_decision": "WAIT", "accepted_points": [],
+                    "rejected_points": [], "modified_points": [],
+                    "unresolved_points": [], "new_claims": [],
+                    "withdrawn_claims": [], "evidence_requests": [],
+                    "evidence_that_would_change_my_view": [], "issue_updates": [],
+                    "consensus_ready": False,
+                }, "fake", "fake")
+
+        agent = HermesResearchAgent(RepairAdapter())
+        value = agent.run(type("State", (), {"ticker": "IONQ"})(),
+                          type("Market", (), {})(), [], {"intent": "ANALYZE"})
+
+        self.assertEqual(value.suggested_decision, "WAIT")
+        self.assertEqual(value.bull_case, ["supported upside"])
+        self.assertEqual(agent.adapter.calls, 2)
+
+    def test_research_agent_repairs_cross_domain_evidence_ids(self):
+        evidence = [
+            EvidenceItem("SEC_1", "IONQ", "SEC", "10-Q", "2026-08-10", "Filing", "u", "B",
+                         "FINANCIAL", "revenue and gross margin facts"),
+            EvidenceItem("MARKET_1", "IONQ", "MARKET_DATA", "MARKET_SNAPSHOT", "2026-08-10",
+                         "Market", "u", "B", "MARKET_SNAPSHOT", "price ma50 volume"),
+        ]
+
+        class RepairAdapter:
+            def __init__(self):
+                self.calls = 0
+
+            def invoke_json(self, prompt, role):
+                self.calls += 1
+                claim_id = "MARKET_1" if self.calls == 1 else "SEC_1"
+                return HermesResponse({
+                    "market_regime": "NEUTRAL", "sector": "TECHNOLOGY",
+                    "signal_strength": 40, "catalyst_quality": 40,
+                    "expectation_gap": 40, "surge_elasticity": 40,
+                    "entry_readiness": 30, "capital_structure_risk": 50,
+                    "strategy_fit": 40, "bull_case": ["upside"],
+                    "bear_case": ["downside"], "suggested_decision": "WAIT",
+                    "confidence": 40, "evidence_ids": [claim_id],
+                    "claims": [{"claim": f"revenue fact {index}", "evidence_ids": [claim_id],
+                                "materiality": "MATERIAL", "domain": "FINANCIAL_FACT",
+                                "claim_type": "FACT", "minimum_evidence_grade": "B"}
+                               for index in range(3)],
+                    "current_decision": "WAIT", "accepted_points": [],
+                    "rejected_points": [], "modified_points": [], "unresolved_points": [],
+                    "new_claims": [], "withdrawn_claims": [], "evidence_requests": [],
+                    "evidence_that_would_change_my_view": [], "issue_updates": [],
+                    "consensus_ready": False,
+                }, "fake", "fake")
+
+        agent = HermesResearchAgent(RepairAdapter())
+        value = agent.run(type("State", (), {"ticker": "IONQ"})(),
+                          type("Market", (), {})(), evidence,
+                          {"analysis_intensity": "MINIMUM"})
+
+        self.assertEqual(value.claims[0]["evidence_ids"], ["SEC_1"])
+        self.assertEqual(agent.adapter.calls, 2)
 
     def test_fractional_confidence_is_normalized(self):
         self.assertEqual(_normalize_scores({"confidence": 0.65})["confidence"], 65)

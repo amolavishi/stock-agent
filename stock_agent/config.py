@@ -9,6 +9,33 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class DiscoveryConfigError(ValueError):
+    pass
+
+
+def validate_discovery_config(discovery: dict[str, Any]) -> None:
+    universe = discovery.get("universe", {})
+    coverage = discovery.get("coverage", {})
+    stage = discovery.get("stage", {})
+    if not isinstance(discovery.get("enabled", False), bool) or not isinstance(discovery.get("shadow_mode", True), bool):
+        raise DiscoveryConfigError("discovery.enabled and discovery.shadow_mode must be boolean")
+    for key in ("market_min_pct", "feature_min_pct", "fundamental_enrichment_min_pct", "capital_preflight_min_pct"):
+        value = coverage.get(key, 0)
+        if not isinstance(value, (int, float)) or not 0 <= value <= 100:
+            raise DiscoveryConfigError(f"discovery.coverage.{key} must be between 0 and 100")
+    for key, value in discovery.get("cost", {}).items():
+        if value is not None and (not isinstance(value, (int, float)) or value < 0):
+            raise DiscoveryConfigError(f"discovery.cost.{key} must be non-negative or null")
+    for key in ("min_price", "min_market_cap_usd", "min_adv20_usd"):
+        value = universe.get(key, 0)
+        if not isinstance(value, (int, float)) or value <= 0:
+            raise DiscoveryConfigError(f"discovery.universe.{key} must be positive")
+    for key in ("stage3_return_1d_pct", "stage3_return_5d_pct", "stage3_return_20d_pct", "stage3_distance_ma20_pct", "stage3_atr_multiple"):
+        value = stage.get(key, 0)
+        if not isinstance(value, (int, float)) or value <= 0:
+            raise DiscoveryConfigError(f"discovery.stage.{key} must be positive")
+
+
 def load_dotenv() -> None:
     """Load the local .env without adding a third-party dependency."""
     env_path = ROOT / ".env"
@@ -95,4 +122,20 @@ def load_config() -> dict[str, Any]:
     from .security import register_known_secrets
     register_known_secrets(config["credentials"])
     config["risk_rules"] = load_json_yaml(ROOT / "config" / "risk_rules.yaml")
+    discovery = config.get("discovery", {})
+    discovery = discovery | {
+        "enabled": os.getenv("DISCOVERY_ENABLED", str(discovery.get("enabled", False))).lower() in {"1", "true", "yes", "on"},
+        "shadow_mode": os.getenv("DISCOVERY_SHADOW_MODE", str(discovery.get("shadow_mode", True))).lower() in {"1", "true", "yes", "on"},
+    }
+    bootstrap = discovery.get("bootstrap", {})
+    enrichment_path = os.getenv("DISCOVERY_SECURITY_MASTER_ENRICHMENT_PATH",
+                               bootstrap.get("security_master_enrichment_path", ""))
+    fundamental_cache = os.getenv("DISCOVERY_FUNDAMENTAL_CACHE_DIR",
+                                  bootstrap.get("fundamental_cache_dir", "data/cache/discovery/fundamentals"))
+    discovery["bootstrap"] = bootstrap | {
+        "security_master_enrichment_path": resolved(enrichment_path) if enrichment_path else "",
+        "fundamental_cache_dir": resolved(fundamental_cache),
+    }
+    config["discovery"] = discovery
+    validate_discovery_config(config["discovery"])
     return config
