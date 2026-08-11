@@ -1,4 +1,4 @@
-from __future__ import annotations
+­r‡^Ñf¥–Ø¦{OlyÊ'vÃ®¶›­from __future__ import annotations
 
 import argparse
 import json
@@ -39,6 +39,7 @@ def main() -> int:
     sub.add_parser("discovery-bootstrap")
     sub.add_parser("discovery-refresh")
     sub.add_parser("discovery-health")
+    sub.add_parser("discovery-schema-init")
     sub.add_parser("discord")
     args = parser.parse_args()
 
@@ -46,8 +47,17 @@ def main() -> int:
     # Security Master lifecycle commands are intentionally independent from
     # Orchestrator/PAPER initialization.  Bootstrap must work when Toss is not
     # configured, and health must not create or replace an enrichment snapshot.
-    if args.command in {"discovery-bootstrap", "discovery-refresh", "discovery-health"}:
+    if args.command in {"discovery-bootstrap", "discovery-refresh", "discovery-health", "discovery-schema-init"}:
         from stock_agent.discovery.bootstrap import SecurityMasterBootstrapError, SecurityMasterBootstrapService
+        if args.command == "discovery-schema-init":
+            from stock_agent.database import Database
+            Database(config["database_path"],
+                     config.get("database", {}).get("busy_timeout_ms", 5000),
+                     config.get("database", {}).get("wal", True)).init()
+            print(json.dumps({"command": args.command, "status": "DATABASE_SCHEMA_READY",
+                              "database_path": config["database_path"],
+                              "paper_mutation": False}, ensure_ascii=False, indent=2))
+            return 0
         service = SecurityMasterBootstrapService(config)
         try:
             if args.command == "discovery-health":
@@ -67,7 +77,11 @@ def main() -> int:
         } else 2
 
     app = Orchestrator(config)
-    app.init()
+    # Shadow Discovery initializes only its schema through DiscoveryStore.  It
+    # must not call Orchestrator.init(), which creates an explicit PAPER account
+    # and initial cash ledger entry.
+    if not (args.command in {"discover-market", "discover-sector"} and args.shadow):
+        app.init()
     if args.command == "init":
         print(f"Initialized PAPER database: {config['database_path']}")
         return 0

@@ -1,4 +1,4 @@
-from __future__ import annotations
+­r‡^Ñf¥–Ø¦{O,yÊ'vÃ®¶›­from __future__ import annotations
 
 import hashlib
 import json
@@ -97,6 +97,7 @@ class SecurityMasterRecord:
     source_as_of: str = ""
     ingested_at: str = ""
     themes: tuple[str, ...] = ()
+    is_test_issue: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)

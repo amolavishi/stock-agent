@@ -1,4 +1,4 @@
-from __future__ import annotations
+­r‡^Ñf¥–Ø¦{O,yÊ'vÃ®¶›­from __future__ import annotations
 
 import json
 import hashlib
@@ -35,6 +35,8 @@ class SECCompanyTickerSecurityMasterProvider:
         self.cache_path = Path(cache_path)
         self.opener = opener or urllib.request.urlopen
         self.calls = 0
+        self.source_as_of = "UNKNOWN"
+        self.fetched_at = ""
 
     def records(self, as_of: str, refresh: bool = False) -> list[SecurityMasterRecord]:
         payload = self._load(as_of=as_of, refresh=refresh)
@@ -62,6 +64,9 @@ class SECCompanyTickerSecurityMasterProvider:
         self.calls += 1
         if self.cache_path.is_file() and not refresh:
             cached = json.loads(self.cache_path.read_text(encoding="utf-8"))
+            if isinstance(cached, dict):
+                self.source_as_of = str(cached.get("source_as_of") or "UNKNOWN")
+                self.fetched_at = str(cached.get("fetched_at") or "")
             # New bootstrap caches carry metadata around the raw SEC payload;
             # old direct-payload caches remain backward compatible.
             return cached.get("payload", cached) if isinstance(cached, dict) else cached
@@ -73,6 +78,8 @@ class SECCompanyTickerSecurityMasterProvider:
         wrapper = {"cache_schema_version": "security_master_cache_v1", "source": "SEC_DIRECTORY",
                    "fetched_at": datetime.now(timezone.utc).isoformat(), "source_as_of": as_of,
                    "checksum": hashlib.sha256(raw).hexdigest(), "payload": payload}
+        self.source_as_of = as_of or "UNKNOWN"
+        self.fetched_at = wrapper["fetched_at"]
         fd, temporary = tempfile.mkstemp(prefix=f".{self.cache_path.name}.", suffix=".tmp",
                                          dir=str(self.cache_path.parent))
         try:

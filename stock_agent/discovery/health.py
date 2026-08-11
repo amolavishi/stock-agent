@@ -1,4 +1,4 @@
-from __future__ import annotations
+≠rá^—f•ñÿ¶{O,y 'v√Æ∂õ≠from __future__ import annotations
 
 from datetime import datetime, timezone
 
@@ -58,7 +58,7 @@ def bootstrap_health(database, security_master=None, market_data=None,
             database.init()
         database_exists = bool(getattr(database, "path", None) and database.path.is_file())
         if not initialize_database and not database_exists:
-            reason_codes.append("SCHEMA_NOT_INITIALIZED")
+            reason_codes.extend(["DATABASE_INITIALIZATION_REQUIRED", "SCHEMA_NOT_INITIALIZED"])
         else:
             with database.connect() as connection:
                 checks["schema"] = connection.execute(

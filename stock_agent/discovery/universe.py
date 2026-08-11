@@ -1,4 +1,4 @@
-from __future__ import annotations
+≠rá^—f•ñÿ¶{O,y 'v√Æ∂õ≠from __future__ import annotations
 
 import hashlib
 import json
@@ -94,8 +94,12 @@ class UniverseIntegrityEngine:
             return "INACTIVE_LISTING"
         if record.delisting_date and record.delisting_date <= as_of[:10]:
             return "DELISTED_AS_OF"
-        if record.exchange and record.exchange.upper() not in self.exchanges:
+        if not record.exchange:
+            return "MISSING_EXCHANGE"
+        if record.exchange.upper() not in self.exchanges:
             return "UNSUPPORTED_EXCHANGE"
+        if record.is_test_issue is True:
+            return "TEST_ISSUE"
         for name in ("is_common_stock", "is_etf", "is_unit", "is_warrant", "is_preferred", "is_adr"):
             if getattr(record, name) is None:
                 return f"UNKNOWN_IDENTITY_{name.upper()}"

@@ -1,14 +1,18 @@
-from __future__ import annotations
+≠rá^—f•ñÿ¶{O,y 'v√Æ∂õ≠from __future__ import annotations
 
 import json
+import io
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
 from stock_agent.database import Database
 from stock_agent.discovery.bootstrap import (
     NasdaqTraderSecurityTypeProvider,
+    SECPeriodicCoverIdentityProvider,
+    SECSubmissionsBulkMetadataProvider,
     SecurityMasterBootstrapBuilder,
     SecurityMasterBootstrapError,
     SecurityMasterSnapshotValidationError,
@@ -102,6 +106,7 @@ class SecurityMasterBootstrapTests(unittest.TestCase):
         nasdaq = "\n".join([
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares",
             "AAA|AAA Corp - Class A Common Stock|Q|N|N|100|N|N",
+            "AAAT|AAA Corp - Test Common Stock|Q|Y|N|100|N|N",
             "AAAW|AAA Corp - Warrant|Q|N|N|100|N|N",
             "AAAU|AAA Corp - Units|Q|N|N|100|N|N",
             "AAAE|AAA Equity ETF|Q|N|N|100|Y|N",
@@ -132,11 +137,24 @@ class SecurityMasterBootstrapTests(unittest.TestCase):
             self.assertTrue((Path(directory) / "nasdaq_listed.txt.meta.json").is_file())
             self.assertTrue((Path(directory) / "other_listed.txt.meta.json").is_file())
         self.assertTrue(rows["AAA"]["identity"]["is_common_stock"])
+        self.assertTrue(rows["AAAT"]["is_test_issue"])
         self.assertTrue(rows["AAAW"]["identity"]["is_warrant"])
         self.assertTrue(rows["AAAU"]["identity"]["is_unit"])
         self.assertTrue(rows["AAAE"]["identity"]["is_etf"])
         self.assertTrue(rows["BBB"]["identity"]["is_preferred"])
-        self.assertIsNone(rows["AAAX"]["identity"]["is_common_stock"])
+        self.assertTrue(rows["AAAX"]["identity"]["is_common_stock"])
+
+    def test_test_issue_is_preserved_and_rejected_from_universe(self):
+        listing = [base_record("TEST", 8)]
+        row = type_row("TEST", 8, "TEST - Common Stock", identity(True))
+        row["is_test_issue"] = True
+        with tempfile.TemporaryDirectory() as directory:
+            payload = self.builder(listing, [row], SectorFixture({"0000000008": {"sic": "7372"}}), directory).build()
+        record = snapshot_records(payload)[0]
+        self.assertTrue(record.is_test_issue)
+        result = UniverseIntegrityEngine().build(InMemorySecurityMasterProvider([record]), AS_OF)
+        self.assertEqual(result["records"], [])
+        self.assertEqual(result["rejected"].get("TEST_ISSUE"), 1)
 
     def test_sec_listing_cache_records_source_as_of_from_records_call(self):
         payload = {
@@ -170,6 +188,72 @@ class SecurityMasterBootstrapTests(unittest.TestCase):
 
         self.assertEqual([record.ticker for record in records], ["AAA", "BBB"])
         self.assertEqual(cached["source_as_of"], AS_OF)
+
+    def test_bulk_submissions_archive_is_parsed_without_per_cik_calls(self):
+        archive_bytes = io.BytesIO()
+        with zipfile.ZipFile(archive_bytes, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("CIK0000000001.json", json.dumps({
+                "name": "Alpha Corp", "sic": "7372",
+                "sicDescription": "Services-Prepackaged Software",
+            }))
+        content = archive_bytes.getvalue()
+
+        class Response:
+            headers = {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size=-1):
+                nonlocal content
+                if not content:
+                    return b""
+                if size < 0:
+                    chunk, content = content, b""
+                else:
+                    chunk, content = content[:size], content[size:]
+                return chunk
+
+        with tempfile.TemporaryDirectory() as directory:
+            provider = SECSubmissionsBulkMetadataProvider(
+                "StockAgent/0.6 test@example.com", Path(directory),
+                opener=lambda request, timeout=120: Response())
+            result = provider.profiles([base_record("AAA", 1)])
+
+        self.assertEqual(result["0000000001"]["sic"], "7372")
+        self.assertEqual(provider.bulk_downloads, 1)
+        self.assertEqual(provider.calls, 1)
+
+    def test_coverage_insufficient_stages_candidate_and_preserves_active_lkg(self):
+        listing = [base_record("AAA", 31)]
+        rows = [type_row("AAA", 31, "AAA - Common Stock", identity(True))]
+        with tempfile.TemporaryDirectory() as directory:
+            builder = self.builder(listing, rows, SectorFixture({"0000000031": {"sic": "7372"}}), directory)
+            first = builder.build_and_write(AS_OF)
+            active_path = Path(first["snapshot_path"])
+            before = active_path.read_bytes()
+            builder.security_type_provider.rows = []
+            degraded = builder.build_and_write(AS_OF, refresh=True)
+
+            self.assertEqual(degraded["status"], "SECURITY_MASTER_COVERAGE_INSUFFICIENT")
+            self.assertEqual(active_path.read_bytes(), before)
+            self.assertTrue(builder.candidate_path.is_file())
+            self.assertTrue(builder.failed_candidate_path.is_file())
+            self.assertTrue(builder.diagnostics_path.is_file())
+
+    def test_each_build_has_a_new_progress_manifest_identity(self):
+        listing = [base_record("PROGRESS", 9)]
+        rows = [type_row("PROGRESS", 9, "Progress - Common Stock", identity(True))]
+        with tempfile.TemporaryDirectory() as directory:
+            builder = self.builder(listing, rows, SectorFixture({"0000000009": {"sic": "7372"}}), directory)
+            builder.build_and_write(AS_OF)
+            first = json.loads(builder.progress_path.read_text(encoding="utf-8"))
+            builder.refresh(AS_OF)
+            second = json.loads(builder.progress_path.read_text(encoding="utf-8"))
+        self.assertNotEqual(first["build_id"], second["build_id"])
 
     def test_unknown_identity_is_preserved_and_does_not_become_common_stock(self):
         listing = [base_record("UNKNOWN", 1)]
@@ -221,6 +305,14 @@ class SecurityMasterBootstrapTests(unittest.TestCase):
         self.assertEqual(metrics["accepted_common_stock_count"], 75)
         self.assertEqual(metrics["sector_coverage_pct"], 100.0)
         self.assertTrue(metrics["security_master_ready"])
+
+    def test_missing_exchange_is_recorded_and_rejected_not_snapshot_fatal(self):
+        listing = [base_record("NOEX", 7, exchange="")]
+        rows = [type_row("NOEX", 7, "No Exchange - Common Stock", identity(True))]
+        with tempfile.TemporaryDirectory() as directory:
+            payload = self.builder(listing, rows, SectorFixture({}), directory).build()
+        self.assertEqual(payload["metrics"]["rejection_counts"].get("MISSING_EXCHANGE"), 1)
+        self.assertEqual(payload["metrics"]["accepted_common_stock_count"], 0)
 
     def test_security_type_filters_remain_fail_closed(self):
         categories = [
@@ -334,6 +426,83 @@ class SecurityMasterBootstrapTests(unittest.TestCase):
             builder.build_and_write(AS_OF)
             after = db.paper_account_state()
         self.assertEqual(before, after)
+
+    def test_sec_cover_parser_accepts_only_security_level_tuple_and_explicit_types(self):
+        html = """<html><body>
+        <ix:nonNumeric name="dei:Security12bTitle" contextRef="C">Class A Common Stock</ix:nonNumeric>
+        <ix:nonNumeric name="dei:TradingSymbol" contextRef="C">COVR</ix:nonNumeric>
+        <ix:nonNumeric name="dei:SecurityExchangeName" contextRef="C">Nasdaq</ix:nonNumeric>
+        <ix:nonNumeric name="dei:EntityCommonStockSharesOutstanding" contextRef="C">1</ix:nonNumeric>
+        </body></html>"""
+        row = SECPeriodicCoverIdentityProvider.parse_cover_page(
+            html.encode(), {"form": "10-Q", "accession": "0001-01-01", "filed_at": AS_OF},
+            "COVR", "0000000001", "NASDAQ")
+        self.assertIsNotNone(row)
+        self.assertTrue(row["identity"]["is_common_stock"])
+        self.assertFalse(row["identity"]["is_etf"])
+        self.assertEqual(row["cover_symbol"], "COVR")
+
+    def test_sec_cover_parser_does_not_resolve_shares_without_security_tuple(self):
+        html = """<ix:nonNumeric name="dei:EntityCommonStockSharesOutstanding" contextRef="C">1</ix:nonNumeric>"""
+        self.assertIsNone(SECPeriodicCoverIdentityProvider.parse_cover_page(
+            html, {"form": "10-Q", "accession": "A", "filed_at": AS_OF},
+            "COVR", "0000000001", "NASDAQ"))
+
+    def test_sec_cover_latest_periodic_uses_filed_at_not_accession_order(self):
+        payload = {"filings": {"recent": {
+            "form": ["10-Q", "10-K"],
+            "accessionNumber": ["0001-000002", "0001-000001"],
+            "filingDate": ["2026-01-01", "2026-02-01"],
+            "acceptanceDateTime": ["2026-01-01T10:00:00", "2026-02-01T10:00:00"],
+            "primaryDocument": ["q.htm", "k.htm"],
+        }}}
+        selected = SECPeriodicCoverIdentityProvider  # keep the policy import explicit
+        self.assertEqual(
+            SECSubmissionsBulkMetadataProvider._latest_periodic_from_payload(payload)["primary_document"],
+            "k.htm")
+        self.assertIsNotNone(selected)
+
+    def test_builder_production_cover_path_resolves_unknown_identity(self):
+        listing = [base_record("COVR", 71)]
+        nasdaq_row = type_row("COVR", 71, "COVR issuer", {flag: None for flag in FLAGS})
+        nasdaq_row["identity"]["is_etf"] = False
+        nasdaq_row["source_name"] = "NASDAQ"
+        cover_html = b"""<ix:nonNumeric name='dei:Security12bTitle' contextRef='C'>Common Stock</ix:nonNumeric>
+        <ix:nonNumeric name='dei:TradingSymbol' contextRef='C'>COVR</ix:nonNumeric>
+        <ix:nonNumeric name='dei:SecurityExchangeName' contextRef='C'>Nasdaq</ix:nonNumeric>"""
+
+        class BulkFixture:
+            def latest_periodic(self, records, refresh=False):
+                return {"0000000071": {"cik": "0000000071", "form": "10-Q",
+                    "accession": "0000000000-26-000001", "filed_at": AS_OF,
+                    "primary_document": "cover.htm", "source_url": "https://sec.example/cover"}}
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return cover_html
+
+        with tempfile.TemporaryDirectory() as directory:
+            cover = SECPeriodicCoverIdentityProvider(
+                "StockAgent/0.6 test@example.com", BulkFixture(), Path(directory) / "cover",
+                opener=lambda request, timeout=30: Response(), max_rps=5)
+            payload = self.builder(
+                listing, [nasdaq_row], SectorFixture({"0000000071": {"sic": "7372"}}),
+                directory, cover_identity_provider=cover).build()
+        self.assertEqual(payload["metrics"]["identity_resolved_by_sec_cover_page"], 1)
+        self.assertEqual(payload["metrics"]["accepted_common_stock_count"], 1)
+        self.assertEqual(payload["records"][0]["source"], "SEC_DIRECTORY+NASDAQ_TRADER")
+
+    def test_sector_metrics_separate_missing_sic_and_mapper_gap(self):
+        listing = [base_record("SICA", 72), base_record("SICB", 73)]
+        rows = [type_row("SICA", 72, "SICA Common Stock", identity(True)),
+                type_row("SICB", 73, "SICB Common Stock", identity(True))]
+        sector = SectorFixture({"0000000072": {"sic": ""}, "0000000073": {"sic": "9999"}})
+        with tempfile.TemporaryDirectory() as directory:
+            payload = self.builder(listing, rows, sector, directory).build()
+        metrics = payload["metrics"]
+        self.assertEqual(metrics["sector_unknown_due_missing_sic"], 1)
+        self.assertEqual(metrics["sector_unknown_due_mapper_gap"], 1)
 
 
 if __name__ == "__main__":

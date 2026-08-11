@@ -1,4 +1,4 @@
-from __future__ import annotations
+­r‡^Ñf¥–Ø¦{O,yÊ'vÃ®¶›­from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass, field
@@ -343,8 +343,20 @@ def sector_from_sic(sic: str) -> str:
         value = int(sic)
     except (TypeError, ValueError):
         return "UNKNOWN"
+    # Deterministic SEC SIC range map. Specific ranges below override broad
+    # official SIC divisions because the tuple is evaluated in reverse. This
+    # is intentionally not a company-name or ticker classifier.
     ranges = (
-        (100, 999, "Natural Resources"), (2000, 3999, "Industrials/Manufacturing"),
+        (100, 999, "Natural Resources"), (1000, 1499, "Natural Resources"),
+        (1500, 1799, "Industrials/Manufacturing"),
+        (2000, 3999, "Industrials/Manufacturing"),
+        (4000, 4799, "Industrials/Manufacturing"),
+        (4800, 4899, "Communication Services"), (4900, 4999, "Utilities"),
+        (5000, 5199, "Consumer Discretionary"), (5200, 5999, "Consumer Discretionary"),
+        (6000, 6799, "Financials"),
+        (7000, 7299, "Consumer Services"), (7300, 7399, "Software/IT Services"),
+        (7400, 7999, "Consumer Services"), (8000, 8099, "Healthcare Services"),
+        (8100, 8999, "Consumer Services"), (9100, 9729, "Public Sector"),
         (3570, 3579, "Technology Hardware"), (3600, 3699, "Electronic Technology"),
         (4810, 4899, "Communication Services"), (4900, 4999, "Utilities"),
         (6000, 6799, "Financials"), (7370, 7379, "Software/IT Services"),
