@@ -34,7 +34,8 @@ def bootstrap_health(database, security_master=None, market_data=None,
                      min_identity_coverage_pct: float = 95.0,
                      min_sector_coverage_pct: float = 90.0,
                      fundamental_provider=None, capital_preflight_provider=None,
-                     max_actual_llm_calls: int = 0) -> dict:
+                     max_actual_llm_calls: int = 0,
+                     initialize_database: bool = True) -> dict:
     """Run a real, small bootstrap smoke instead of checking provider classes.
 
     A provider with no validated identity/sector coverage is intentionally reported
@@ -53,12 +54,17 @@ def bootstrap_health(database, security_master=None, market_data=None,
     }
     reason_codes: list[str] = []
     try:
-        database.init()
-        with database.connect() as connection:
-            checks["schema"] = connection.execute(
-                "SELECT 1 FROM schema_migrations WHERE version>=24").fetchone() is not None
-            checks["daily_bar_cache"] = connection.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='daily_bars'").fetchone() is not None
+        if initialize_database:
+            database.init()
+        database_exists = bool(getattr(database, "path", None) and database.path.is_file())
+        if not initialize_database and not database_exists:
+            reason_codes.append("SCHEMA_NOT_INITIALIZED")
+        else:
+            with database.connect() as connection:
+                checks["schema"] = connection.execute(
+                    "SELECT 1 FROM schema_migrations WHERE version>=24").fetchone() is not None
+                checks["daily_bar_cache"] = connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='daily_bars'").fetchone() is not None
     except Exception as exc:
         checks["reason_codes"] = ["SCHEMA_SMOKE_FAILED"]
         checks["error"] = str(exc)
@@ -78,16 +84,32 @@ def bootstrap_health(database, security_master=None, market_data=None,
         "exchange_coverage_pct": 0.0, "sector_coverage_pct": 0.0,
         "duplicate_count": 0, "unknown_identity_count": 0,
     }
+    engine = UniverseIntegrityEngine()
+    supported_scope = [record for record in records
+                       if str(getattr(record, "exchange", "") or "").upper() in engine.exchanges]
+    identity_known_supported = sum(engine._identity_known(record) for record in supported_scope)
+    universe_health["supported_exchange_scope_count"] = len(supported_scope)
+    universe_health["identity_known_global_count"] = sum(
+        engine._identity_known(record) for record in records)
+    universe_health["identity_coverage_global_pct"] = round(
+        universe_health["identity_known_global_count"] / len(records) * 100, 4) if records else 0.0
+    universe_health["identity_known_supported_count"] = identity_known_supported
+    universe_health["identity_coverage_supported_scope_pct"] = round(
+        identity_known_supported / len(supported_scope) * 100, 4) if supported_scope else 0.0
     checks["security_master"] = (
         universe_health["raw_count"] > 0
         and universe_health["accepted_count"] >= min_accepted
-        and universe_health["identity_coverage_pct"] >= min_identity_coverage_pct
+        and universe_health["identity_coverage_supported_scope_pct"] >= min_identity_coverage_pct
         and universe_health["sector_coverage_pct"] >= min_sector_coverage_pct
     )
     if not records:
         reason_codes.append("UNIVERSE_EMPTY")
     elif universe_health["accepted_count"] == 0:
         reason_codes.append("IDENTITY_ENRICHMENT_MISSING")
+    if not supported_scope:
+        reason_codes.append("SUPPORTED_EXCHANGE_SCOPE_EMPTY")
+    elif universe_health["identity_coverage_supported_scope_pct"] < min_identity_coverage_pct:
+        reason_codes.append("IDENTITY_COVERAGE_INSUFFICIENT")
     if universe_health["sector_coverage_pct"] < min_sector_coverage_pct:
         reason_codes.append("SECTOR_ENRICHMENT_INSUFFICIENT")
 

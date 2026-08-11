@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
+import tempfile
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,8 +36,8 @@ class SECCompanyTickerSecurityMasterProvider:
         self.opener = opener or urllib.request.urlopen
         self.calls = 0
 
-    def records(self, as_of: str) -> list[SecurityMasterRecord]:
-        payload = self._load()
+    def records(self, as_of: str, refresh: bool = False) -> list[SecurityMasterRecord]:
+        payload = self._load(refresh=refresh)
         fields = payload.get("fields", [])
         rows = payload.get("data", [])
         indexes = {name: index for index, name in enumerate(fields)}
@@ -55,15 +58,32 @@ class SECCompanyTickerSecurityMasterProvider:
                 source_as_of=as_of, ingested_at=datetime.now(timezone.utc).isoformat()))
         return records
 
-    def _load(self) -> dict:
+    def _load(self, refresh: bool = False) -> dict:
         self.calls += 1
-        if self.cache_path.is_file():
-            return json.loads(self.cache_path.read_text(encoding="utf-8"))
+        if self.cache_path.is_file() and not refresh:
+            cached = json.loads(self.cache_path.read_text(encoding="utf-8"))
+            # New bootstrap caches carry metadata around the raw SEC payload;
+            # old direct-payload caches remain backward compatible.
+            return cached.get("payload", cached) if isinstance(cached, dict) else cached
         request = urllib.request.Request(self.URL, headers={"User-Agent": self.user_agent})
         with self.opener(request, timeout=20) as response:
             payload = json.loads(response.read().decode("utf-8"))
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-        self.cache_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        wrapper = {"cache_schema_version": "security_master_cache_v1", "source": "SEC_DIRECTORY",
+                   "fetched_at": datetime.now(timezone.utc).isoformat(), "source_as_of": as_of,
+                   "checksum": hashlib.sha256(raw).hexdigest(), "payload": payload}
+        fd, temporary = tempfile.mkstemp(prefix=f".{self.cache_path.name}.", suffix=".tmp",
+                                         dir=str(self.cache_path.parent))
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(json.dumps(wrapper, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, self.cache_path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
         return payload
 
 
@@ -99,6 +119,12 @@ class ValidatedSecurityMasterProvider:
         result: list[SecurityMasterRecord] = []
         for base in self.listing_provider.records(as_of):
             extra = enrichment.get(base.ticker, {})
+            if extra and extra.get("cik") and base.cik:
+                normalized_extra_cik = "".join(ch for ch in str(extra.get("cik")) if ch.isdigit()).zfill(10)
+                normalized_base_cik = "".join(ch for ch in str(base.cik) if ch.isdigit()).zfill(10)
+                if normalized_extra_cik != normalized_base_cik:
+                    # A reused ticker must not attach another issuer's row.
+                    extra = {}
             flags = {name: extra.get(name) for name in self.REQUIRED_FLAGS}
             sector = str(extra.get("sector_canonical") or "UNKNOWN")
             result.append(SecurityMasterRecord(
@@ -123,14 +149,45 @@ class ValidatedSecurityMasterProvider:
 
     def health(self, as_of: str) -> dict[str, Any]:
         records = self.records(as_of)
+        from .universe import InMemorySecurityMasterProvider, UniverseIntegrityEngine
+        engine = UniverseIntegrityEngine()
+        supported = [row for row in records if row.exchange.upper() in engine.exchanges]
         identity = sum(all(getattr(row, name) is not None for name in self.REQUIRED_FLAGS)
                        for row in records)
-        sectors = sum(row.sector_canonical != "UNKNOWN" for row in records)
-        return {"raw_count": len(records), "identity_known_count": identity,
-                "identity_coverage_pct": round(identity / len(records) * 100, 4) if records else 0.0,
-                "sector_known_count": sectors,
-                "sector_coverage_pct": round(sectors / len(records) * 100, 4) if records else 0.0,
-                "enrichment_path": str(self.enrichment_path) if self.enrichment_path else ""}
+        supported_identity = sum(all(getattr(row, name) is not None for name in self.REQUIRED_FLAGS)
+                                 for row in supported)
+        integrity = engine.build(InMemorySecurityMasterProvider(records), as_of)
+        accepted = integrity["records"]
+        sectors = sum(row.sector_canonical != "UNKNOWN" for row in accepted)
+        payload = {}
+        if self.enrichment_path and self.enrichment_path.is_file():
+            try:
+                payload = json.loads(self.enrichment_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                payload = {}
+        return {
+            "raw_count": len(records),
+            "supported_exchange_scope_count": len(supported),
+            "identity_known_count": identity,
+            "identity_known_global_count": identity,
+            "identity_coverage_pct": round(identity / len(records) * 100, 4) if records else 0.0,
+            "identity_coverage_global_pct": round(identity / len(records) * 100, 4) if records else 0.0,
+            "identity_known_supported_count": supported_identity,
+            "identity_coverage_supported_scope_pct": round(
+                supported_identity / len(supported) * 100, 4) if supported else 0.0,
+            "accepted_common_stock_count": len(accepted),
+            "sector_known_count": sectors,
+            "sector_coverage_pct": round(sectors / len(accepted) * 100, 4) if accepted else 0.0,
+            "unknown_identity_count": sum(not all(getattr(row, name) is not None for name in self.REQUIRED_FLAGS)
+                                           for row in records),
+            "identity_conflict_count": sum(bool(row.get("identity_conflicted"))
+                                           for row in (payload.get("records", []) if isinstance(payload, dict) else [])),
+            "rejection_counts": integrity.get("rejected", {}),
+            "enrichment_file_exists": bool(self.enrichment_path and self.enrichment_path.is_file()),
+            "enrichment_generated_at": payload.get("generated_at", "") if isinstance(payload, dict) else "",
+            "enrichment_source_as_of": payload.get("source_as_of", "") if isinstance(payload, dict) else "",
+            "enrichment_path": str(self.enrichment_path) if self.enrichment_path else "",
+        }
 
 
 class SECDiscoveryFundamentalProvider:

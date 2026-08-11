@@ -75,6 +75,10 @@
     },
     "bootstrap": {
       "security_master_enrichment_path": "data/discovery/security_master_enrichment.json",
+      "raw_cache_dir": "data/cache/discovery/security_master/raw",
+      "normalized_cache_dir": "data/cache/discovery/security_master/normalized",
+      "sector_cache_dir": "data/cache/discovery/security_master/raw/sec_submissions",
+      "max_issuer_metadata_requests": 10000,
       "fundamental_cache_dir": "data/cache/discovery/fundamentals",
       "min_accepted": 1,
       "min_identity_coverage_pct": 95,

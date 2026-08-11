@@ -147,9 +147,21 @@ def load_config() -> dict[str, Any]:
                                bootstrap.get("security_master_enrichment_path", ""))
     fundamental_cache = os.getenv("DISCOVERY_FUNDAMENTAL_CACHE_DIR",
                                   bootstrap.get("fundamental_cache_dir", "data/cache/discovery/fundamentals"))
+    raw_cache = os.getenv("DISCOVERY_SECURITY_MASTER_RAW_CACHE_DIR",
+                          bootstrap.get("raw_cache_dir", "data/cache/discovery/security_master/raw"))
+    normalized_cache = os.getenv("DISCOVERY_SECURITY_MASTER_NORMALIZED_CACHE_DIR",
+                                 bootstrap.get("normalized_cache_dir", "data/cache/discovery/security_master/normalized"))
+    sector_cache = os.getenv("DISCOVERY_SECURITY_MASTER_SECTOR_CACHE_DIR",
+                             bootstrap.get("sector_cache_dir", "data/cache/discovery/security_master/raw/sec_submissions"))
     discovery["bootstrap"] = bootstrap | {
         "security_master_enrichment_path": resolved(enrichment_path) if enrichment_path else "",
         "fundamental_cache_dir": resolved(fundamental_cache),
+        "raw_cache_dir": resolved(raw_cache),
+        "normalized_cache_dir": resolved(normalized_cache),
+        "sector_cache_dir": resolved(sector_cache),
+        "max_issuer_metadata_requests": int(os.getenv(
+            "DISCOVERY_MAX_ISSUER_METADATA_REQUESTS",
+            str(bootstrap.get("max_issuer_metadata_requests", 10000)))),
     }
     config["discovery"] = discovery
     validate_discovery_config(config["discovery"])

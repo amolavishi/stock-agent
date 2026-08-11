@@ -33,7 +33,11 @@ def _snapshot_id(records: list[SecurityMasterRecord], as_of: str) -> str:
 
 
 class UniverseIntegrityEngine:
+    # One canonical scope is shared by the live bootstrap builder and the
+    # executable-universe filter.  Keep aliases here rather than duplicating
+    # an exchange list in a provider.
     DEFAULT_EXCHANGES = {"NYSE", "NASDAQ", "NYSE AMERICAN", "NYSEAMERICAN", "AMEX"}
+    SUPPORTED_EXCHANGES = frozenset(DEFAULT_EXCHANGES)
 
     def __init__(self, allow_adr: bool = False, exchanges: set[str] | None = None):
         self.allow_adr = allow_adr

@@ -43,6 +43,29 @@ def main() -> int:
     args = parser.parse_args()
 
     config = load_config()
+    # Security Master lifecycle commands are intentionally independent from
+    # Orchestrator/PAPER initialization.  Bootstrap must work when Toss is not
+    # configured, and health must not create or replace an enrichment snapshot.
+    if args.command in {"discovery-bootstrap", "discovery-refresh", "discovery-health"}:
+        from stock_agent.discovery.bootstrap import SecurityMasterBootstrapError, SecurityMasterBootstrapService
+        service = SecurityMasterBootstrapService(config)
+        try:
+            if args.command == "discovery-health":
+                result = service.health()
+            else:
+                result = service.bootstrap(refresh=args.command == "discovery-refresh")
+                result["command"] = args.command
+        except SecurityMasterBootstrapError as exc:
+            result = {
+                "command": args.command,
+                "status": "BOOTSTRAP_REQUIRED",
+                "reason_codes": [exc.reason_code],
+            }
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("status") in {
+            "SECURITY_MASTER_READY", "MARKET_SCAN_READY", "ENRICHMENT_READY", "DEEP_HANDOFF_READY",
+        } else 2
+
     app = Orchestrator(config)
     app.init()
     if args.command == "init":
@@ -110,24 +133,6 @@ def main() -> int:
             return 1
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
-    if args.command in {"discovery-bootstrap", "discovery-refresh", "discovery-health"}:
-        from stock_agent.discovery.health import bootstrap_health
-        bootstrap = app.config.get("discovery", {}).get("bootstrap", {})
-        cost = app.config.get("discovery", {}).get("cost", {})
-        health = bootstrap_health(app.db, app.discovery.security_master, app.discovery.market_data,
-                                  app.discovery.benchmark_provider,
-                                  min_accepted=int(bootstrap.get("min_accepted", 1)),
-                                  min_identity_coverage_pct=float(bootstrap.get("min_identity_coverage_pct", 95.0)),
-                                  min_sector_coverage_pct=float(bootstrap.get("min_sector_coverage_pct", 90.0)),
-                                  fundamental_provider=app.discovery.fundamental_provider,
-                                  capital_preflight_provider=app.discovery.capital_preflight_provider,
-                                  max_actual_llm_calls=int(cost.get("max_actual_llm_calls",
-                                                                   cost.get("max_llm_calls_per_discovery", 0)) or 0))
-        health["command"] = args.command
-        if args.command != "discovery-health" and health["status"] == "BOOTSTRAP_REQUIRED":
-            health["message"] = "A real SecurityMasterProvider and MarketDataProvider are required; no placeholder universe is used."
-        print(json.dumps(health, ensure_ascii=False, indent=2))
-        return 0 if health["status"] in {"MARKET_SCAN_READY", "ENRICHMENT_READY", "DEEP_HANDOFF_READY"} else 2
     if args.command == "discord":
         run_chairman_bot(config, app)
         return 0
