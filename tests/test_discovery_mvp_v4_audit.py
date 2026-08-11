@@ -270,6 +270,9 @@ class DiscoveryMvpV4AuditTests(unittest.TestCase):
             self.assertEqual(health["status"], "BOOTSTRAP_REQUIRED")
             self.assertIn("BENCHMARK_DATA_UNAVAILABLE", health["reason_codes"])
             self.assertIn("MARKET_REGIME_NOT_READY", health["reason_codes"])
+            self.assertEqual(set(health["benchmark"]), {"SPY", "QQQ", "IWM"})
+            self.assertTrue(all(item["bars_count"] == 0
+                                for item in health["benchmark"].values()))
             result = DiscoveryOrchestrator(
                 db, live_config(directory), InMemorySecurityMasterProvider(records),
                 market, FundamentalFixture(), BrokenBenchmark(), CapitalFixture()).run(

@@ -79,7 +79,13 @@ class SecurityMasterRecord:
     cik: str = ""
     exchange: str = ""
     security_type: str = "COMMON_STOCK"
-    country: str = "US"
+    # ``country`` is retained for backward compatibility only.  Listing
+    # geography and issuer domicile are separate facts; the SEC ticker
+    # directory does not prove issuer domicile.
+    country: str = "UNKNOWN"
+    listing_country: str = ""
+    listing_market: str = ""
+    issuer_country: str = "UNKNOWN"
     is_adr: bool | None = False
     is_etf: bool | None = False
     is_unit: bool | None = False
@@ -98,6 +104,7 @@ class SecurityMasterRecord:
     ingested_at: str = ""
     themes: tuple[str, ...] = ()
     is_test_issue: bool | None = None
+    identity_conflicted: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)

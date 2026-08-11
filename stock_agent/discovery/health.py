@@ -29,6 +29,36 @@ def _sample_tickers(records, limit: int = 3) -> list[str]:
     return [record.ticker for record in records[:limit] if getattr(record, "ticker", "")]
 
 
+def _benchmark_details(benchmark: dict) -> dict[str, dict]:
+    details: dict[str, dict] = {}
+    for ticker in REQUIRED_BENCHMARKS:
+        rows = sorted(
+            [row for row in (benchmark.get(ticker) or []) if getattr(row, "usable", True)],
+            key=lambda row: str(getattr(row, "session_date", "")),
+        )
+        closes = [float(row.close) for row in rows if getattr(row, "close", None) is not None]
+        details[ticker] = {
+            "bars_count": len(rows),
+            "latest_completed_session": rows[-1].session_date if rows else "",
+            "calculated_return": round(closes[-1] / closes[0] - 1, 8) if len(closes) >= 2 and closes[0] else None,
+            "ready": len(rows) >= MIN_COMPLETED_BENCHMARK_BARS,
+        }
+    return details
+
+
+def _benchmark_unavailable_details(reason: str) -> dict[str, dict]:
+    return {
+        ticker: {
+            "bars_count": 0,
+            "latest_completed_session": "",
+            "calculated_return": None,
+            "ready": False,
+            "error": reason,
+        }
+        for ticker in REQUIRED_BENCHMARKS
+    }
+
+
 def bootstrap_health(database, security_master=None, market_data=None,
                      benchmark_provider=None, min_accepted: int = 1,
                      min_identity_coverage_pct: float = 95.0,
@@ -50,6 +80,7 @@ def bootstrap_health(database, security_master=None, market_data=None,
         "benchmark_data": False,
         "fundamental_data": False,
         "capital_preflight_data": False,
+        "benchmark": {},
         "status": "FAILED",
     }
     reason_codes: list[str] = []
@@ -145,12 +176,17 @@ def bootstrap_health(database, security_master=None, market_data=None,
     if benchmark_provider is not None and hasattr(benchmark_provider, "benchmark_bars"):
         try:
             benchmark = benchmark_provider.benchmark_bars(REQUIRED_BENCHMARKS, as_of)
+            checks["benchmark"] = _benchmark_details(benchmark)
             checks["benchmark_data"] = benchmark_snapshot_ready(benchmark)
             if not checks["benchmark_data"]:
                 reason_codes.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
         except Exception:
+            checks["benchmark"] = _benchmark_unavailable_details(
+                "BENCHMARK_DATA_UNAVAILABLE")
             reason_codes.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
     else:
+        checks["benchmark"] = _benchmark_unavailable_details(
+            "BENCHMARK_PROVIDER_MISSING")
         reason_codes.extend(["BENCHMARK_DATA_UNAVAILABLE", "MARKET_REGIME_NOT_READY"])
 
     market_ready = all(

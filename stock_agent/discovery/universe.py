@@ -82,13 +82,18 @@ class UniverseIntegrityEngine:
 
     @staticmethod
     def _identity_known(record: SecurityMasterRecord) -> bool:
-        return all(getattr(record, name) is not None for name in (
+        return not bool(getattr(record, "identity_conflicted", False)) and all(getattr(record, name) is not None for name in (
             "is_common_stock", "is_etf", "is_unit", "is_warrant", "is_preferred", "is_adr"))
 
     def _reject_reason(self, record: SecurityMasterRecord, as_of: str, seen: set[str]) -> str:
         if not record.ticker or record.ticker in seen:
             return "DUPLICATE_OR_EMPTY_TICKER"
-        if record.country.upper() != "US":
+        listing_country = str(getattr(record, "listing_country", "") or "").upper()
+        if listing_country and listing_country != "US":
+            return "NON_US_LISTING"
+        # Legacy callers may only populate ``country``.  UNKNOWN is not a
+        # negative assertion and must not be rejected as non-US.
+        if not listing_country and str(record.country or "").upper() not in {"", "UNKNOWN", "US"}:
             return "NON_US_SECURITY"
         if record.active_status.upper() != "ACTIVE":
             return "INACTIVE_LISTING"
@@ -100,6 +105,8 @@ class UniverseIntegrityEngine:
             return "UNSUPPORTED_EXCHANGE"
         if record.is_test_issue is True:
             return "TEST_ISSUE"
+        if bool(getattr(record, "identity_conflicted", False)):
+            return "IDENTITY_CONFLICTED"
         for name in ("is_common_stock", "is_etf", "is_unit", "is_warrant", "is_preferred", "is_adr"):
             if getattr(record, name) is None:
                 return f"UNKNOWN_IDENTITY_{name.upper()}"

@@ -126,7 +126,13 @@ def _classification_from_name(name: str, etf_flag: bool | None) -> tuple[str, di
         category = "PREFERRED"
     elif re.search(r"\bADR\b|\bADRS\b|\bADS\b|AMERICAN DEPOSITARY|DEPOSITARY SHARES?", text):
         category = "ADR"
-    elif re.search(r"\bCOMMON\s+(?:STOCK|SHARES?)\b|\bORDINARY\s+SHARES?\b", text):
+    elif re.search(
+            r"\bCOMMON\s+(?:STOCK|SHARES?)\b"
+            r"|\bORDINARY\s+SHARES?\b"
+            r"|\b(?:CLASS\s+[A-Z0-9]+\s+)?SUBORDINATE\s+VOTING\s+SHARES?\b"
+            r"|\b(?:CLASS\s+[A-Z0-9]+\s+)?LIMITED\s+VOTING\s+SHARES?\b"
+            r"|\bVOTING\s+COMMON\s+SHARES?\b", text) and not re.search(
+                r"\bRIGHTS?\b|\bDEPOSITARY\b|\bADS?\b|AMERICAN\s+DEPOSITARY", text):
         category = "COMMON_STOCK"
 
     flags: dict[str, bool | None] = {name: None for name in IDENTITY_FLAGS}
@@ -449,8 +455,7 @@ class SECSubmissionsBulkMetadataProvider:
         return result
 
     @staticmethod
-    def _latest_periodic_from_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
-        """Select a periodic filing by filed/acceptance time, never accession order."""
+    def _filing_rows(payload: dict[str, Any], allowed_forms: set[str]) -> list[dict[str, Any]]:
         recent = payload.get("filings", {}).get("recent", {})
         forms = recent.get("form", [])
         accessions = recent.get("accessionNumber", [])
@@ -459,7 +464,7 @@ class SECSubmissionsBulkMetadataProvider:
         documents = recent.get("primaryDocument", [])
         rows: list[dict[str, Any]] = []
         for index, form in enumerate(forms):
-            if str(form or "").upper() not in {"10-Q", "10-K", "20-F", "40-F"}:
+            if str(form or "").upper() not in allowed_forms:
                 continue
             accession = str(accessions[index] if index < len(accessions) else "")
             filed_at = str(filed_dates[index] if index < len(filed_dates) else "")
@@ -469,7 +474,28 @@ class SECSubmissionsBulkMetadataProvider:
                 rows.append({"form": str(form).upper(), "accession": accession,
                              "filed_at": filed_at, "acceptance_datetime": accepted_at,
                              "primary_document": document})
+        return rows
+
+    @classmethod
+    def _latest_periodic_from_payload(cls, payload: dict[str, Any]) -> dict[str, Any] | None:
+        """Select a periodic filing by filed/acceptance time, never accession order."""
+        rows = cls._filing_rows(payload, {"10-Q", "10-K", "20-F", "40-F"})
         return max(rows, key=lambda row: (row["filed_at"], row["acceptance_datetime"], row["accession"])) if rows else None
+
+    @classmethod
+    def _latest_cover_filing_from_payload(cls, payload: dict[str, Any]) -> dict[str, Any] | None:
+        """Prefer periodic cover pages, then a usable 8-K cover page."""
+        periodic = cls._filing_rows(payload, {"10-Q", "10-K", "20-F", "40-F"})
+        if periodic:
+            row = max(periodic, key=lambda item: (item["filed_at"], item["acceptance_datetime"], item["accession"]))
+            row["selection"] = "PERIODIC"
+            return row
+        current = cls._filing_rows(payload, {"8-K"})
+        if current:
+            row = max(current, key=lambda item: (item["filed_at"], item["acceptance_datetime"], item["accession"]))
+            row["selection"] = "8-K_FALLBACK"
+            return row
+        return None
 
     def latest_periodic(self, records: Iterable[SecurityMasterRecord], refresh: bool = False) -> dict[str, dict[str, Any]]:
         archive_path = self._load(refresh=refresh)
@@ -487,6 +513,29 @@ class SECSubmissionsBulkMetadataProvider:
                         payload = json.loads(handle.read(self.MAX_ENTRY_BYTES + 1).decode("utf-8"))
                     if isinstance(payload, dict):
                         filing = self._latest_periodic_from_payload(payload)
+                        if filing:
+                            result[cik] = {"cik": cik, **filing, "source": "SEC_SUBMISSIONS_BULK",
+                                           "source_url": self.URL, "source_as_of": self.source_as_of}
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+                    self.failed += 1
+        return result
+
+    def latest_cover_filing(self, records: Iterable[SecurityMasterRecord], refresh: bool = False) -> dict[str, dict[str, Any]]:
+        archive_path = self._load(refresh=refresh)
+        by_cik = {_normalise_cik(record.cik): record for record in records if _normalise_cik(record.cik)}
+        result: dict[str, dict[str, Any]] = {}
+        with zipfile.ZipFile(archive_path) as archive:
+            names = {Path(name).name.upper(): name for name in archive.namelist()}
+            for cik in by_cik:
+                member = names.get(f"CIK{cik}.JSON")
+                if not member:
+                    self.unmatched += 1
+                    continue
+                try:
+                    with archive.open(member) as handle:
+                        payload = json.loads(handle.read(self.MAX_ENTRY_BYTES + 1).decode("utf-8"))
+                    if isinstance(payload, dict):
+                        filing = self._latest_cover_filing_from_payload(payload)
                         if filing:
                             result[cik] = {"cik": cik, **filing, "source": "SEC_SUBMISSIONS_BULK",
                                            "source_url": self.URL, "source_as_of": self.source_as_of}
@@ -571,9 +620,21 @@ class SECPeriodicCoverIdentityProvider:
         matching = [row for row in tuples if row["symbol"].strip().upper() == expected_ticker]
         if not matching:
             return None
-        tuple_row = matching[0]
+        def signature(row: dict[str, str]) -> tuple[str, str, str]:
+            return (
+                re.sub(r"\s+", " ", row["title"]).strip().upper(),
+                row["symbol"].strip().upper(),
+                _normalise_exchange(row["exchange"]),
+            )
+        unique = {signature(row): row for row in matching}
+        ordered_signatures = sorted(unique)
+        tuple_row = unique[ordered_signatures[0]]
+        tuple_conflict = len(unique) > 1
         cover_exchange = _normalise_exchange(tuple_row["exchange"])
         category, identity = _classification_from_name(tuple_row["title"], None)
+        if tuple_conflict:
+            identity = {flag: None for flag in IDENTITY_FLAGS}
+            category = "UNKNOWN"
         exchange_conflict = bool(cover_exchange and expected_exchange and cover_exchange != expected_exchange)
         return {
             "ticker": expected_ticker,
@@ -582,7 +643,10 @@ class SECPeriodicCoverIdentityProvider:
             "exchange": expected_exchange,
             "security_type": category,
             "identity": identity,
-            "identity_conflicted": exchange_conflict,
+            "identity_conflicted": bool(exchange_conflict or tuple_conflict),
+            "identity_conflict_reason": (
+                "MULTIPLE_SECURITY_TUPLE_CONFLICT" if tuple_conflict else
+                "EXCHANGE_MISMATCH" if exchange_conflict else ""),
             "cover_title": tuple_row["title"],
             "cover_symbol": tuple_row["symbol"].strip().upper(),
             "cover_exchange": cover_exchange,
@@ -596,7 +660,12 @@ class SECPeriodicCoverIdentityProvider:
                     "title": tuple_row["title"], "symbol": tuple_row["symbol"],
                     "exchange": tuple_row["exchange"], "cik": _normalise_cik(expected_cik),
                     "form": filing.get("form", ""), "filed_at": filing.get("filed_at", ""),
-                }
+                },
+                "security_level_tuples": [
+                    {"title": row["title"], "symbol": row["symbol"],
+                     "exchange": row["exchange"], "normalized": list(item)}
+                    for item, row in sorted(unique.items())
+                ],
             },
         }
 
@@ -649,7 +718,9 @@ class SECPeriodicCoverIdentityProvider:
         requested = list(records)
         if not requested:
             return []
-        filings = self.bulk_provider.latest_periodic(requested, refresh=False)
+        cover_selector = getattr(self.bulk_provider, "latest_cover_filing", None)
+        filings = (cover_selector(requested, refresh=False) if callable(cover_selector)
+                   else self.bulk_provider.latest_periodic(requested, refresh=False))
         output: list[dict[str, Any]] = []
         for record in requested:
             filing = filings.get(_normalise_cik(record.cik))
@@ -833,7 +904,10 @@ def _record_from_row(row: dict[str, Any]) -> SecurityMasterRecord:
         cik=_normalise_cik(row.get("cik")),
         exchange=_normalise_exchange(row.get("exchange")),
         security_type=str(row.get("security_type") or "UNKNOWN"),
-        country=str(row.get("country") or "US").upper(),
+        country=str(row.get("country") or "UNKNOWN").upper(),
+        listing_country=str(row.get("listing_country") or "").upper(),
+        listing_market=str(row.get("listing_market") or "").upper(),
+        issuer_country=str(row.get("issuer_country") or "UNKNOWN").upper(),
         is_common_stock=row.get("is_common_stock"), is_etf=row.get("is_etf"),
         is_unit=row.get("is_unit"), is_warrant=row.get("is_warrant"),
         is_preferred=row.get("is_preferred"), is_adr=row.get("is_adr"),
@@ -846,6 +920,7 @@ def _record_from_row(row: dict[str, Any]) -> SecurityMasterRecord:
         source_as_of=str(row.get("source_as_of") or ""),
         ingested_at=str(row.get("ingested_at") or ""),
         themes=tuple(row.get("themes") or ()),
+        identity_conflicted=bool(row.get("identity_conflicted", False)),
     )
 
 
@@ -1008,7 +1083,8 @@ class SecurityMasterBootstrapBuilder:
         unresolved = [
             base for base, row in zip(baseline, prelim_records)
             if row.get("exchange") in self.supported_exchanges
-            and not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+            and (row.get("identity_conflicted") or
+                 not all(row.get(flag) is not None for flag in IDENTITY_FLAGS))
         ]
         identity_before_by_ticker = {row.get("ticker"): row for row in prelim_records}
         self._identity_diagnostics = self._build_identity_diagnostics(
@@ -1027,13 +1103,16 @@ class SecurityMasterBootstrapBuilder:
                 1 for after in prelim_records
                 for before in [identity_before_by_ticker.get(after.get("ticker"), {})]
                 if before.get("exchange") in self.supported_exchanges
-                and not all(before.get(flag) is not None for flag in IDENTITY_FLAGS)
+                and (before.get("identity_conflicted") or
+                     not all(before.get(flag) is not None for flag in IDENTITY_FLAGS))
+                and not after.get("identity_conflicted")
                 and all(after.get(flag) is not None for flag in IDENTITY_FLAGS)
             )
             self._identity_diagnostics["identity_remaining_unknown"] = sum(
                 1 for row in prelim_records
                 if row.get("exchange") in self.supported_exchanges
-                and not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+                and (row.get("identity_conflicted") or
+                     not all(row.get(flag) is not None for flag in IDENTITY_FLAGS))
             )
             self._identity_diagnostics["identity_conflicted"] = sum(
                 bool(row.get("identity_conflicted")) for row in prelim_records
@@ -1046,11 +1125,14 @@ class SecurityMasterBootstrapBuilder:
             after_diagnostics = self._build_identity_diagnostics(
                 baseline, type_rows, prelim_records, after_unresolved)
             self._identity_diagnostics["buckets_after_cover_page"] = after_diagnostics.get("buckets", {})
+        self._identity_diagnostics["ordinary_shares_audit"] = self._ordinary_shares_audit(
+            type_rows, baseline, prelim_records)
 
         sector_records = [
             _record_from_row(row) for row in prelim_records
             if row["exchange"] in self.supported_exchanges
             and row.get("is_common_stock") is True
+            and not row.get("identity_conflicted")
             and all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
         ]
         issuer_profiles: dict[str, dict[str, Any]] = {}
@@ -1061,7 +1143,8 @@ class SecurityMasterBootstrapBuilder:
                        self._progress(stage, processed, total, cached, downloaded, failed, unknown))
             issuer_profiles = self.sector_provider.profiles(sector_records, refresh=refresh)
         self._progress("SNAPSHOT_VALIDATION", processed=len(prelim_records), total=len(prelim_records),
-                       unknown=sum(not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+                       unknown=sum(row.get("identity_conflicted") or
+                                   not all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
                                    for row in prelim_records),
                        conflicted=sum(bool(row.get("identity_conflicted")) for row in prelim_records))
 
@@ -1244,7 +1327,10 @@ class SecurityMasterBootstrapBuilder:
             merged["is_test_issue"] = None
         categories = {str(row.get("security_type") or "UNKNOWN") for row in group}
         known_categories = categories - {"UNKNOWN"}
-        if len(known_categories) == 1:
+        if merged["conflicted"]:
+            merged["security_type"] = "UNKNOWN"
+            merged["identity"] = {flag: None for flag in IDENTITY_FLAGS}
+        elif len(known_categories) == 1:
             merged["security_type"] = next(iter(known_categories))
         elif len(known_categories) > 1:
             merged["security_type"] = "UNKNOWN"
@@ -1255,6 +1341,8 @@ class SecurityMasterBootstrapBuilder:
     def _row_from_base(base: SecurityMasterRecord, merged: dict[str, Any], as_of: str) -> dict[str, Any]:
         identity = merged["identity"]
         conflict = bool(merged.get("conflicted"))
+        if conflict:
+            identity = {flag: None for flag in IDENTITY_FLAGS}
         states = {
             flag: {"state": "UNKNOWN_CONFLICTED" if conflict and identity.get(flag) is None
                    else "KNOWN" if identity.get(flag) is not None else "UNKNOWN_NOT_AVAILABLE"}
@@ -1266,7 +1354,10 @@ class SecurityMasterBootstrapBuilder:
             "company_name": base.company_name,
             "cik": _normalise_cik(base.cik),
             "exchange": _normalise_exchange(base.exchange),
-            "country": base.country,
+            "country": base.country or "UNKNOWN",
+            "listing_country": getattr(base, "listing_country", "") or "US",
+            "listing_market": getattr(base, "listing_market", "") or "US",
+            "issuer_country": getattr(base, "issuer_country", "UNKNOWN") or "UNKNOWN",
             "active_status": base.active_status,
             "security_type": merged.get("security_type", "UNKNOWN"),
             "is_test_issue": merged.get("is_test_issue"),
@@ -1289,6 +1380,7 @@ class SecurityMasterBootstrapBuilder:
                  "cover_exchange": row.get("cover_exchange", ""),
                  "filing_form": row.get("filing_form", ""),
                  "filing_accession": row.get("filing_accession", ""),
+                 "provenance": row.get("provenance", {}),
                  "identity_conflicted": bool(row.get("identity_conflicted"))}
                 for row in merged.get("sources", [])
             ],
@@ -1302,18 +1394,23 @@ class SecurityMasterBootstrapBuilder:
         by_ticker: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in type_rows:
             by_ticker[str(row.get("ticker") or "").upper()].append(row)
-        base_by_ticker = {record.ticker: record for record in baseline}
-        buckets = {letter: {"count": 0, "examples": []} for letter in "ABCDEFGHIJ"}
-        labels = {
-            "A": "NO_OFFICIAL_NASDAQ_ROW", "B": "OFFICIAL_ROW_NAME_TYPE_AMBIGUOUS",
-            "C": "ONLY_ETF_FIELD_KNOWN", "D": "CIK_MISMATCH",
-            "E": "EXCHANGE_MISMATCH", "F": "MULTIPLE_OFFICIAL_CONFLICT",
-            "G": "FOREIGN_OR_DEPOSITARY_AMBIGUITY", "H": "CLASS_SHARE_AMBIGUITY",
-            "I": "BLANK_OR_MALFORMED_NAME", "J": "OTHER",
-        }
+        bucket_names = (
+            "NO_OFFICIAL_SYMBOL_DIRECTORY_ROW",
+            "NASDAQ_LISTED_TYPE_AMBIGUOUS",
+            "OTHER_LISTED_TYPE_AMBIGUOUS",
+            "ONLY_ETF_FIELD_KNOWN",
+            "CIK_MISMATCH",
+            "EXCHANGE_MISMATCH",
+            "MULTIPLE_OFFICIAL_CONFLICT",
+            "CLASS_SHARE_AMBIGUITY",
+            "FOREIGN_OR_DEPOSITARY_AMBIGUITY",
+            "OTHER",
+        )
+        buckets = {name: {"count": 0, "examples": []} for name in bucket_names}
         for record in unresolved:
             rows = by_ticker.get(record.ticker, [])
             nasdaq_rows = [row for row in rows if str(row.get("source_name") or "").upper() == "NASDAQ"]
+            other_rows = [row for row in rows if str(row.get("source_name") or "").upper() == "OTHER"]
             mismatch_cik = any(
                 _normalise_cik(row.get("cik")) and _normalise_cik(row.get("cik")) != _normalise_cik(record.cik)
                 for row in rows
@@ -1327,26 +1424,42 @@ class SecurityMasterBootstrapBuilder:
             known = set()
             for row in rows:
                 known.update(flag for flag in IDENTITY_FLAGS if row.get("identity", {}).get(flag) is not None)
+            signatures = {
+                (
+                    re.sub(r"\s+", " ", str(row.get("company_name") or "")).strip().upper(),
+                    _normalise_exchange(row.get("exchange")),
+                    str(row.get("security_type") or "UNKNOWN").upper(),
+                    tuple(row.get("identity", {}).get(flag) for flag in IDENTITY_FLAGS),
+                )
+                for row in rows
+            }
+            has_multi_conflict = len(signatures) > 1 or any(
+                bool(row.get("identity_conflicted")) for row in rows)
+            unknown_nasdaq = any(str(row.get("security_type") or "UNKNOWN").upper() == "UNKNOWN"
+                                 for row in nasdaq_rows)
+            unknown_other = any(str(row.get("security_type") or "UNKNOWN").upper() == "UNKNOWN"
+                                for row in other_rows)
             if mismatch_cik:
-                bucket = "D"
+                bucket = "CIK_MISMATCH"
             elif mismatch_exchange:
-                bucket = "E"
-            elif len(rows) > 1 and any(row.get("identity_conflicted") for row in rows):
-                bucket = "F"
-            elif not nasdaq_rows:
-                bucket = "A"
-            elif not names.strip():
-                bucket = "I"
-            elif re.search(r"ADR|ADS|DEPOSITARY|FOREIGN|ORDINARY", names):
-                bucket = "G"
-            elif re.search(r"\bCLASS\s+[A-Z0-9]", names) and not re.search(r"COMMON", names):
-                bucket = "H"
+                bucket = "EXCHANGE_MISMATCH"
+            elif has_multi_conflict:
+                bucket = "MULTIPLE_OFFICIAL_CONFLICT"
+            elif not rows:
+                bucket = "NO_OFFICIAL_SYMBOL_DIRECTORY_ROW"
             elif known and known <= {"is_etf"}:
-                bucket = "C"
-            elif any(str(row.get("security_type") or "UNKNOWN") == "UNKNOWN" for row in nasdaq_rows):
-                bucket = "B"
+                bucket = "ONLY_ETF_FIELD_KNOWN"
+            elif unknown_nasdaq:
+                bucket = "NASDAQ_LISTED_TYPE_AMBIGUOUS"
+            elif unknown_other:
+                bucket = "OTHER_LISTED_TYPE_AMBIGUOUS"
+            elif re.search(r"\bCLASS\s+[A-Z0-9]", names) and not re.search(
+                    r"COMMON|SUBORDINATE\s+VOTING|LIMITED\s+VOTING", names):
+                bucket = "CLASS_SHARE_AMBIGUITY"
+            elif re.search(r"ADR|ADS|DEPOSITARY|FOREIGN", names):
+                bucket = "FOREIGN_OR_DEPOSITARY_AMBIGUITY"
             else:
-                bucket = "J"
+                bucket = "OTHER"
             entry = buckets[bucket]
             entry["count"] += 1
             if len(entry["examples"]) < 20:
@@ -1355,7 +1468,7 @@ class SecurityMasterBootstrapBuilder:
         return {
             "total": total,
             "buckets": {
-                labels[key]: {"count": value["count"],
+                key: {"count": value["count"],
                               "pct": round(value["count"] / total * 100, 4) if total else 0.0,
                               "examples": value["examples"]}
                 for key, value in buckets.items()
@@ -1364,11 +1477,70 @@ class SecurityMasterBootstrapBuilder:
             "identity_known_before_supported_count": sum(
                 1 for row in prelim_records
                 if row.get("exchange") in SUPPORTED_EXCHANGES
+                and not row.get("identity_conflicted")
                 and all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
             ),
             "identity_resolved_by_sec_cover_page": 0,
             "identity_remaining_unknown": total,
             "identity_conflicted": 0,
+        }
+
+    @staticmethod
+    def _ordinary_shares_audit(type_rows: list[dict[str, Any]],
+                               baseline: list[SecurityMasterRecord],
+                               prelim_records: list[dict[str, Any]]) -> dict[str, Any]:
+        by_ticker: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in type_rows:
+            by_ticker[str(row.get("ticker") or "").upper()].append(row)
+        base_by_ticker = {record.ticker: record for record in baseline}
+        title_counts: Counter[str] = Counter()
+        by_exchange: Counter[str] = Counter()
+        resolved_tickers: list[str] = []
+        overlap = 0
+        foreign = 0
+        foreign_unknown = 0
+        conflicted = 0
+        row_count = 0
+        for record in prelim_records:
+            source_rows = by_ticker.get(str(record.get("ticker") or "").upper(), [])
+            ordinary_rows = []
+            for row in source_rows:
+                title = str(row.get("company_name") or "")
+                category, _ = _classification_from_name(title, _as_bool(row.get("etf")))
+                if re.search(r"\bORDINARY\s+SHARES?\b", title, re.IGNORECASE) and category == "COMMON_STOCK":
+                    ordinary_rows.append(row)
+            if not ordinary_rows:
+                continue
+            row_count += len(ordinary_rows)
+            for row in ordinary_rows:
+                title = re.sub(r"\s+", " ", str(row.get("company_name") or "")).strip()
+                title_counts[title] += 1
+                if re.search(r"ADR|ADS|DEPOSITARY", title, re.IGNORECASE):
+                    overlap += 1
+                issuer_country = str(row.get("issuer_country") or "").upper()
+                if issuer_country and issuer_country not in {"UNKNOWN", "US"}:
+                    foreign += 1
+                else:
+                    foreign_unknown += 1
+            if record.get("identity_conflicted"):
+                conflicted += 1
+            elif record.get("is_common_stock") is True and all(
+                    record.get(flag) is not None for flag in IDENTITY_FLAGS):
+                ticker = str(record.get("ticker") or "").upper()
+                resolved_tickers.append(ticker)
+                by_exchange[str(record.get("exchange") or "UNKNOWN").upper()] += 1
+        return {
+            "ordinary_shares_row_count": row_count,
+            "ordinary_shares_resolved_total": len(resolved_tickers),
+            "ordinary_shares_resolved_by_exchange": dict(sorted(by_exchange.items())),
+            "ordinary_shares_top_security_titles": [
+                {"title": title, "count": count} for title, count in title_counts.most_common(20)
+            ],
+            "ordinary_shares_adr_ads_depositary_overlap": overlap,
+            "ordinary_shares_foreign_issuer_count": foreign,
+            "ordinary_shares_foreign_issuer_unknown_count": foreign_unknown,
+            "ordinary_shares_conflicted_count": conflicted,
+            "ordinary_shares_resolved_tickers": sorted(set(resolved_tickers)),
         }
 
     def _metrics(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -1378,6 +1550,7 @@ class SecurityMasterBootstrapBuilder:
         identity_known_global = sum(self._identity_known(row) for row in records)
         identity_known_supported = sum(self._identity_known(row) for row in supported)
         conflict_count = sum(bool(row.get("identity_conflicted")) for row in rows)
+        conflict_supported_count = sum(bool(row.identity_conflicted) for row in supported)
         integrity = UniverseIntegrityEngine(exchanges=set(self.supported_exchanges)).build(
             InMemorySecurityMasterProvider(records), payload["source_as_of"])
         health = integrity["health"]
@@ -1404,6 +1577,11 @@ class SecurityMasterBootstrapBuilder:
         diagnostics.setdefault("identity_resolved_by_sec_cover_page", 0)
         diagnostics.setdefault("identity_remaining_unknown", supported_count - identity_known_supported)
         diagnostics.setdefault("identity_conflicted", conflict_count)
+        ordinary_audit = diagnostics.get("ordinary_shares_audit", {})
+        ordinary_resolved = set(ordinary_audit.get("ordinary_shares_resolved_tickers", []))
+        ordinary_audit["ordinary_shares_accepted_count"] = sum(
+            1 for row in accepted if row.ticker in ordinary_resolved)
+        diagnostics["ordinary_shares_audit"] = ordinary_audit
         return {
             "raw_count": raw_count,
             "supported_exchange_scope_count": supported_count,
@@ -1434,6 +1612,10 @@ class SecurityMasterBootstrapBuilder:
             "identity_unknown_buckets": diagnostics.get("buckets", {}),
             "identity_unknown_buckets_after_cover_page": diagnostics.get("buckets_after_cover_page", {}),
             "identity_conflicted_after_cover_page": diagnostics.get("identity_conflicted", conflict_count),
+            "identity_known_non_conflicted_supported_count": identity_known_supported,
+            "identity_conflicted_supported_count": conflict_supported_count,
+            "identity_unknown_supported_count": max(0, supported_count - identity_known_supported - conflict_supported_count),
+            "ordinary_shares_audit": ordinary_audit,
             "identity_readiness": identity_status,
             "sector_readiness": sector_status,
             "security_master_readiness": "SECURITY_MASTER_READY" if (
@@ -1460,7 +1642,8 @@ class SecurityMasterBootstrapBuilder:
 
     @staticmethod
     def _identity_known(record: SecurityMasterRecord) -> bool:
-        return all(getattr(record, flag) is not None for flag in IDENTITY_FLAGS)
+        return not bool(getattr(record, "identity_conflicted", False)) and all(
+            getattr(record, flag) is not None for flag in IDENTITY_FLAGS)
 
     def _readiness_status(self, metrics: dict[str, Any]) -> str:
         if (metrics.get("accepted_common_stock_count", 0) >= self.min_accepted
@@ -1604,6 +1787,34 @@ class SecurityMasterBootstrapService:
     def bootstrap(self, refresh: bool = False) -> dict[str, Any]:
         return self.builder().build_and_write(refresh=refresh)
 
+    def diagnostic_candidate_records(self) -> tuple[list[SecurityMasterRecord], dict[str, Any]]:
+        """Return only fully validated candidate rows for diagnostic shadow.
+
+        This deliberately does not publish or promote the candidate snapshot.
+        It is a downstream plumbing smoke while the production coverage gate
+        remains fail-closed.
+        """
+        candidate_path = self.snapshot_path.with_name("security_master_candidate.json")
+        if not candidate_path.is_file():
+            return [], {"status": "BOOTSTRAP_REQUIRED", "reason_codes": ["CANDIDATE_SNAPSHOT_MISSING"]}
+        payload = read_snapshot(candidate_path)
+        records = snapshot_records(payload or {})
+        supported = set(UniverseIntegrityEngine.DEFAULT_EXCHANGES)
+        selected = [record for record in records
+                    if record.exchange.upper() in supported
+                    and record.is_common_stock is True
+                    and not bool(getattr(record, "identity_conflicted", False))
+                    and all(getattr(record, flag) is not None for flag in IDENTITY_FLAGS)]
+        return selected, {
+            "status": "DEGRADED_DIAGNOSTIC_SHADOW_READY" if selected else "BOOTSTRAP_REQUIRED",
+            "candidate_status": str(payload.get("status", "")) if payload else "",
+            "candidate_count": len(records),
+            "selected_count": len(selected),
+            "reason_codes": [] if selected else ["NO_NON_CONFLICTED_VALIDATED_CANDIDATES"],
+            "production_threshold_bypassed": False,
+            "source": "SECURITY_MASTER_CANDIDATE_ONLY",
+        }
+
     def health(self, database=None) -> dict[str, Any]:
         """Read-only health: it never creates or replaces a snapshot."""
         from .health import bootstrap_health
@@ -1621,9 +1832,18 @@ class SecurityMasterBootstrapService:
         credentials = self.config.get("credentials", {})
         market_data = None
         benchmark_provider = None
+        configured_market_provider = self.config.get(
+            "market_data_provider", self.config.get("provider", "toss"))
         if not credentials.get("toss_app_key") or not credentials.get("toss_app_secret"):
             reasons.append("TOSS_CREDENTIALS_REQUIRED")
-        elif self.config.get("market_data_provider", self.config.get("provider", "toss")) == "toss":
+        # ``load_config`` may retain the application's normal mock default even
+        # when the operator supplied real Toss credentials for this operational
+        # health command.  Health must report the actual configured transport,
+        # not the unrelated analysis default; credentials remain the gate.
+        elif configured_market_provider == "toss" or (
+                configured_market_provider == "mock"
+                and credentials.get("toss_app_key")
+                and credentials.get("toss_app_secret")):
             from ..toss import TossClient
             from .providers_live import TossDiscoveryBenchmarkProvider, TossDiscoveryMarketDataProvider
             market_data = TossDiscoveryMarketDataProvider(
@@ -1700,24 +1920,33 @@ class SecurityMasterBootstrapService:
             "toss": {
                 "configured": bool(credentials.get("toss_app_key") and credentials.get("toss_app_secret")),
                 "constructed": market_data is not None,
-                "transport": "READY" if market_data is not None else "BLOCKED",
-                "sample_executed": False,
-                "sample_ready": False,
-                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "",
+                "auth_probe": "NOT_EXECUTED",
+                "transport_probe": "NOT_EXECUTED",
+                "transport": "NOT_EXECUTED",
+                "sample_executed": bool(records and market_data is not None),
+                "benchmark_sample_executed": False,
+                "sample_ready": bool(result.get("market_data", False)),
+                "blocked_by": (
+                    "TOSS_CREDENTIALS_REQUIRED" if not credentials.get("toss_app_key") or not credentials.get("toss_app_secret")
+                    else "SECURITY_MASTER_NOT_READY" if not records else ""),
             },
             "fundamental": {
                 "configured": bool(self.user_agent),
                 "constructed": fundamental is not None,
-                "sample_executed": False,
-                "sample_ready": False,
-                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "",
+                "auth_probe": "NOT_EXECUTED",
+                "transport_probe": "NOT_EXECUTED",
+                "sample_executed": bool(result.get("market_scan_status") == "MARKET_SCAN_READY" and fundamental is not None),
+                "sample_ready": bool(result.get("fundamental_data", False)),
+                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "" if result.get("market_scan_status") == "MARKET_SCAN_READY" else "MARKET_NOT_READY",
             },
             "capital": {
                 "configured": bool(self.user_agent),
                 "constructed": capital is not None,
-                "sample_executed": False,
-                "sample_ready": False,
-                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "",
+                "auth_probe": "NOT_EXECUTED",
+                "transport_probe": "NOT_EXECUTED",
+                "sample_executed": bool(result.get("market_scan_status") == "MARKET_SCAN_READY" and capital is not None),
+                "sample_ready": bool(result.get("capital_preflight_data", False)),
+                "blocked_by": "SECURITY_MASTER_NOT_READY" if not records else "" if result.get("market_scan_status") == "MARKET_SCAN_READY" else "MARKET_NOT_READY",
             },
         }
         if fundamental is not None:
@@ -1732,6 +1961,15 @@ class SecurityMasterBootstrapService:
                 result["reason_codes"].append("CAPITAL_SAMPLE_BLOCKED_SECURITY_MASTER")
         if records and market_data is not None:
             result["provider_readiness"]["toss"]["sample_executed"] = True
+            result["provider_readiness"]["toss"]["transport_probe"] = (
+                "PASS" if result.get("market_data") else "FAILED")
+            result["provider_readiness"]["toss"]["transport"] = result["provider_readiness"]["toss"]["transport_probe"]
+        if market_data is not None:
+            benchmark_probe = bool(result.get("benchmark"))
+            result["provider_readiness"]["toss"]["benchmark_sample_executed"] = benchmark_probe
+            result["provider_readiness"]["toss"]["transport_probe"] = (
+                "PASS" if result.get("benchmark_data") else "FAILED")
+            result["provider_readiness"]["toss"]["transport"] = result["provider_readiness"]["toss"]["transport_probe"]
         if not records and market_data is not None:
             result["reason_codes"] = [code for code in result.get("reason_codes", [])
                                        if code != "MARKET_DATA_SAMPLE_UNAVAILABLE"]

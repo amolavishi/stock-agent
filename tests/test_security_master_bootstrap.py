@@ -16,6 +16,7 @@ from stock_agent.discovery.bootstrap import (
     SecurityMasterBootstrapBuilder,
     SecurityMasterBootstrapError,
     SecurityMasterSnapshotValidationError,
+    _classification_from_name,
     read_snapshot,
     snapshot_records,
     validate_snapshot,
@@ -447,6 +448,132 @@ class SecurityMasterBootstrapTests(unittest.TestCase):
         self.assertIsNone(SECPeriodicCoverIdentityProvider.parse_cover_page(
             html, {"form": "10-Q", "accession": "A", "filed_at": AS_OF},
             "COVR", "0000000001", "NASDAQ"))
+
+    def test_identity_conflict_is_not_known_even_when_all_boolean_sources_are_known(self):
+        record = SecurityMasterRecord(
+            "SEC-CONFLICT", "CONFLICT", "Conflict issuer", cik="0000000074", exchange="NASDAQ",
+            country="US", listing_country="US", is_common_stock=True, is_etf=False,
+            is_unit=False, is_warrant=False, is_preferred=False, is_adr=False,
+            identity_conflicted=True, sector_canonical="Technology")
+        result = UniverseIntegrityEngine().build(InMemorySecurityMasterProvider([record]), AS_OF)
+        self.assertEqual(result["records"], [])
+        self.assertEqual(result["rejected"].get("IDENTITY_CONFLICTED"), 1)
+        self.assertEqual(result["health"]["identity_coverage_pct"], 0.0)
+
+    def test_sec_cover_exchange_conflict_is_fail_closed_and_preserves_provenance(self):
+        listing = [base_record("COVR", 75)]
+        row = type_row("COVR", 75, "COVR issuer", {flag: None for flag in FLAGS})
+        row["source_name"] = "NASDAQ"
+        cover_html = b"""<ix:nonNumeric name='dei:Security12bTitle' contextRef='C'>Common Stock</ix:nonNumeric>
+        <ix:nonNumeric name='dei:TradingSymbol' contextRef='C'>COVR</ix:nonNumeric>
+        <ix:nonNumeric name='dei:SecurityExchangeName' contextRef='C'>NYSE</ix:nonNumeric>"""
+
+        class BulkFixture:
+            def latest_periodic(self, records, refresh=False):
+                return {"0000000075": {"cik": "0000000075", "form": "10-Q",
+                    "accession": "0000000000-26-000002", "filed_at": AS_OF,
+                    "primary_document": "cover.htm", "source_url": "https://sec.example/cover"}}
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return cover_html
+
+        with tempfile.TemporaryDirectory() as directory:
+            cover = SECPeriodicCoverIdentityProvider(
+                "StockAgent/0.6 test@example.com", BulkFixture(), Path(directory) / "cover",
+                opener=lambda request, timeout=30: Response(), max_rps=5)
+            payload = self.builder(
+                listing, [row], SectorFixture({"0000000075": {"sic": "7372"}}), directory,
+                cover_identity_provider=cover).build()
+        stored = payload["records"][0]
+        self.assertTrue(stored["identity_conflicted"])
+        self.assertTrue(all(stored[flag] is None for flag in FLAGS))
+        self.assertEqual(payload["metrics"]["identity_known_supported_count"], 0)
+        self.assertEqual(payload["metrics"]["accepted_common_stock_count"], 0)
+        self.assertEqual(payload["metrics"]["rejection_counts"].get("IDENTITY_CONFLICTED"), 1)
+        self.assertTrue(stored["identity_sources"][-1]["provenance"]["security_level_tuple"])
+
+    def test_sec_cover_multiple_security_tuples_are_order_independent_conflicts(self):
+        html_a = """<ix:nonNumeric name='dei:Security12bTitle' contextRef='A'>Common Stock</ix:nonNumeric>
+        <ix:nonNumeric name='dei:TradingSymbol' contextRef='A'>MULTI</ix:nonNumeric>
+        <ix:nonNumeric name='dei:SecurityExchangeName' contextRef='A'>Nasdaq</ix:nonNumeric>
+        <ix:nonNumeric name='dei:Security12bTitle' contextRef='B'>Class A Subordinate Voting Shares</ix:nonNumeric>
+        <ix:nonNumeric name='dei:TradingSymbol' contextRef='B'>MULTI</ix:nonNumeric>
+        <ix:nonNumeric name='dei:SecurityExchangeName' contextRef='B'>Nasdaq</ix:nonNumeric>"""
+        html_b = "".join(reversed(html_a.splitlines()))
+        filing = {"form": "10-Q", "accession": "A", "filed_at": AS_OF}
+        first = SECPeriodicCoverIdentityProvider.parse_cover_page(html_a, filing, "MULTI", "0000000001", "NASDAQ")
+        second = SECPeriodicCoverIdentityProvider.parse_cover_page(html_b, filing, "MULTI", "0000000001", "NASDAQ")
+        self.assertTrue(first["identity_conflicted"])
+        self.assertTrue(second["identity_conflicted"])
+        self.assertEqual(first["identity"], second["identity"])
+        self.assertEqual(first["identity_conflict_reason"], "MULTIPLE_SECURITY_TUPLE_CONFLICT")
+        self.assertEqual(len(first["provenance"]["security_level_tuples"]), 2)
+
+    def test_sec_cover_uses_8k_when_no_periodic_filing_exists(self):
+        class BulkFixture:
+            def latest_cover_filing(self, records, refresh=False):
+                return {"0000000076": {"cik": "0000000076", "form": "8-K",
+                    "accession": "0000000000-26-000003", "filed_at": AS_OF,
+                    "primary_document": "event.htm", "selection": "8-K_FALLBACK"}}
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return b"""<ix:nonNumeric name='dei:Security12bTitle' contextRef='C'>Class A Subordinate Voting Shares</ix:nonNumeric>
+            <ix:nonNumeric name='dei:TradingSymbol' contextRef='C'>FALL</ix:nonNumeric>
+            <ix:nonNumeric name='dei:SecurityExchangeName' contextRef='C'>Nasdaq</ix:nonNumeric>"""
+
+        with tempfile.TemporaryDirectory() as directory:
+            provider = SECPeriodicCoverIdentityProvider(
+                "StockAgent/0.6 test@example.com", BulkFixture(), Path(directory) / "cover",
+                opener=lambda request, timeout=30: Response(), max_rps=5)
+            rows = provider.records([base_record("FALL", 76)], AS_OF)
+        self.assertEqual(rows[0]["filing_form"], "8-K")
+        self.assertTrue(rows[0]["identity"]["is_common_stock"])
+
+    def test_safe_title_mapping_keeps_ambiguous_equity_titles_unknown(self):
+        category, flags = _classification_from_name("Class A Subordinate Voting Shares", None)
+        self.assertEqual(category, "COMMON_STOCK")
+        self.assertTrue(flags["is_common_stock"])
+        for title in ("Capital Stock", "Registered Shares", "Shares",
+                      "Rights, each entitling the holder to receive one Ordinary Share",
+                      "American Depositary Shares representing Ordinary Shares"):
+            category, flags = _classification_from_name(title, None)
+            self.assertIn(category, {"UNKNOWN", "ADR"})
+            if category == "UNKNOWN":
+                self.assertTrue(all(value is None for value in flags.values()))
+
+    def test_identity_diagnostics_distinguish_other_listed_ambiguity(self):
+        listing = [base_record("OTHER", 77)]
+        row = type_row("OTHER", 77, "Other issuer", {flag: None for flag in FLAGS})
+        row["source_name"] = "OTHER"
+        with tempfile.TemporaryDirectory() as directory:
+            payload = self.builder(listing, [row], None, directory).build()
+        buckets = payload["metrics"]["identity_unknown_buckets"]
+        self.assertEqual(buckets["OTHER_LISTED_TYPE_AMBIGUOUS"]["count"], 1)
+        self.assertNotIn("NO_OFFICIAL_NASDAQ_ROW", buckets)
+
+    def test_sec_listing_has_unknown_issuer_country_and_explicit_us_listing(self):
+        payload = {"fields": ["cik", "name", "ticker", "exchange"],
+                   "data": [[77, "Issuer", "COUN", "Nasdaq"]]}
+
+        class Response:
+            status = 200
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return json.dumps(payload).encode("utf-8")
+
+        with tempfile.TemporaryDirectory() as directory:
+            provider = SECCompanyTickerSecurityMasterProvider(
+                "StockAgent/0.6 test@example.com", Path(directory) / "listing.json",
+                opener=lambda request, timeout=20: Response())
+            record = provider.records(AS_OF)[0]
+        self.assertEqual(record.country, "UNKNOWN")
+        self.assertEqual(record.issuer_country, "UNKNOWN")
+        self.assertEqual(record.listing_country, "US")
+        self.assertEqual(record.listing_market, "US")
 
     def test_sec_cover_latest_periodic_uses_filed_at_not_accession_order(self):
         payload = {"filings": {"recent": {
