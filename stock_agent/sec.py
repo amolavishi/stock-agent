@@ -239,6 +239,10 @@ class SECCompanyFactsProvider(EdgarMetadataCollector):
         output["debt_ontology"] = self._debt_ontology(normalized)
         output["debt"] = output["debt_ontology"]["financial_debt"]
         output["normalized_facts"] = normalized
+        # Discovery consumes this same period-aware resolver output.  Keeping
+        # the ontology here prevents a second, weaker CompanyFacts resolver
+        # from inventing growth or margin semantics downstream.
+        output["period_metrics"] = self._period_metrics(normalized)
         output["derived"] = self._derive(output)
         output["raw_companyfacts_payload"] = payload
         return output
@@ -271,6 +275,189 @@ class SECCompanyFactsProvider(EdgarMetadataCollector):
                             "scope": row.get("scope"),
                         })
         return output
+
+    @classmethod
+    def _series(cls, rows: list[dict[str, Any]], concept: str) -> list[dict[str, Any]]:
+        candidates = [row for row in rows if row.get("concept") == concept and
+                      row.get("period_type") == "DURATION" and
+                      str(row.get("form") or "").upper() == "10-Q"]
+        if not candidates:
+            return []
+        units = {str(row.get("unit") or "") for row in candidates}
+        if len(units) != 1:
+            return []
+        selected: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for row in candidates:
+            if not cls._is_standalone_quarter(row):
+                continue
+            key = (str(row.get("fy") or ""), str(row.get("fp") or ""), str(row.get("end") or ""))
+            current = selected.get(key)
+            if current is None or str(row.get("filed") or "") > str(current.get("filed") or ""):
+                selected[key] = row
+        series = list(selected.values())
+        # If a direct Q2 is absent, preserve the existing audited YTD-Q1
+        # derivation as the current quarter and its source provenance.
+        ytd = [row for row in candidates if cls._is_q2_ytd(row)]
+        if ytd:
+            latest_ytd = max(ytd, key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")))
+            direct_q2 = [row for row in series if str(row.get("fp") or "").upper() == "Q2" and
+                         str(row.get("end") or "") == str(latest_ytd.get("end") or "")]
+            if not direct_q2:
+                q1 = [row for row in candidates if cls._is_standalone_quarter(row) and
+                      str(row.get("fp") or "").upper() == "Q1" and
+                      str(row.get("fy") or "") == str(latest_ytd.get("fy") or "")]
+                if q1:
+                    derived = cls._resolve_duration_metric(candidates, latest_ytd)
+                    if derived.get("status") == "KNOWN":
+                        series.append(derived)
+        return sorted(series, key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")))
+
+    @classmethod
+    def _period_metrics(cls, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        revenue = cls._series(rows, "RevenueFromContractWithCustomerExcludingAssessedTax")
+        if not revenue:
+            revenue = cls._series(rows, "Revenues")
+        gross = cls._series(rows, "GrossProfit")
+        operating = cls._series(rows, "OperatingIncomeLoss")
+        ocf = cls._series(rows, "NetCashProvidedByUsedInOperatingActivities")
+        capex = cls._series(rows, "PaymentsToAcquirePropertyPlantAndEquipment")
+
+        def comparable(series: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
+            if len(series) < 3:
+                return (series[-1] if series else None,
+                        series[-2] if len(series) >= 2 else None,
+                        series[-3] if len(series) >= 3 else None)
+            return series[-1], series[-2], series[-3]
+
+        def compatible(a: dict[str, Any] | None, b: dict[str, Any] | None) -> bool:
+            return bool(a and b and a.get("unit") == b.get("unit") and
+                        str(a.get("form") or "").upper() == str(b.get("form") or "").upper() and
+                        a.get("period_type") == b.get("period_type") and
+                        str(a.get("fy") or "") == str(b.get("fy") or ""))
+
+        def raw_value(row: dict[str, Any] | None) -> float | None:
+            try:
+                return float(row["value"]) if row and row.get("value") is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        current, previous, prior_previous = comparable(revenue)
+        metrics: dict[str, Any] = {"comparability": "PASSED"}
+        if compatible(current, previous) and compatible(previous, prior_previous):
+            c, p, pp = raw_value(current), raw_value(previous), raw_value(prior_previous)
+            if c is not None and p not in (None, 0) and pp not in (None, 0):
+                current_growth = (c / p - 1) * 100
+                previous_growth = (p / pp - 1) * 100
+                metrics.update({"revenue_growth_current_pct": current_growth,
+                                "revenue_growth_previous_pct": previous_growth,
+                                "revenue_growth_acceleration_pp": current_growth - previous_growth,
+                                "revenue_growth_provenance": {
+                                    "source_fact_ids": [row.get("fact_id") for row in (current, previous, prior_previous)],
+                                    "current_period": current.get("end"), "previous_period": previous.get("end"),
+                                "period_type": current.get("period_type"), "unit": current.get("unit")}})
+        else:
+            metrics["comparability"] = "FAILED"
+
+        # Growth acceleration is a change in comparable growth rates, not a
+        # single quarter's growth.  Prefer the resolver's current Q2 (direct
+        # fact or audited YTD-Q1 derivation), then compare Q2 and Q1 against
+        # their respective prior fiscal-year periods.
+        revenue_candidates = [row for row in rows if row.get("concept") in {
+            "RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues"} and
+            row.get("period_type") == "DURATION" and
+            str(row.get("form") or "").upper() == "10-Q"]
+        current_revenue = None
+        for concept in ("RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues"):
+            concept_rows = [row for row in revenue_candidates if row.get("concept") == concept]
+            if concept_rows:
+                selected = cls._select_period_aware(concept_rows)
+                current_revenue = cls._resolve_duration_metric(concept_rows, selected) if selected else None
+                if current_revenue:
+                    break
+        if current_revenue:
+            current_fy = str(current_revenue.get("fy") or "")
+            current_fp = str(current_revenue.get("fp") or "").upper()
+            same_fy = [row for row in revenue_candidates if str(row.get("fy") or "") == current_fy and
+                       cls._is_standalone_quarter(row) and str(row.get("end") or "") < str(current_revenue.get("end") or "")]
+            previous_revenue = max(same_fy, key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")), default=None)
+            try:
+                prior_fy = str(int(current_fy) - 1)
+            except (TypeError, ValueError):
+                prior_fy = ""
+            prior_current = max([row for row in revenue_candidates if str(row.get("fy") or "") == prior_fy and
+                                 str(row.get("fp") or "").upper() == current_fp and cls._is_standalone_quarter(row)],
+                                key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")), default=None)
+            previous_fp = str(previous_revenue.get("fp") or "").upper() if previous_revenue else ""
+            prior_previous = max([row for row in revenue_candidates if str(row.get("fy") or "") == prior_fy and
+                                  str(row.get("fp") or "").upper() == previous_fp and cls._is_standalone_quarter(row)],
+                                 key=lambda row: (str(row.get("end") or ""), str(row.get("filed") or "")), default=None)
+            if (compatible(current_revenue, previous_revenue) and compatible(prior_current, prior_previous) and
+                    current_revenue.get("unit") == prior_current.get("unit") and
+                    previous_revenue.get("unit") == prior_previous.get("unit")):
+                c, p, pc, pp = (raw_value(current_revenue), raw_value(previous_revenue),
+                                raw_value(prior_current), raw_value(prior_previous))
+                if c is not None and p not in (None, 0) and pc is not None and pp not in (None, 0):
+                    current_growth = (c / pc - 1) * 100
+                    previous_growth = (p / pp - 1) * 100
+                    metrics.update({"revenue_growth_current_pct": current_growth,
+                                    "revenue_growth_previous_pct": previous_growth,
+                                    "revenue_growth_acceleration_pp": current_growth - previous_growth,
+                                    "revenue_growth_provenance": {
+                                        "source_fact_ids": [row.get("fact_id") for row in
+                                                             (current_revenue, previous_revenue, prior_current, prior_previous)],
+                                        "source_accessions": [row.get("accn") for row in
+                                                               (current_revenue, previous_revenue, prior_current, prior_previous)],
+                                        "current_period": current_revenue.get("end"),
+                                        "previous_period": previous_revenue.get("end"),
+                                        "prior_year_periods": [prior_current.get("end"), prior_previous.get("end")],
+                                        "period_type": current_revenue.get("period_type"),
+                                        "unit": current_revenue.get("unit")}})
+
+        def margin_pair(numerator: list[dict[str, Any]]) -> tuple[float | None, float | None, dict[str, Any] | None]:
+            n_current, n_previous, _ = comparable(numerator)
+            r_current, r_previous, _ = comparable(revenue)
+            if not compatible(n_current, n_previous) or not compatible(r_current, r_previous):
+                return None, None, None
+            if n_current.get("end") != r_current.get("end") or n_previous.get("end") != r_previous.get("end"):
+                return None, None, None
+            if n_current.get("unit") != r_current.get("unit"):
+                return None, None, None
+            rv_c, rv_p = raw_value(r_current), raw_value(r_previous)
+            nv_c, nv_p = raw_value(n_current), raw_value(n_previous)
+            if rv_c in (None, 0) or rv_p in (None, 0) or nv_c is None or nv_p is None:
+                return None, None, None
+            return nv_c / rv_c * 100, nv_p / rv_p * 100, {
+                "source_fact_ids": [n_current.get("fact_id"), n_previous.get("fact_id"),
+                                    r_current.get("fact_id"), r_previous.get("fact_id")],
+                "current_period": n_current.get("end"), "previous_period": n_previous.get("end")}
+
+        gross_current, gross_previous, gross_provenance = margin_pair(gross)
+        op_current, op_previous, op_provenance = margin_pair(operating)
+        metrics.update({
+            "gross_margin_current_pct": gross_current,
+            "gross_margin_previous_pct": gross_previous,
+            "gross_margin_delta_pp": (gross_current - gross_previous if gross_current is not None and gross_previous is not None else None),
+            "gross_margin_provenance": gross_provenance,
+            "operating_margin_current_pct": op_current,
+            "operating_margin_previous_pct": op_previous,
+            "operating_margin_delta_pp": (op_current - op_previous if op_current is not None and op_previous is not None else None),
+            "operating_margin_provenance": op_provenance,
+        })
+
+        ocf_current, ocf_previous, _ = comparable(ocf)[:3]
+        ocf_c, ocf_p = raw_value(ocf_current), raw_value(ocf_previous)
+        metrics.update({"operating_cash_flow_current": ocf_c,
+                        "operating_cash_flow_previous": ocf_p,
+                        "operating_cash_flow_inflection": (ocf_c - ocf_p if ocf_c is not None and ocf_p is not None else None)})
+        fcf_current, fcf_previous, _ = comparable(capex)[:3]
+        cap_c, cap_p = raw_value(fcf_current), raw_value(fcf_previous)
+        if ocf_c is not None and cap_c is not None and ocf_p is not None and cap_p is not None:
+            fcf_c, fcf_p = ocf_c - cap_c, ocf_p - cap_p
+        else:
+            fcf_c = fcf_p = None
+        metrics.update({"fcf_current": fcf_c, "fcf_previous": fcf_p,
+                        "fcf_inflection": (fcf_c - fcf_p if fcf_c is not None and fcf_p is not None else None)})
+        return metrics
 
     @classmethod
     def _debt_ontology(cls, rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:

@@ -7,8 +7,10 @@ from typing import Any
 
 from .hermes import HermesAdapter, HermesResponse
 from .analysis_context import DebateContextBuilder
+from .claim_validation import validate_claim_evidence
 from .schemas import (ChairmanDecision, CompanyState, CriticReview, Decision,
                       EvidenceItem, MarketSnapshot, ResearchAnalysis)
+from .validation import AnalysisIncompleteError
 
 
 PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
@@ -169,6 +171,43 @@ class HermesResearchAgent:
                  "model": first.model, "prompt_version": self.prompt_version}
         value, self.last_response = _construct_with_one_repair(
             self.adapter, ResearchAnalysis, first, prompt, "research", fixed)
+        if evidence:
+            minimum_claims = {"MINIMUM": 3, "NORMAL": 5, "MAXIMUM": 7}.get(
+                str((request or {}).get("analysis_intensity") or "NORMAL").upper(), 5)
+            evidence_routing = "\n".join(
+                f"- {item.evidence_id}: source={item.source_type} form={item.document_type} "
+                f"grade={item.evidence_grade} text="
+                f"{(item.normalized_fact or item.summary)[:240]}"
+                for item in evidence)
+            for repair_no in range(4):
+                try:
+                    validate_claim_evidence(value.claims, evidence, minimum_claims)
+                    break
+                except AnalysisIncompleteError as exc:
+                    if repair_no == 3:
+                        raise
+                    evidence_repair = prompt + (
+                        "\n\nEVIDENCE_REPAIR: The prior complete JSON failed evidence validation: "
+                        + str(exc) +
+                        ". Return one complete corrected JSON object. Keep every material and "
+                        "supporting claim grounded. For each claim, choose evidence_ids only "
+                        "from evidence_index and use MARKET_DATA IDs only for MARKET_PRICE or "
+                        "MARKET_TECHNICAL claims, XBRL_FACT IDs for numeric financial facts, "
+                        "and SEC_FILING IDs for textual SEC filing claims. Do not invent IDs. "
+                        "SEC_FILING claims must never cite XBRL_FACT or MARKET_DATA IDs. "
+                        "If the claim text is a CompanyFacts number, change its domain to "
+                        "FINANCIAL_FACT; otherwise change only the incompatible evidence ID. "
+                        "Do not explain. The complete allowed evidence routing list is:\n"
+                        + evidence_routing)
+                    setter = getattr(self.adapter, "set_call_context", None)
+                    if setter:
+                        context = dict(getattr(self.adapter, "call_context", {}))
+                        setter(**(context | {"repair_attempt": True,
+                                             "phase": f"RESEARCH_EVIDENCE_REPAIR_{repair_no + 1}"}))
+                    repaired = self.adapter.invoke_json(evidence_repair, "research")
+                    value, self.last_response = _construct_with_one_repair(
+                        self.adapter, ResearchAnalysis, repaired, evidence_repair,
+                        "research", fixed)
         value.provider, value.model = self.last_response.provider, self.last_response.model
         return value
 

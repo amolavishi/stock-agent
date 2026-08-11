@@ -36,3 +36,15 @@ Position Size는 결정하지 마세요. JSON 객체 하나만 반환하세요.
 "unresolved_points":[],"new_claims":[],"withdrawn_claims":[],"evidence_requests":[],
 "evidence_that_would_change_my_view":[""],"issue_updates":[],"consensus_ready":false}
 ```
+
+Evidence routing rule: claims about price, moving averages, volume, ATR, stage, or
+relative strength are MARKET_PRICE or MARKET_TECHNICAL claims and must cite the
+MARKET_DATA / MARKET_SNAPSHOT evidence ID present in evidence_index. Never cite a
+SEC filing ID for a market claim. SEC_FILING and XBRL_FACT IDs are for filing and
+financial/capital-structure claims only. Numeric CompanyFacts claims must cite the
+XBRL_FACT / COMPANYFACTS evidence ID, not an unrelated SEC filing ID.
+Use materiality MATERIAL, SUPPORTING, or NON_MATERIAL; SUPPORTING claims still
+require the full domain, claim_type, minimum_evidence_grade, and evidence IDs.
+The minimum_evidence_grade must not exceed the cited item's grade. For a C-grade
+partial market snapshot, either use minimum_evidence_grade C and state the data
+quality limitation, or do not make a material technical claim; never label it B.

@@ -20,5 +20,72 @@
     "mode": "WARN",
     "soft_cost_limit_usd": 0,
     "hard_cost_limit_usd": 0
+  },
+  "discovery": {
+    "enabled": false,
+    "shadow_mode": true,
+    "rule_version": "discovery_rules_v001",
+    "feature_version": "discovery_features_v001",
+    "universe": {
+      "min_price": 3.0,
+      "min_market_cap_usd": 300000000,
+      "min_adv20_usd": 10000000,
+      "allow_adr": false
+    },
+    "coverage": {
+      "market_min_pct": 95,
+      "feature_min_pct": 90,
+      "fundamental_enrichment_min_pct": 80,
+      "capital_preflight_min_pct": 80
+    },
+    "stage": {
+      "stage3_return_1d_pct": 25,
+      "stage3_return_5d_pct": 35,
+      "stage3_return_20d_pct": 50,
+      "stage3_distance_ma20_pct": 20,
+      "stage3_atr_multiple": 3
+    },
+    "shortlist": {
+      "python_top_n": 20,
+      "evidence_preflight_n": 8,
+      "deep_analysis_n": 3
+    },
+    "final_scorecard": {
+      "min_coverage_pct": 75,
+      "min_reward_risk": 1.5,
+      "strong_reward_risk": 3.0
+    },
+    "diversity": {
+      "max_same_sector": 2,
+      "max_same_theme": 2,
+      "max_same_size_bucket": 3
+    },
+    "cost": {
+      "max_quote_batches": 100,
+      "max_bar_calls": 500,
+      "max_companyfacts_calls": 300,
+      "max_sec_calls": 100,
+      "max_deep_analysis_candidates": 3,
+      "max_child_analysis_runs": 3,
+      "max_llm_calls_per_discovery": 0,
+      "max_actual_llm_calls": 0,
+      "max_llm_input_tokens": 0,
+      "max_llm_output_tokens": 0,
+      "max_estimated_cost_usd": 0
+    },
+    "bootstrap": {
+      "security_master_enrichment_path": "data/discovery/security_master_enrichment.json",
+      "raw_cache_dir": "data/cache/discovery/security_master/raw",
+      "normalized_cache_dir": "data/cache/discovery/security_master/normalized",
+      "sector_cache_dir": "data/cache/discovery/security_master/raw/sec_submissions",
+      "max_issuer_metadata_requests": 10000,
+      "fundamental_cache_dir": "data/cache/discovery/fundamentals",
+      "min_accepted": 1,
+      "min_identity_coverage_pct": 95,
+      "min_sector_coverage_pct": 90
+    },
+    "enrichment": {
+      "market_survivor_n": 300
+    }
   }
 }

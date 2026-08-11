@@ -100,19 +100,59 @@ class CommandInterpreter:
             parser_type=lightweight.get("parser_type", "LIGHTWEIGHT"),
             parser_confidence=confidence, missing_fields=sorted(set(missing)), status=status,
             analysis_intensity=intensity, intensity_explicit=intensity_explicit,
-            paper_action_enabled=intent in {"PAPER_BUY", "PAPER_SELL", "PAPER_TRIM"}, **policy)
+            paper_action_enabled=intent in {"PAPER_BUY", "PAPER_SELL", "PAPER_TRIM"},
+            requested_sector=lightweight.get("requested_sector", ""),
+            discovery_mode=lightweight.get("discovery_mode", ""),
+            shadow=bool(lightweight.get("shadow", True)),
+            discovery_run_id=str(lightweight.get("discovery_run_id", "") or ""),
+            promotion_limit=int(lightweight.get("promotion_limit", 0) or 0), **policy)
 
     def _lightweight(self, text: str) -> dict[str, Any] | None:
         explicit_symbols = [value for value in re.findall(
             r"(?<![A-Za-z0-9])[A-Z]{1,5}(?![A-Za-z0-9])", text)
             if value not in RESERVED_SYMBOLS]
         normalized = text.upper()
+        natural_promotion = bool(re.search(
+            r"(?:\b(?:JUST|RECENTLY)\s+)?DISCOVERY\s+(?:TOP|PROMOTE|DEEP)\b.*?"
+            r"(?:\d+\s*)?(?:CANDIDATES?\s*)?(?:DEEP\s*)?(?:ANALY[ZS]E|REVIEW|DETAILED)",
+            text, re.IGNORECASE | re.DOTALL))
+        natural_promotion = natural_promotion or bool(re.search(
+            r"\bDISCOVERY\s+(?:DEEP|PROMOTE)\b", text, re.IGNORECASE))
+        natural_promotion = natural_promotion or bool(re.search(
+            r"(?:방금\s*)?디스커버리\s+상위\s*\d+\s*개\s*(?:정밀분석|분석)해?",
+            text, re.IGNORECASE))
+        natural_promotion = natural_promotion or bool(re.search(
+            r"(?:방금\s*)?Discovery\s+상위\s*\d+\s*개\s*(?:정밀분석|분석)해?",
+            text, re.IGNORECASE))
         for alias, ticker in ALIASES.items():
             normalized = normalized.replace(alias.upper(), f" {ticker} ")
         tickers = []
         for candidate in re.findall(r"(?<![A-Z0-9])[A-Z]{1,5}(?![A-Z0-9])", normalized):
             if (candidate in KNOWN or candidate in explicit_symbols) and candidate not in tickers:
                 tickers.append(validate_ticker(candidate))
+        requested_sector = ""
+        if any(term in normalized for term in ("원전", "우라늄", "NUCLEAR", "URANIUM")):
+            requested_sector = "Nuclear & Uranium"
+        elif any(term in normalized for term in ("방산", "DEFENSE", "AEROSPACE")):
+            requested_sector = "Defense"
+        elif any(term in normalized for term in ("AI 데이터센터", "AI 병목", "AI BOTTLENECK", "DATACENTER")):
+            requested_sector = "AI Bottleneck"
+        discovery_report = any(term in normalized for term in ("DISCOVERY 결과", "DISCOVERY REPORT", "디스커버리 결과"))
+        discovery_status = any(term in normalized for term in ("DISCOVERY 진행", "DISCOVERY STATUS", "디스커버리 진행"))
+        discovery_cancel = any(term in normalized for term in ("DISCOVERY 취소", "DISCOVERY CANCEL", "디스커버리 취소"))
+        discovery_deep = ("DISCOVERY DEEP" in normalized or "DISCOVERY_DEEP_HANDOFF" in normalized or
+                          "DISCOVERY_PROMOTE" in normalized or
+                          "방금 디스커버리 상위" in normalized or "디스커버리 상위" in normalized)
+        discovery_deep = discovery_deep or natural_promotion
+        discovery_run_id_match = re.search(r"DISC_[0-9]{8}_[0-9]{6}_[A-F0-9]{8}", normalized)
+        discovery_run_id = discovery_run_id_match.group(0) if discovery_run_id_match else ""
+        natural_promotion_match = re.search(r"(?:TOP|상위)\s*([0-9]+)", text, re.IGNORECASE)
+        promotion_match = re.search(r"(?:TOP|상위)\s*([0-9]+)", normalized)
+        promotion_limit = int(promotion_match.group(1)) if promotion_match else 0
+        if natural_promotion_match:
+            promotion_limit = int(natural_promotion_match.group(1))
+        discovery_request = (requested_sector or any(term in normalized for term in
+                            ("시장 전체", "미국 시장", "전체 훑", "유망주 찾아", "종목 찾아")))
         focus = []
         for keyword, label in (("실적", "earnings"), ("계약", "contracts"),
                                ("정부", "government_contracts"), ("ATM", "atm"),
@@ -134,7 +174,19 @@ class CommandInterpreter:
             intensity, intensity_explicit = "NORMAL", True
         intent = None
         paper_command = "PAPER" in normalized or "페이퍼" in normalized or "모의" in normalized
-        if paper_command and "매수" in normalized:
+        if discovery_deep:
+            intent = Intent.DISCOVERY_DEEP_HANDOFF.value
+        elif discovery_report:
+            intent = Intent.DISCOVERY_REPORT.value
+        elif discovery_status:
+            intent = Intent.DISCOVERY_STATUS.value
+        elif discovery_cancel:
+            intent = Intent.DISCOVERY_CANCEL.value
+        elif discovery_request and requested_sector:
+            intent = Intent.DISCOVER_SECTOR.value
+        elif discovery_request:
+            intent = Intent.DISCOVER_MARKET.value
+        elif paper_command and "매수" in normalized:
             intent = "PAPER_BUY"
         elif paper_command and ("일부 매도" in normalized or "트림" in normalized):
             intent = "PAPER_TRIM"
@@ -163,13 +215,30 @@ class CommandInterpreter:
             intent = "REANALYZE"
         elif tickers and any(word in normalized for word in ("분석", "조사", "살", "들어가", "판단", "봐")):
             intent = "ANALYZE"
+        # Discovery-specific intents are terminal and must not be shadowed by
+        # the generic STATUS/REPORT/CANCEL lexicon above.
+        if discovery_deep:
+            intent = Intent.DISCOVERY_DEEP_HANDOFF.value
+        elif discovery_report:
+            intent = Intent.DISCOVERY_REPORT.value
+        elif discovery_status:
+            intent = Intent.DISCOVERY_STATUS.value
+        elif discovery_cancel:
+            intent = Intent.DISCOVERY_CANCEL.value
+        elif discovery_request and requested_sector:
+            intent = Intent.DISCOVER_SECTOR.value
+        elif discovery_request:
+            intent = Intent.DISCOVER_MARKET.value
         if not intent:
             return None
         return {"intent": intent, "tickers": tickers, "time_horizon": horizon,
                 "focus": focus, "comparison_mode": "PICK_ONE" if intent == "COMPARE" else "NONE",
-                "confidence": 0.98 if (tickers or intent in {"STATUS", "COST", "PORTFOLIO", "HELP"}) else 0.7,
+                "requested_sector": requested_sector,
+                "discovery_mode": "SECTOR" if intent == Intent.DISCOVER_SECTOR.value else ("MARKET" if intent == Intent.DISCOVER_MARKET.value else ""),
+                "confidence": 0.98 if (tickers or intent in {"STATUS", "COST", "PORTFOLIO", "HELP", Intent.DISCOVER_MARKET.value, Intent.DISCOVER_SECTOR.value, Intent.DISCOVERY_REPORT.value, Intent.DISCOVERY_STATUS.value, Intent.DISCOVERY_CANCEL.value, Intent.DISCOVERY_DEEP_HANDOFF.value}) else 0.7,
                 "missing_fields": [], "parser_type": "LIGHTWEIGHT",
-                "analysis_intensity": intensity, "intensity_explicit": intensity_explicit}
+                "analysis_intensity": intensity, "intensity_explicit": intensity_explicit,
+                "discovery_run_id": discovery_run_id, "promotion_limit": promotion_limit}
 
     @staticmethod
     def _validated_llm(payload: dict[str, Any]) -> dict[str, Any]:

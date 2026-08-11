@@ -173,7 +173,8 @@ class CapitalOntologyTests(unittest.TestCase):
             "CAPITAL", "0 warrants outstanding", normalized_fact="0 warrants outstanding",
         )]
         snapshot = build_capital_structure("INOD", {"normalized_facts": [], "derived": {}}, evidence)
-        self.assertEqual(snapshot.warrant_outstanding.status, "UNKNOWN")
+        self.assertEqual(snapshot.warrant_outstanding.status, "KNOWN")
+        self.assertFalse(snapshot.warrant_outstanding.value)
 
     def test_unrelated_issued_word_does_not_create_convertible(self):
         evidence = [EvidenceItem(
@@ -196,7 +197,8 @@ class CapitalOntologyTests(unittest.TestCase):
             )]
             snapshot = build_capital_structure(
                 "INOD", {"normalized_facts": [], "derived": {}}, evidence)
-            self.assertEqual(snapshot.convertible_outstanding.status, "UNKNOWN", text)
+            self.assertEqual(snapshot.convertible_outstanding.status, "KNOWN", text)
+            self.assertFalse(snapshot.convertible_outstanding.value, text)
 
     def test_convertible_authorized_offerable_and_outstanding_are_separate(self):
         authorized = "convertible notes are authorized but no longer outstanding"
@@ -207,7 +209,8 @@ class CapitalOntologyTests(unittest.TestCase):
         snapshot = build_capital_structure(
             "INOD", {"normalized_facts": [], "derived": {}}, evidence)
         self.assertEqual(snapshot.convertible_authorized.status, "KNOWN")
-        self.assertEqual(snapshot.convertible_outstanding.status, "UNKNOWN")
+        self.assertEqual(snapshot.convertible_outstanding.status, "KNOWN")
+        self.assertFalse(snapshot.convertible_outstanding.value)
 
         offerable = "we may offer convertible notes"
         evidence = [EvidenceItem(

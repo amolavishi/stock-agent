@@ -63,6 +63,40 @@ class RequestDispatcher:
 
     def execute(self, request: UserRequest) -> dict[str, Any]:
         intent = request.intent
+        if intent in {"DISCOVER_MARKET", "DISCOVER_SECTOR"}:
+            result = self.orchestrator.discover_request(request)
+            text = (f"[Discovery] `{result.run_id}`\n"
+                    f"status=`{result.status}` certification=`{result.certification_status}`\n"
+                    f"coverage=`{result.coverage.market_coverage_pct:.2f}%`\n"
+                    f"shortlist=`{len(result.candidates)}`")
+            if result.error_code:
+                text += f"\nreason=`{result.error_code}`"
+            if self.presenters and hasattr(self.presenters, "publish_discovery"):
+                self.presenters.publish_discovery(result)
+            return {"kind": "DISCOVERY", "result": result, "text": text}
+        if intent in {"DISCOVERY_DEEP_HANDOFF", "DISCOVERY_PROMOTE"}:
+            try:
+                result = self.orchestrator.promote_discovery_request(request)
+            except ValueError as exc:
+                return {"kind": "TEXT", "text": f"Discovery deep handoff blocked: `{exc}`"}
+            text = (f"[Discovery Deep] `{result.run_id}`\n"
+                    f"certified=`{len(result.certified_candidates)}` final=`{result.final_selection}`\n"
+                    f"actual_llm_calls=`{result.actual_llm_calls}`")
+            if self.presenters and hasattr(self.presenters, "publish_discovery"):
+                self.presenters.publish_discovery(result)
+            return {"kind": "DISCOVERY", "result": result, "text": text}
+        if intent == "DISCOVERY_REPORT":
+            result = self.orchestrator.discovery.latest_any()
+            if not result:
+                return {"kind": "TEXT", "text": "Discovery 보고서가 없습니다."}
+            return {"kind": "TEXT", "text": (f"Discovery `{result['run_id']}` "
+                    f"status=`{result['status']}` certification=`{result['certification_status']}`")}
+        if intent == "DISCOVERY_STATUS":
+            result = self.orchestrator.discovery.latest_any()
+            return {"kind": "TEXT", "text": "Discovery 실행 기록이 없습니다." if not result else
+                    f"Discovery `{result['run_id']}`: `{result['status']}"}
+        if intent == "DISCOVERY_CANCEL":
+            return {"kind": "TEXT", "text": "Discovery 취소 요청은 기록되지만, 현재 실행 중인 Discovery가 없습니다."}
         if intent in {"PAPER_BUY", "PAPER_SELL", "PAPER_TRIM"}:
             return self._execute_paper_command(request)
         if intent in {"ANALYZE", "REANALYZE"}:

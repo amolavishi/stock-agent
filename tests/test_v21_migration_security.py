@@ -27,9 +27,9 @@ class MigrationTests(unittest.TestCase):
                 self.assertEqual(connection.execute(
                     "SELECT MAX(version) FROM schema_migrations").fetchone()[0],
                     Database.SCHEMA_VERSION)
-                self.assertEqual(Database.SCHEMA_VERSION, 22)
+                self.assertEqual(Database.SCHEMA_VERSION, 26)
                 self.assertIsNotNone(connection.execute(
-                    "SELECT 1 FROM schema_migrations WHERE version=22").fetchone())
+                    "SELECT 1 FROM schema_migrations WHERE version=26").fetchone())
 
     def test_risk_provenance_migration_marks_legacy_values_unknown(self):
         with tempfile.TemporaryDirectory() as directory:

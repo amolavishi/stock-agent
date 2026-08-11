@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .schemas import EvidenceItem, now_iso
+from .readiness import classify_offering_event
 
 
 @dataclass
@@ -20,6 +21,17 @@ class ProvenancedValue:
 
 def unknown(method: str = "NOT_OBSERVED") -> ProvenancedValue:
     return ProvenancedValue(status="UNKNOWN", calculation_method=method)
+
+
+def semantic_state(item: ProvenancedValue) -> str:
+    """Normalize a provenanced boolean/numeric into the audit 3-state model."""
+    if item.status != "KNOWN":
+        return "UNKNOWN"
+    if item.value is False:
+        return "KNOWN_FALSE"
+    if isinstance(item.value, (int, float)) and not isinstance(item.value, bool) and item.value == 0:
+        return "KNOWN_FALSE"
+    return "KNOWN_TRUE"
 
 
 @dataclass
@@ -63,6 +75,7 @@ class CapitalStructureSnapshot:
     estimated_fields: list[str] = field(default_factory=list)
     evidence_ids: list[str] = field(default_factory=list)
     integrity_conflicts: list[dict[str, Any]] = field(default_factory=list)
+    offering_events: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def atm_capacity(self) -> float | None:
@@ -74,16 +87,20 @@ class CapitalStructureSnapshot:
 
     @property
     def warrants(self) -> str:
-        if self.warrant_outstanding.status == "KNOWN":
+        if semantic_state(self.warrant_outstanding) == "KNOWN_TRUE":
             return "OUTSTANDING"
+        if semantic_state(self.warrant_outstanding) == "KNOWN_FALSE":
+            return "NONE"
         if self.warrant_offerable.status == "KNOWN":
             return "OFFERABLE"
         return "UNKNOWN"
 
     @property
     def convertibles(self) -> str:
-        if self.convertible_outstanding.status == "KNOWN":
+        if semantic_state(self.convertible_outstanding) == "KNOWN_TRUE":
             return "OUTSTANDING"
+        if semantic_state(self.convertible_outstanding) == "KNOWN_FALSE":
+            return "NONE"
         if self.convertible_offerable.status == "KNOWN":
             return "OFFERABLE"
         if self.convertible_authorized.status == "KNOWN":
@@ -96,7 +113,27 @@ class CapitalStructureSnapshot:
         payload["recent_atm_usage"] = self.recent_atm_usage
         payload["warrants"] = self.warrants
         payload["convertibles"] = self.convertibles
+        payload["capital_overhang_status"] = self.capital_overhang_status
         return payload
+
+    @property
+    def capital_overhang_status(self) -> str:
+        states = {
+            "atm": semantic_state(self.atm_active),
+            "warrant": semantic_state(self.warrant_outstanding),
+            "convertible": semantic_state(self.convertible_outstanding),
+        }
+        if states["atm"] == "KNOWN_TRUE" or states["convertible"] == "KNOWN_TRUE":
+            return "HIGH_RISK"
+        if states["warrant"] == "KNOWN_TRUE":
+            return "REVIEW_REQUIRED"
+        if "UNKNOWN" in states.values():
+            return "UNKNOWN"
+        # A resale is secondary supply; it must not erase unknown issuer-side
+        # risk.  Reaching this branch means every material dimension is
+        # explicitly known false, so CLEAR is justified independently of the
+        # event label.
+        return "CLEAR"
 
 
 def _fact_value(facts: dict[str, Any], name: str) -> float | None:
@@ -164,9 +201,18 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
         text = (item.normalized_fact or item.summary or "").lower()
         if not text:
             continue
-        if any(term in text for term in ("at-the-market", "at the market", "equity distribution agreement")):
-            snapshot.atm_active = _provenance(item, True, "KNOWN", text,
-                                               "EXPLICIT_ATM_AGREEMENT_LANGUAGE", 95)
+        snapshot.offering_events.append(classify_offering_event(
+            item.document_type, text, item.accession, item.filed_at or item.published_at))
+        if any(term in text for term in ("at-the-market", "at the market", "equity distribution agreement")) or re.search(r"\batm\b", text, flags=re.I):
+            inactive_atm = re.search(
+                r"\b(?:no|without|not)\s+(?:an?\s+)?(?:active|current)\s+"
+                r"(?:at[- ]the[- ]market|atm)\s+(?:program|facility|agreement)\b|"
+                r"\b(?:at[- ]the[- ]market|atm)\s+(?:program|facility|agreement)\s+"
+                r"(?:was|has been)\s+(?:terminated|expired|ended)\b", text, flags=re.I)
+            snapshot.atm_active = _provenance(
+                item, False if inactive_atm else True, "KNOWN", text,
+                "EXPLICIT_NO_ACTIVE_ATM_WITHIN_FILING" if inactive_atm else
+                "EXPLICIT_ATM_AGREEMENT_LANGUAGE", 90 if inactive_atm else 95)
             snapshot.atm_last_verified_at = item.filed_at or item.published_at
             capacity = _money(text, r"(?:up to|aggregate offering price of up to)\s*\$\s*([0-9,.]+)\s*([bmk]?)")
             if capacity is not None:
@@ -199,13 +245,29 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
                                if outstanding else "")
         outstanding_count = (float(outstanding.group(1).replace(",", ""))
                              if outstanding else 0.0)
+        negative_warrant = re.search(
+            r"\b(?:no|not|never|without|zero|none)\s+(?:longer\s+)?"
+            r"(?:being\s+)?outstanding\s+warrants?\b|"
+            r"\b(?:warrants?)\b[^.]{0,100}\b(?:fully\s+exercised|redeemed|retired|"
+            r"terminated|expired|no\s+longer\s+outstanding)\b", text, flags=re.I)
+        if negative_warrant:
+            snapshot.warrant_outstanding = _provenance(
+                item, False, "KNOWN", negative_warrant.group(0),
+                "EXPLICIT_NO_LONGER_OUTSTANDING", 90)
         if outstanding and outstanding_count > 0 and not re.search(
                 r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
                 outstanding_context, flags=re.I) and not _negative_outstanding_context(
                     outstanding_context):
+            if not negative_warrant:
+                snapshot.warrant_outstanding = _provenance(
+                    item, float(outstanding.group(1).replace(",", "")), "KNOWN",
+                    outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
+        elif outstanding and outstanding_count == 0 and not re.search(
+                r"\b(?:may|could|up\s+to|authorized|offerable|offered)\b",
+                outstanding_context, flags=re.I):
             snapshot.warrant_outstanding = _provenance(
-                item, float(outstanding.group(1).replace(",", "")), "KNOWN",
-                outstanding.group(0), "EXPLICIT_OUTSTANDING_DISCLOSURE", 95)
+                item, False, "KNOWN", outstanding.group(0),
+                "EXPLICIT_ZERO_OUTSTANDING_DISCLOSURE", 95)
         for convertible in re.finditer(
                 r"\bconvertible\s+(?:notes?|debt|debentures?)\b", text):
             context = _capital_context(text, convertible.start(), convertible.end())
@@ -213,6 +275,9 @@ def build_capital_structure(ticker: str, facts: dict[str, Any],
                                                min(len(text), convertible.end() + 100))
             negative_outstanding = _negative_outstanding_context(context)
             if negative_outstanding:
+                snapshot.convertible_outstanding = _provenance(
+                    item, False, "KNOWN", subject_context,
+                    "EXPLICIT_NO_LONGER_OUTSTANDING", 90)
                 if re.search(r"\b(?:may|could)\s+(?:offer|issue)|"
                              r"\b(?:offerable|issuable)\b", subject_context, flags=re.I):
                     snapshot.convertible_offerable = _provenance(
@@ -278,8 +343,20 @@ def sector_from_sic(sic: str) -> str:
         value = int(sic)
     except (TypeError, ValueError):
         return "UNKNOWN"
+    # Deterministic SEC SIC range map. Specific ranges below override broad
+    # official SIC divisions because the tuple is evaluated in reverse. This
+    # is intentionally not a company-name or ticker classifier.
     ranges = (
-        (100, 999, "Natural Resources"), (2000, 3999, "Industrials/Manufacturing"),
+        (100, 999, "Natural Resources"), (1000, 1499, "Natural Resources"),
+        (1500, 1799, "Industrials/Manufacturing"),
+        (2000, 3999, "Industrials/Manufacturing"),
+        (4000, 4799, "Industrials/Manufacturing"),
+        (4800, 4899, "Communication Services"), (4900, 4999, "Utilities"),
+        (5000, 5199, "Consumer Discretionary"), (5200, 5999, "Consumer Discretionary"),
+        (6000, 6799, "Financials"),
+        (7000, 7299, "Consumer Services"), (7300, 7399, "Software/IT Services"),
+        (7400, 7999, "Consumer Services"), (8000, 8099, "Healthcare Services"),
+        (8100, 8999, "Consumer Services"), (9100, 9729, "Public Sector"),
         (3570, 3579, "Technology Hardware"), (3600, 3699, "Electronic Technology"),
         (4810, 4899, "Communication Services"), (4900, 4999, "Utilities"),
         (6000, 6799, "Financials"), (7370, 7379, "Software/IT Services"),

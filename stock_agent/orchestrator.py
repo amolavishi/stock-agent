@@ -4,8 +4,9 @@ import uuid
 import inspect
 import hashlib
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
+from pathlib import Path
 
 from .agents import MockCriticAgent, MockResearchAgent
 from .analysis_context import MarketRegimeContext, build_analysis_context
@@ -18,7 +19,9 @@ from .database import Database
 from .debate import DebateEngine
 from .delta import build_fresh_delta
 from .evidence import (LiveEdgarEvidenceCollector, MockEvidenceCollector,
-                       detect_evidence_conflicts, normalize_evidence_request)
+                       company_facts_evidence, detect_evidence_conflicts,
+                       market_snapshot_evidence,
+                       normalize_evidence_request)
 from .guard import FinalGuard
 from .hermes import (HermesCLIAdapter, HermesHTTPAdapter, HermesCancelledError,
                      default_hermes_executable)
@@ -35,10 +38,18 @@ from .risk import RiskEngine
 from .schemas import (CompanyState, Decision, EvidenceItem, InvestmentDecision,
                       RunManifest, SideEffectStatus, UserRequest, now_iso)
 from .sec import SECCompanyFactsProvider
+from .readiness import DataReadinessPreflight, periodic_filing_readiness
 from .security import redact_secrets
 from .toss import TossClient, TossMarketDataProvider
 from .trade_plan import build_heuristic_trade_plan
 from .validation import AnalysisIncompleteError, validate_ticker
+from .discovery.orchestrator import DiscoveryOrchestrator
+from .discovery.providers_live import (SECCompanyTickerSecurityMasterProvider,
+                                        SECDiscoveryCapitalPreflightProvider,
+                                        SECDiscoveryFundamentalProvider,
+                                        TossDiscoveryBenchmarkProvider,
+                                        TossDiscoveryMarketDataProvider,
+                                        ValidatedSecurityMasterProvider)
 
 
 class Orchestrator:
@@ -46,7 +57,9 @@ class Orchestrator:
 
     def __init__(self, config: dict, market_provider=None, evidence_collector=None,
                  researcher=None, critic=None, notifier=None, database=None,
-                 knowledge=None, chairman=None):
+                 knowledge=None, chairman=None, discovery_security_master=None,
+                 discovery_market_data=None, discovery_fundamental_provider=None,
+                 discovery_benchmark_provider=None, discovery_capital_provider=None):
         self.config = config
         db_config = config.get("database", {})
         self.db = database or Database(config["database_path"],
@@ -73,6 +86,73 @@ class Orchestrator:
         self.cost_guard = CostGuard(config.get("cost_guard", {}))
         self.debate_engine = DebateEngine()
         self.certification = CertificationEngine()
+        if discovery_market_data is None and isinstance(self.market_provider, TossMarketDataProvider):
+            discovery_market_data = TossDiscoveryMarketDataProvider(self.market_provider.client)
+        if discovery_benchmark_provider is None and isinstance(discovery_market_data, TossDiscoveryMarketDataProvider):
+            discovery_benchmark_provider = TossDiscoveryBenchmarkProvider(discovery_market_data)
+        if discovery_security_master is None and config.get("discovery", {}).get("enabled", False):
+            user_agent = config.get("credentials", {}).get("sec_user_agent", "")
+            if user_agent:
+                bootstrap = config.get("discovery", {}).get("bootstrap", {})
+                raw_cache_dir = Path(bootstrap.get(
+                    "raw_cache_dir", str(self.knowledge.root / "99_Cache" / "discovery" / "security_master" / "raw")))
+                listing_provider = SECCompanyTickerSecurityMasterProvider(
+                    user_agent, raw_cache_dir / "company_tickers_exchange.json")
+                enrichment_path = bootstrap.get("security_master_enrichment_path", "")
+                discovery_security_master = ValidatedSecurityMasterProvider(
+                    listing_provider, enrichment_path or None)
+        if discovery_fundamental_provider is None and config.get("discovery", {}).get("enabled", False):
+            user_agent = config.get("credentials", {}).get("sec_user_agent", "")
+            if user_agent:
+                cache_dir = config.get("discovery", {}).get("bootstrap", {}).get(
+                    "fundamental_cache_dir", str(self.knowledge.root / "99_Cache" / "discovery" / "fundamentals"))
+                discovery_fundamental_provider = SECDiscoveryFundamentalProvider(user_agent, cache_dir)
+        if discovery_capital_provider is None and config.get("discovery", {}).get("enabled", False):
+            user_agent = config.get("credentials", {}).get("sec_user_agent", "")
+            if user_agent:
+                cache_dir = config.get("discovery", {}).get("bootstrap", {}).get(
+                    "fundamental_cache_dir", str(self.knowledge.root / "99_Cache" / "discovery" / "sec"))
+                discovery_capital_provider = SECDiscoveryCapitalPreflightProvider(user_agent, cache_dir)
+        self.discovery = DiscoveryOrchestrator(
+            self.db, config, security_master=discovery_security_master,
+            market_data=discovery_market_data,
+            fundamental_provider=discovery_fundamental_provider,
+            capital_preflight_provider=discovery_capital_provider,
+            benchmark_provider=discovery_benchmark_provider or discovery_market_data,
+            handoff=self.analyze_request)
+
+    def discover_request(self, request: UserRequest):
+        """Run the additive deterministic Discovery layer.
+
+        Discovery is disabled by default and remains shadow/read-only until the
+        operator explicitly enables it in config.  It never mutates PAPER.
+        """
+        discovery_config = self.config.get("discovery", {})
+        if not discovery_config.get("enabled", False):
+            result = self.discovery._empty_result(
+                self.discovery._context_for_disabled(request), "BLOCKED_DATA", "DISCOVERY_DISABLED")
+            self.discovery.store.save_run(result, now_iso(), now_iso())
+            return result
+        mode = request.discovery_mode or ("SECTOR" if request.requested_sector else "MARKET")
+        return self.discovery.run(
+            mode=mode, requested_sector=request.requested_sector,
+            intensity=request.analysis_intensity,
+            shadow=bool(request.shadow or discovery_config.get("shadow_mode", True)),
+            request_id=request.request_id, request=request)
+
+    def promote_discovery_request(self, request: UserRequest):
+        """Explicit Discord promotion; never called by a normal scan."""
+        run_id = request.discovery_run_id
+        if not run_id:
+            import re
+            match = re.search(r"DISC_[0-9]{8}_[0-9]{6}_[A-F0-9]{8}", request.original_text.upper())
+            run_id = match.group(0) if match else ""
+        if not run_id:
+            latest = self.discovery.store.latest_any()
+            run_id = str(latest.get("run_id", "")) if latest else ""
+        if not run_id:
+            raise ValueError("DISCOVERY_SOURCE_RUN_NOT_FOUND")
+        return self.discovery.promote(run_id, request, request.promotion_limit)
 
     def _build_market_provider(self):
         provider = self.config.get("market_data_provider", self.config.get("provider", "mock"))
@@ -186,6 +266,7 @@ class Orchestrator:
                         item.exhibits_resolved = True
                 self.db.save_company_facts(ticker, normalized_facts)
                 self.db.save_company_fact_bundle(run_id, ticker, facts)
+                evidence.append(company_facts_evidence(ticker, facts))
                 capital_structure = build_capital_structure(ticker, facts, evidence)
                 external_atm_active = capital_structure.atm_active.value is True
                 if prior_state is not None and prior_state.atm_active != external_atm_active:
@@ -197,12 +278,62 @@ class Orchestrator:
                     })
                 state.atm_active = external_atm_active
                 self.db.save_capital_structure(run_id, ticker, capital_structure.to_dict())
+                evidence.append(market_snapshot_evidence(market))
             self._validate_evidence(evidence)
             if market.is_mock and selected_edgar_mode == "live":
                 raise AnalysisIncompleteError("live PAPER run received mock market data")
             self.db.save_snapshot(run_id, market)
             self.db.save_evidence(evidence, run_id)
             self.db.save_evidence_conflicts(run_id, detect_evidence_conflicts(evidence))
+            if selected_edgar_mode == "live":
+                readiness = DataReadinessPreflight().evaluate(evidence, fact_accessions,
+                                                              capital_structure.to_dict() if capital_structure else {})
+                for item in evidence:
+                    if item.document_type in {"10-Q", "10-K"}:
+                        item_readiness = periodic_filing_readiness(item, fact_accessions)
+                        item.readiness_state = item_readiness["state"]
+                        item.readiness_reason_codes = list(item_readiness["reason_codes"])
+                        item.numeric_claims_status = item_readiness["numeric_claims"]
+                        self.db.save_periodic_readiness(run_id, ticker, item, item_readiness)
+                for item, offering in zip(
+                    [item for item in evidence if item.document_type in {"S-1", "S-3", "S-8", "424B3", "424B5", "424B7", "424B8", "8-K"}],
+                    readiness.offerings):
+                    self.db.save_offering_semantic_event(run_id, ticker, item, offering)
+                if readiness.blocked:
+                    certification = self.certification.evaluate(
+                        run_id=run_id, debate_status="BLOCKED_DATA", market=market,
+                        evidence=evidence,
+                        capital_structure=capital_structure.to_dict() if capital_structure else {},
+                        live_mode=True, claim_validation_passed=False,
+                        system_integrity_ok=True, sizing_requested=False)
+                    reasons = list(dict.fromkeys(certification.reason_codes + list(readiness.reason_codes)))
+                    certification = replace(certification, reason_codes=reasons,
+                                            required_data_failures=list(dict.fromkeys(
+                                                certification.required_data_failures + list(readiness.reason_codes))))
+                    diagnostics = {"readiness_status": readiness.status,
+                                   "readiness_reason_codes": list(readiness.reason_codes),
+                                   "periodic": list(readiness.periodic),
+                                   "offerings": list(readiness.offerings),
+                                   "llm_calls": 0}
+                    report = render_uncertified_report(
+                        run_id, ticker, certification, asdict(request), market=market,
+                        evidence=evidence, usage={"llm_calls": 0})
+                    report_path = write_run_report(self.config.get("report_dir", "data/reports"),
+                                                   report, ticker, run_id)
+                    self.db.finalize_data_blocked_analysis(
+                        run_id, request.request_id, ticker, certification, str(report_path), diagnostics)
+                    self.db.record_knowledge_sync(run_id, ticker, "BLOCKED_DATA_READINESS",
+                                                  str(self.knowledge.root), ",".join(readiness.reason_codes))
+                    self.notifier.send(f"[NO_CERTIFIED_ACTION] {ticker} data={readiness.status} run_id={run_id}")
+                    return {"run_id": run_id, "market": market, "state": state,
+                            "evidence": evidence, "research": None, "critic": None,
+                            "risk": None, "chairman": None, "position_size": None,
+                            "manifest": None, "decision": None, "report_path": report_path,
+                            "market_regime": "UNKNOWN", "market_regime_context": None,
+                            "debate_rounds": 0, "debate_state": None,
+                            "consensus_result": None, "final_guard": None,
+                            "certification": certification, "request": request,
+                            "data_readiness": diagnostics}
             market_regime = self._market_regime(market)
             request_payload = asdict(request)
             prior_analysis = self.db.latest_certified_run(ticker)
