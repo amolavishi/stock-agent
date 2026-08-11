@@ -363,4 +363,518 @@ class SECSubmissionsMetadataProvider:
 def _record_from_row(row: dict[str, Any]) -> SecurityMasterRecord:
     return SecurityMasterRecord(
         security_id=str(row.get("security_id") or f"SEC-{row.get('cik', '')}-{row.get('ticker', '')}"),
-        tickãn=¶‰žËkºwµçmô°€‰½¹™±¥Ñ•ˆè…±Í”°(€€€€€€€€€€€€‰Í½ÕÉ•ÌˆèÉ½ÕÀ°(€€€€€€€ô(€€€€€€€™½È™±…œ¥¸%9Q%Qe}1Lè(€€€€€€€€€€€Ù…±Õ•Ì€ôíÉ½Ü¹•Ð ‰¥‘•¹Ñ¥Ñäˆ°íô¤¹•Ð¡™±…œ¤™½ÈÉ½Ü¥¸É½ÕÀ(€€€€€€€€€€€€€€€€€€€€€¥˜É½Ü¹•Ð ‰¥‘•¹Ñ¥Ñäˆ°íô¤¹•Ð¡™±…œ¤¥Ì¹½Ð9½¹•ô(€€€€€€€€€€€¥˜±•¸¡Ù…±Õ•Ì¤€ø€Äè(€€€€€€€€€€€€€€€µ•É•‘l‰¥‘•¹Ñ¥Ñä‰um™±…t€ô9½¹”(€€€€€€€€€€€€€€€µ•É•‘l‰½¹™±¥Ñ•‰t€ôQÉÕ”(€€€€€€€€€€€•±¥˜Ù…±Õ•Ìè(€€€€€€€€€€€€€€€µ•É•‘l‰¥‘•¹Ñ¥Ñä‰um™±…t€ô¹•áÐ¡¥Ñ•È¡Ù…±Õ•Ì¤¤(€€€€€€€€€€€•±Í”è(€€€€€€€€€€€€€€€µ•É•‘l‰¥‘•¹Ñ¥Ñä‰um™±…t€ô9½¹”(€€€€€€€€€€€µ•É•‘l‰ÁÉ½Ù•¹…¹”‰um™±…t€ômì(€€€€€€€€€€€€€€€€‰Í½ÕÉ”ˆèÉ½Ü¹•Ð ‰Í½ÕÉ”ˆ°€ˆˆ¤°€‰Í½ÕÉ•}ÕÉ°ˆèÉ½Ü¹•Ð ‰Í½ÕÉ•}ÕÉ°ˆ°€ˆˆ¤°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆèÉ½Ü¹•Ð ‰Í½ÕÉ•}…Í}½˜ˆ°€ˆˆ¤°(€€€€€€€€€€€€€€€€‰Ù…±Õ”ˆèÉ½Ü¹•Ð ‰¥‘•¹Ñ¥Ñäˆ°íô¤¹•Ð¡™±…œ¤°(€€€€€€€€€€€ô™½ÈÉ½Ü¥¸É½ÕÀ¥˜É½Ü¹•Ð ‰¥‘•¹Ñ¥Ñäˆ°íô¤¹•Ð¡™±…œ¤¥Ì¹½Ð9½¹•t(€€€€€€€…Ñ•½É¥•Ì€ôíÍÑÈ¡É½Ü¹•Ð ‰Í•ÕÉ¥Ñå}ÑåÁ”ˆ¤½È€‰U9-9=]8ˆ¤™½ÈÉ½Ü¥¸É½ÕÁô(€€€€€€€­¹½Ý¹}…Ñ•½É¥•Ì€ô…Ñ•½É¥•Ì€´ì‰U9-9=]8‰ô(€€€€€€€¥˜±•¸¡­¹½Ý¹}…Ñ•½É¥•Ì¤€ôô€Äè(€€€€€€€€€€€µ•É•‘l‰Í•ÕÉ¥Ñå}ÑåÁ”‰t€ô¹•áÐ¡¥Ñ•È¡­¹½Ý¹}…Ñ•½É¥•Ì¤¤(€€€€€€€•±¥˜±•¸¡­¹½Ý¹}…Ñ•½É¥•Ì¤€ø€Äè(€€€€€€€€€€€µ•É•‘l‰Í•ÕÉ¥Ñå}ÑåÁ”‰t€ô€‰U9-9=]8ˆ(€€€€€€€€€€€µ•É•‘l‰½¹™±¥Ñ•‰t€ôQÉÕ”(€€€€€€€É•ÑÕÉ¸µ•É•((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}É½Ý}™É½µ}‰…Í”¡‰…Í”èM•ÕÉ¥Ñå5…ÍÑ•ÉI•½É°µ•É•è‘¥ÑmÍÑÈ°¹åt°…Í}½˜èÍÑÈ¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€¥‘•¹Ñ¥Ñä€ôµ•É•‘l‰¥‘•¹Ñ¥Ñä‰t(€€€€€€€½¹™±¥Ð€ô‰½½°¡µ•É•¹•Ð ‰½¹™±¥Ñ•ˆ¤¤(€€€€€€€ÍÑ…Ñ•Ì€ôì(€€€€€€€€€€€™±…œèì‰ÍÑ…Ñ”ˆè€‰U9-9=]9}=91%Qˆ¥˜½¹™±¥Ð…¹¥‘•¹Ñ¥Ñä¹•Ð¡™±…œ¤¥Ì9½¹”(€€€€€€€€€€€€€€€€€€•±Í”€‰-9=]8ˆ¥˜¥‘•¹Ñ¥Ñä¹•Ð¡™±…œ¤¥Ì¹½Ð9½¹”•±Í”€‰U9-9=]9}9=Q}Y%1	1‰ô(€€€€€€€€€€€™½È™±…œ¥¸%9Q%Qe}1L(€€€€€€€ô(€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€‰Í•ÕÉ¥Ñå}¥ˆè‰…Í”¹Í•ÕÉ¥Ñå}¥°(€€€€€€€€€€€€‰Ñ¥­•Èˆè‰…Í”¹Ñ¥­•È°(€€€€€€€€€€€€‰½µÁ…¹å}¹…µ”ˆè‰…Í”¹½µÁ…¹å}¹…µ”°(€€€€€€€€€€€€‰¥¬ˆè}¹½Éµ…±¥Í•}¥¬¡‰…Í”¹¥¬¤°(€€€€€€€€€€€€‰•á¡…¹”ˆè}¹½Éµ…±¥Í•}•á¡…¹”¡‰…Í”¹•á¡…¹”¤°(€€€€€€€€€€€€‰½Õ¹ÑÉäˆè‰…Í”¹½Õ¹ÑÉä°(€€€€€€€€€€€€‰…Ñ¥Ù•}ÍÑ…ÑÕÌˆè‰…Í”¹…Ñ¥Ù•}ÍÑ…ÑÕÌ°(€€€€€€€€€€€€‰Í•ÕÉ¥Ñå}ÑåÁ”ˆèµ•É•¹•Ð ‰Í•ÕÉ¥Ñå}ÑåÁ”ˆ°€‰U9-9=]8ˆ¤°(€€€€€€€€€€€€¨©¥‘•¹Ñ¥Ñä°(€€€€€€€€€€€€‰Í•Ñ½É}…¹½¹¥…°ˆè€‰U9-9=]8ˆ°(€€€€€€€€€€€€‰¥¹‘ÕÍÑÉå}…¹½¹¥…°ˆè€‰U9-9=]8ˆ°(€€€€€€€€€€€€‰Í¥Œˆè€ˆˆ°(€€€€€€€€€€€€‰Í¥}‘•ÍÉ¥ÁÑ¥½¸ˆè€ˆˆ°(€€€€€€€€€€€€‰Í½ÕÉ”ˆè€‰M}%IQ=Id­9ME}QIHˆ°(€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆè…Í}½˜°(€€€€€€€€€€€€‰¥¹•ÍÑ•‘}…Ðˆè}¹½Ü ¤°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}ÍÑ…Ñ•ÌˆèÍÑ…Ñ•Ì°(€€€€€€€€€€€€‰ÁÉ½Ù•¹…¹”ˆèµ•É•¹•Ð ‰ÁÉ½Ù•¹…¹”ˆ°íô¤°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}½¹™±¥Ñ•ˆè½¹™±¥Ð°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}Í½ÕÉ•Ìˆèl(€€€€€€€€€€€€€€€ì‰Í½ÕÉ”ˆèÉ½Ü¹•Ð ‰Í½ÕÉ”ˆ°€ˆˆ¤°€‰Í½ÕÉ•}ÕÉ°ˆèÉ½Ü¹•Ð ‰Í½ÕÉ•}ÕÉ°ˆ°€ˆˆ¤°(€€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆèÉ½Ü¹•Ð ‰Í½ÕÉ•}…Í}½˜ˆ°€ˆˆ¥ô(€€€€€€€€€€€€€€€™½ÈÉ½Ü¥¸µ•É•¹•Ð ‰Í½ÕÉ•Ìˆ°mt¤(€€€€€€€€€€€t°(€€€€€€€ô((€€€‘•˜}µ•ÑÉ¥Ì¡Í•±˜°Á…å±½…è‘¥ÑmÍÑÈ°¹åt¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€É½ÝÌ€ôÁ…å±½…‘l‰É•½É‘Ì‰t(€€€€€€€É•½É‘Ì€ôm}É•½É‘}™É½µ}É½Ü¡É½Ü¤™½ÈÉ½Ü¥¸É½ÝÍt(€€€€€€€ÍÕÁÁ½ÉÑ•€ômÉ½Ü™½ÈÉ½Ü¥¸É•½É‘Ì¥˜É½Ü¹•á¡…¹”¹ÕÁÁ•È ¤¥¸Í•±˜¹ÍÕÁÁ½ÉÑ•‘}•á¡…¹•Ít(€€€€€€€¥‘•¹Ñ¥Ñå}­¹½Ý¹}±½‰…°€ôÍÕ´¡Í•±˜¹}¥‘•¹Ñ¥Ñå}­¹½Ý¸¡É½Ü¤™½ÈÉ½Ü¥¸É•½É‘Ì¤(€€€€€€€¥‘•¹Ñ¥Ñå}­¹½Ý¹}ÍÕÁÁ½ÉÑ•€ôÍÕ´¡Í•±˜¹}¥‘•¹Ñ¥Ñå}­¹½Ý¸¡É½Ü¤™½ÈÉ½Ü¥¸ÍÕÁÁ½ÉÑ•¤(€€€€€€€½¹™±¥Ñ}½Õ¹Ð€ôÍÕ´¡‰½½°¡É½Ü¹•Ð ‰¥‘•¹Ñ¥Ñå}½¹™±¥Ñ•ˆ¤¤™½ÈÉ½Ü¥¸É½ÝÌ¤(€€€€€€€¥¹Ñ•É¥Ñä€ôU¹¥Ù•ÉÍ•%¹Ñ•É¥Ñå¹¥¹”¡•á¡…¹•ÌõÍ•Ð¡Í•±˜¹ÍÕÁÁ½ÉÑ•‘}•á¡…¹•Ì¤¤¹‰Õ¥± (€€€€€€€€€€€%¹5•µ½ÉåM•ÕÉ¥Ñå5…ÍÑ•ÉAÉ½Ù¥‘•È¡É•½É‘Ì¤°Á…å±½…‘l‰Í½ÕÉ•}…Í}½˜‰t¤(€€€€€€€¡•…±Ñ €ô¥¹Ñ•É¥Ñål‰¡•…±Ñ ‰t(€€€€€€€…•ÁÑ•€ô¥¹Ñ•É¥Ñål‰É•½É‘Ì‰t(€€€€€€€Í•Ñ½É}­¹½Ý¸€ôÍÕ´¡É½Ü¹Í•Ñ½É}…¹½¹¥…°¹ÕÁÁ•È ¤€„ô€‰U9-9=]8ˆ™½ÈÉ½Ü¥¸…•ÁÑ•¤(€€€€€€€É…Ý}½Õ¹Ð€ô±•¸¡É•½É‘Ì¤(€€€€€€€ÍÕÁÁ½ÉÑ•‘}½Õ¹Ð€ô±•¸¡ÍÕÁÁ½ÉÑ•¤(€€€€€€€Í½ÕÉ•}µ…Ñ¡•Ì€ôÍÕ´¡‰½½°¡É½Ü¹•Ð ‰¥‘•¹Ñ¥Ñå}Í½ÕÉ•Ìˆ¤¤™½ÈÉ½Ü¥¸É½ÝÌ¤(€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€‰É…Ý}½Õ¹ÐˆèÉ…Ý}½Õ¹Ð°(€€€€€€€€€€€€‰ÍÕÁÁ½ÉÑ•‘}•á¡…¹•}Í½Á•}½Õ¹ÐˆèÍÕÁÁ½ÉÑ•‘}½Õ¹Ð°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}­¹½Ý¹}±½‰…±}½Õ¹Ðˆè¥‘•¹Ñ¥Ñå}­¹½Ý¹}±½‰…°°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}½Ù•É…•}±½‰…±}ÁÐˆèÉ½Õ¹¡¥‘•¹Ñ¥Ñå}­¹½Ý¹}±½‰…°€¼É…Ý}½Õ¹Ð€¨€ÄÀÀ°€Ð¤¥˜É…Ý}½Õ¹Ð•±Í”€À¸À°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}­¹½Ý¹}ÍÕÁÁ½ÉÑ•‘}½Õ¹Ðˆè¥‘•¹Ñ¥Ñå}­¹½Ý¹}ÍÕÁÁ½ÉÑ•°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}½Ù•É…•}ÍÕÁÁ½ÉÑ•‘}Í½Á•}ÁÐˆèÉ½Õ¹ (€€€€€€€€€€€€€€€¥‘•¹Ñ¥Ñå}­¹½Ý¹}ÍÕÁÁ½ÉÑ•€¼ÍÕÁÁ½ÉÑ•‘}½Õ¹Ð€¨€ÄÀÀ°€Ð¤¥˜ÍÕÁÁ½ÉÑ•‘}½Õ¹Ð•±Í”€À¸À°(€€€€€€€€€€€€Œ	…­Ý…Éµ½µÁ…Ñ¥‰±”…±¥…ÌìÉ•…‘¥¹•ÍÌÕÍ•ÌÑ¡”•áÁ±¥¥ÐÍÕÁÁ½ÉÑ•µ•ÑÉ¥Œ¸(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁÐˆèÉ½Õ¹¡¥‘•¹Ñ¥Ñå}­¹½Ý¹}±½‰…°€¼É…Ý}½Õ¹Ð€¨€ÄÀÀ°€Ð¤¥˜É…Ý}½Õ¹Ð•±Í”€À¸À°(€€€€€€€€€€€€‰…•ÁÑ•‘}½µµ½¹}ÍÑ½­}½Õ¹Ðˆè±•¸¡…•ÁÑ•¤°(€€€€€€€€€€€€‰Í•Ñ½É}­¹½Ý¹}½Õ¹ÐˆèÍ•Ñ½É}­¹½Ý¸°(€€€€€€€€€€€€‰Í•Ñ½É}½Ù•É…•}ÁÐˆèÉ½Õ¹¡Í•Ñ½É}­¹½Ý¸€¼±•¸¡…•ÁÑ•¤€¨€ÄÀÀ°€Ð¤¥˜…•ÁÑ••±Í”€À¸À°(€€€€€€€€€€€€‰Õ¹­¹½Ý¹}¥‘•¹Ñ¥Ñå}½Õ¹ÐˆèÍÕ´¡¹½ÐÍ•±˜¹}¥‘•¹Ñ¥Ñå}­¹½Ý¸¡É½Ü¤™½ÈÉ½Ü¥¸É•½É‘Ì¤°(€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}½¹™±¥Ñ}½Õ¹Ðˆè½¹™±¥Ñ}½Õ¹Ð°(€€€€€€€€€€€€‰‘ÕÁ±¥…Ñ•}½Õ¹Ðˆè¡•…±Ñ ¹•Ð ‰‘ÕÁ±¥…Ñ•}½Õ¹Ðˆ°€À¤°(€€€€€€€€€€€€‰É•©•Ñ¥½¹}½Õ¹ÑÌˆè‘¥Ð¡¥¹Ñ•É¥Ñä¹•Ð ‰É•©•Ñ•ˆ°íô¤¤°(€€€€€€€€€€€€‰Í½ÕÉ•}µ…Ñ¡•ÌˆèÍ½ÕÉ•}µ…Ñ¡•Ì°(€€€€€€€€€€€€‰Í½ÕÉ•}Õ¹µ…Ñ¡•ˆèÉ…Ý}½Õ¹Ð€´Í½ÕÉ•}µ…Ñ¡•Ì°(€€€€€€€€€€€€‰Í½ÕÉ•}½¹™±¥Ñ•ˆè½¹™±¥Ñ}½Õ¹Ð°(€€€€€€€€€€€€‰Í•ÕÉ¥Ñå}ÑåÁ•}Í½ÕÉ•}…±±Ìˆè¥¹Ð¡•Ñ…ÑÑÈ¡Í•±˜¹Í•ÕÉ¥Ñå}ÑåÁ•}ÁÉ½Ù¥‘•È°€‰…±±Ìˆ°€À¤½È€À¤°(€€€€€€€€€€€€‰Í•Ñ½É}Í½ÕÉ•}…±±Ìˆè¥¹Ð¡•Ñ…ÑÑÈ¡Í•±˜¹Í•Ñ½É}ÁÉ½Ù¥‘•È°€‰…±±Ìˆ°€À¤½È€À¤°(€€€€€€€€€€€€‰Í•Ñ½É}Í½ÕÉ•}™…¥±•ˆè¥¹Ð¡•Ñ…ÑÑÈ¡Í•±˜¹Í•Ñ½É}ÁÉ½Ù¥‘•È°€‰™…¥±•ˆ°€À¤½È€À¤°(€€€€€€€€€€€€‰Í•Ñ½É}Í½ÕÉ•}Õ¹µ…Ñ¡•ˆè¥¹Ð¡•Ñ…ÑÑÈ¡Í•±˜¹Í•Ñ½É}ÁÉ½Ù¥‘•È°€‰Õ¹µ…Ñ¡•ˆ°€À¤½È€À¤°(€€€€€€€€€€€€‰Í•ÕÉ¥Ñå}µ…ÍÑ•É}É•…‘äˆèÍ•±˜¹}É•…‘¥¹•ÍÍ}ÍÑ…ÑÕÌ¡ì(€€€€€€€€€€€€€€€€‰…•ÁÑ•‘}½µµ½¹}ÍÑ½­}½Õ¹Ðˆè±•¸¡…•ÁÑ•¤°(€€€€€€€€€€€€€€€€‰¥‘•¹Ñ¥Ñå}½Ù•É…•}ÍÕÁÁ½ÉÑ•‘}Í½Á•}ÁÐˆèÉ½Õ¹ (€€€€€€€€€€€€€€€€€€€¥‘•¹Ñ¥Ñå}­¹½Ý¹}ÍÕÁÁ½ÉÑ•€¼ÍÕÁÁ½ÉÑ•‘}½Õ¹Ð€¨€ÄÀÀ°€Ð¤¥˜ÍÕÁÁ½ÉÑ•‘}½Õ¹Ð•±Í”€À¸À°(€€€€€€€€€€€€€€€€‰Í•Ñ½É}½Ù•É…•}ÁÐˆèÉ½Õ¹¡Í•Ñ½É}­¹½Ý¸€¼±•¸¡…•ÁÑ•¤€¨€ÄÀÀ°€Ð¤¥˜…•ÁÑ••±Í”€À¸À°(€€€€€€€€€€€ô¤€ôô€‰MUI%Qe}5MQI}Idˆ°(€€€€€€€ô((€€€ÍÑ…Ñ¥µ•Ñ¡½(€€€‘•˜}¥‘•¹Ñ¥Ñå}­¹½Ý¸¡É•½ÉèM•ÕÉ¥Ñå5…ÍÑ•ÉI•½É¤€´ø‰½½°è(€€€€€€€É•ÑÕÉ¸…±°¡•Ñ…ÑÑÈ¡É•½É°™±…œ¤¥Ì¹½Ð9½¹”™½È™±…œ¥¸%9Q%Qe}1L¤((€€€‘•˜}É•…‘¥¹•ÍÍ}ÍÑ…ÑÕÌ¡Í•±˜°µ•ÑÉ¥Ìè‘¥ÑmÍÑÈ°¹åt¤€´øÍÑÈè(€€€€€€€¥˜€¡µ•ÑÉ¥Ì¹•Ð ‰…•ÁÑ•‘}½µµ½¹}ÍÑ½­}½Õ¹Ðˆ°€À¤€øôÍ•±˜¹µ¥¹}…•ÁÑ•(€€€€€€€€€€€€€€€…¹µ•ÑÉ¥Ì¹•Ð ‰¥‘•¹Ñ¥Ñå}½Ù•É…•}ÍÕÁÁ½ÉÑ•‘}Í½Á•}ÁÐˆ°€À¸À¤€øôÍ•±˜¹µ¥¹}¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁÐ(€€€€€€€€€€€€€€€…¹µ•ÑÉ¥Ì¹•Ð ‰Í•Ñ½É}½Ù•É…•}ÁÐˆ°€À¸À¤€øôÍ•±˜¹µ¥¹}Í•Ñ½É}½Ù•É…•}ÁÐ¤è(€€€€€€€€€€€É•ÑÕÉ¸€‰MUI%Qe}5MQI}Idˆ(€€€€€€€É•ÑÕÉ¸€‰MUI%Qe}5MQI}=YI}%9MU%%9Pˆ((€€€‘•˜}É•…‘¥¹•ÍÍ}É•…Í½¹Ì¡Í•±˜°µ•ÑÉ¥Ìè‘¥ÑmÍÑÈ°¹åt¤€´ø±¥ÍÑmÍÑÉtè(€€€€€€€É•…Í½¹Ì€ômt(€€€€€€€¥˜µ•ÑÉ¥Ì¹•Ð ‰…•ÁÑ•‘}½µµ½¹}ÍÑ½­}½Õ¹Ðˆ°€À¤€ðÍ•±˜¹µ¥¹}…•ÁÑ•è(€€€€€€€€€€€É•…Í½¹Ì¹…ÁÁ•¹ ‰MUI%Qe}5MQI}AQ}=U9Q}%9MU%%9Pˆ¤(€€€€€€€¥˜µ•ÑÉ¥Ì¹•Ð ‰¥‘•¹Ñ¥Ñå}½Ù•É…•}ÍÕÁÁ½ÉÑ•‘}Í½Á•}ÁÐˆ°€À¸À¤€ðÍ•±˜¹µ¥¹}¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁÐè(€€€€€€€€€€€É•…Í½¹Ì¹…ÁÁ•¹ ‰MUI%Qe}5MQI}=YI}%9MU%%9Pˆ¤(€€€€€€€¥˜µ•ÑÉ¥Ì¹•Ð ‰Í•Ñ½É}½Ù•É…•}ÁÐˆ°€À¸À¤€ðÍ•±˜¹µ¥¹}Í•Ñ½É}½Ù•É…•}ÁÐè(€€€€€€€€€€€É•…Í½¹Ì¹…ÁÁ•¹ ‰MUI%Qe}5MQI}MQ=I}=YI}%9MU%%9Pˆ¤(€€€€€€€É•ÑÕÉ¸É•…Í½¹Ì((€€€‘•˜}Í½ÕÉ•}µ•Ñ…‘…Ñ„¡Í•±˜°…Í}½˜èÍÑÈ¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€€‰‰…Í•±¥¹”ˆèì(€€€€€€€€€€€€€€€€‰Í½ÕÉ”ˆè€‰M}%IQ=Idˆ°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}ÕÉ°ˆè•Ñ…ÑÑÈ¡Í•±˜¹±¥ÍÑ¥¹}ÁÉ½Ù¥‘•È°€‰UI0ˆ°€ˆˆ¤°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆè…Í}½˜°(€€€€€€€€€€€ô°(€€€€€€€€€€€€‰Í•ÕÉ¥Ñå}ÑåÁ”ˆèì(€€€€€€€€€€€€€€€€‰Í½ÕÉ”ˆè€‰9ME}QII}Me5	=1}%IQ=Idˆ°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}ÕÉ±Ìˆè±¥ÍÐ¡•Ñ…ÑÑÈ¡Í•±˜¹Í•ÕÉ¥Ñå}ÑåÁ•}ÁÉ½Ù¥‘•È°€‰M=UILˆ°íô¤¹Ù…±Õ•Ì ¤¤°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆè…Í}½˜°(€€€€€€€€€€€ô°(€€€€€€€€€€€€‰Í•Ñ½Èˆèì(€€€€€€€€€€€€€€€€‰Í½ÕÉ”ˆè€‰M}MU	5%MM%=9Lˆ°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}ÕÉ°ˆè•Ñ…ÑÑÈ¡Í•±˜¹Í•Ñ½É}ÁÉ½Ù¥‘•È°€‰UI0ˆ°€ˆˆ¤¥˜Í•±˜¹Í•Ñ½É}ÁÉ½Ù¥‘•È•±Í”€ˆˆ°(€€€€€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆè…Í}½˜°(€€€€€€€€€€€ô°(€€€€€€€ô(()‘•˜Í¹…ÁÍ¡½Ñ}É•½É‘Ì¡Á…å±½…è‘¥ÑmÍÑÈ°¹åt¤€´ø±¥ÍÑmM•ÕÉ¥Ñå5…ÍÑ•ÉI•½É‘tè(€€€Ù…±¥‘…Ñ•}Í¹…ÁÍ¡½Ð¡Á…å±½…¤(€€€É•ÑÕÉ¸m}É•½É‘}™É½µ}É½Ü¡É½Ü¤™½ÈÉ½Ü¥¸Á…å±½…¹•Ð ‰É•½É‘Ìˆ°mt¥t(()‘•˜É•…‘}Í¹…ÁÍ¡½Ð¡Á…Ñ èÍÑÈðA…Ñ ¤€´ø‘¥ÑmÍÑÈ°¹åtð9½¹”è(€€€Ñ…É•Ð€ôA…Ñ ¡Á…Ñ ¤(€€€¥˜¹½ÐÑ…É•Ð¹¥Í}™¥±” ¤è(€€€€€€€É•ÑÕÉ¸9½¹”(€€€ÑÉäè(€€€€€€€Á…å±½…€ô©Í½¸¹±½…‘Ì¡Ñ…É•Ð¹É•…‘}Ñ•áÐ¡•¹½‘¥¹œô‰ÕÑ˜´àˆ¤¤(€€€•á•ÁÐ€¡=MÉÉ½È°U¹¥½‘••½‘•ÉÉ½È°©Í½¸¹)M=9•½‘•ÉÉ½È¤…Ì•áŒè(€€€€€€€É…¥Í”M•ÕÉ¥Ñå5…ÍÑ•É	½½ÑÍÑÉ…ÁÉÉ½È ‰MUI%Qe}5MQI}M9AM!=Q}U9I	1ˆ°ÍÑÈ¡•áŒ¤¤™É½´•áŒ(€€€Ù…±¥‘…Ñ•}Í¹…ÁÍ¡½Ð¡Á…å±½…¤(€€€Á…å±½…‘l‰Í¹…ÁÍ¡½Ñ}Á…Ñ ‰t€ôÍÑÈ¡Ñ…É•Ð¤(€€€Á…å±½…‘l‰Í¹…ÁÍ¡½Ñ}™¥±•}µÑ¥µ”‰t€ô‘…Ñ•Ñ¥µ”¹™É½µÑ¥µ•ÍÑ…µÀ¡Ñ…É•Ð¹ÍÑ…Ð ¤¹ÍÑ}µÑ¥µ”°Ñ¥µ•é½¹”¹ÕÑŒ¤¹¥Í½™½Éµ…Ð ¤(€€€É•ÑÕÉ¸Á…å±½…(()±…ÍÌM•ÕÉ¥Ñå5…ÍÑ•É	½½ÑÍÑÉ…ÁM•ÉÙ¥”è(€€€€ˆˆ‰½¹™¥ÕÉ…Ñ¥½¸µ‰½Õ¹Í•ÉÙ¥”ÕÍ•‰ä‰½½ÑÍÑÉ…À½É•™É•Í ½¡•…±Ñ 1$½µµ…¹‘Ì¸ˆˆˆ((€€€‘•˜}}¥¹¥Ñ}|¡Í•±˜°½¹™¥œè‘¥ÑmÍÑÈ°¹åt¤è(€€€€€€€Í•±˜¹½¹™¥œ€ô½¹™¥œ(€€€€€€€‘¥Í½Ù•Éä€ô½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤(€€€€€€€‰½½ÑÍÑÉ…À€ô‘¥Í½Ù•Éä¹•Ð ‰‰½½ÑÍÑÉ…Àˆ°íô¤(€€€€€€€É•‘•¹Ñ¥…±Ì€ô½¹™¥œ¹•Ð ‰É•‘•¹Ñ¥…±Ìˆ°íô¤(€€€€€€€Í•±˜¹ÕÍ•É}…•¹Ð€ôÍÑÈ¡É•‘•¹Ñ¥…±Ì¹•Ð ‰Í•}ÕÍ•É}…•¹Ðˆ°€ˆˆ¤¤(€€€€€€€Í•±˜¹Í¹…ÁÍ¡½Ñ}Á…Ñ €ôA…Ñ ¡‰½½ÑÍÑÉ…À¹•Ð ‰Í•ÕÉ¥Ñå}µ…ÍÑ•É}•¹É¥¡µ•¹Ñ}Á…Ñ ˆ°€ˆˆ¤¤(€€€€€€€Í•±˜¹É…Ý}…¡•}‘¥È€ôA…Ñ ¡‰½½ÑÍÑÉ…À¹•Ð ‰É…Ý}…¡•}‘¥Èˆ°€‰‘…Ñ„½…¡”½‘¥Í½Ù•Éä½Í•ÕÉ¥Ñå}µ…ÍÑ•È½É…Üˆ¤¤(€€€€€€€Í•±˜¹¹½Éµ…±¥é•‘}…¡•}‘¥È€ôA…Ñ ¡‰½½ÑÍÑÉ…À¹•Ð ‰¹½Éµ…±¥é•‘}…¡•}‘¥Èˆ°€‰‘…Ñ„½…¡”½‘¥Í½Ù•Éä½Í•ÕÉ¥Ñå}µ…ÍÑ•È½¹½Éµ…±¥é•ˆ¤¤(€€€€€€€Í•±˜¹Í•Ñ½É}…¡•}‘¥È€ôA…Ñ ¡‰½½ÑÍÑÉ…À¹•Ð ‰Í•Ñ½É}…¡•}‘¥Èˆ°ÍÑÈ¡Í•±˜¹É…Ý}…¡•}‘¥È€¼€‰Í•}ÍÕ‰µ¥ÍÍ¥½¹Ìˆ¤¤¤(€€€€€€€Í•±˜¹}‰Õ¥±‘•ÈèM•ÕÉ¥Ñå5…ÍÑ•É	½½ÑÍÑÉ…Á	Õ¥±‘•Èð9½¹”€ô9½¹”((€€€‘•˜‰Õ¥±‘•È¡Í•±˜¤€´øM•ÕÉ¥Ñå5…ÍÑ•É	½½ÑÍÑÉ…Á	Õ¥±‘•Èè(€€€€€€€¥˜Í•±˜¹}‰Õ¥±‘•È¥Ì¹½Ð9½¹”è(€€€€€€€€€€€É•ÑÕÉ¸Í•±˜¹}‰Õ¥±‘•È(€€€€€€€¥˜¹½ÐÍ•±˜¹ÕÍ•É}…•¹Ðè(€€€€€€€€€€€É…¥Í”M•ÕÉ¥Ñå5…ÍÑ•É	½½ÑÍÑÉ…ÁÉÉ½È ‰M}UMI}9Q}IEU%Iˆ¤(€€€€€€€™É½´€¹ÁÉ½Ù¥‘•ÉÍ}±¥Ù”¥µÁ½ÉÐM½µÁ…¹åQ¥­•ÉM•ÕÉ¥Ñå5…ÍÑ•ÉAÉ½Ù¥‘•È(€€€€€€€±¥ÍÑ¥¹œ€ôM½µÁ…¹åQ¥­•ÉM•ÕÉ¥Ñå5…ÍÑ•ÉAÉ½Ù¥‘•È (€€€€€€€€€€€Í•±˜¹ÕÍ•É}…•¹Ð°Í•±˜¹É…Ý}…¡•}‘¥È€¼€‰½µÁ…¹å}Ñ¥­•ÉÍ}•á¡…¹”¹©Í½¸ˆ¤(€€€€€€€Í•ÕÉ¥Ñå}ÑåÁ•Ì€ô9…Í‘…ÅQÉ…‘•ÉM•ÕÉ¥ÑåQåÁ•AÉ½Ù¥‘•È¡Í•±˜¹É…Ý}…¡•}‘¥È€¼€‰¹…Í‘…Å}ÑÉ…‘•Èˆ¤(€€€€€€€Í•Ñ½È€ôMMÕ‰µ¥ÍÍ¥½¹Í5•Ñ…‘…Ñ…AÉ½Ù¥‘•È (€€€€€€€€€€€Í•±˜¹ÕÍ•É}…•¹Ð°Í•±˜¹Í•Ñ½É}…¡•}‘¥È°(€€€€€€€€€€€µ…á}É•ÅÕ•ÍÑÌõ¥¹Ð¡Í•±˜¹½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤¹•Ð ‰‰½½ÑÍÑÉ…Àˆ°íô¤¹•Ð (€€€€€€€€€€€€€€€€‰µ…á}¥ÍÍÕ•É}µ•Ñ…‘…Ñ…}É•ÅÕ•ÍÑÌˆ°€ÄÁ|ÀÀÀ¤¤°(€€€€€€€€€€€µ…á}ÉÁÌõ™±½…Ð¡Í•±˜¹½¹™¥œ¹•Ð ‰Í•}µ…á}ÉÁÌˆ°€Ð¤¤¤(€€€€€€€‰½½ÑÍÑÉ…À€ôÍ•±˜¹½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤¹•Ð ‰‰½½ÑÍÑÉ…Àˆ°íô¤(€€€€€€€Í•±˜¹}‰Õ¥±‘•È€ôM•ÕÉ¥Ñå5…ÍÑ•É	½½ÑÍÑÉ…Á	Õ¥±‘•È (€€€€€€€€€€€±¥ÍÑ¥¹œ°Í•ÕÉ¥Ñå}ÑåÁ•Ì°Í•Ñ½È°Í•±˜¹Í¹…ÁÍ¡½Ñ}Á…Ñ °Í•±˜¹É…Ý}…¡•}‘¥È°(€€€€€€€€€€€Í•±˜¹¹½Éµ…±¥é•‘}…¡•}‘¥È°(€€€€€€€€€€€ÍÕÁÁ½ÉÑ•‘}•á¡…¹•ÌõU¹¥Ù•ÉÍ•%¹Ñ•É¥Ñå¹¥¹”¹U1Q}a!9L°(€€€€€€€€€€€µ¥¹}…•ÁÑ•õ¥¹Ð¡‰½½ÑÍÑÉ…À¹•Ð ‰µ¥¹}…•ÁÑ•ˆ°€Ä¤¤°(€€€€€€€€€€€µ¥¹}¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁÐõ™±½…Ð¡‰½½ÑÍÑÉ…À¹•Ð ‰µ¥¹}¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁÐˆ°€äÔ¤¤°(€€€€€€€€€€€µ¥¹}Í•Ñ½É}½Ù•É…•}ÁÐõ™±½…Ð¡‰½½ÑÍÑÉ…À¹•Ð ‰µ¥¹}Í•Ñ½É}½Ù•É…•}ÁÐˆ°€äÀ¤¤°(€€€€€€€€¤(€€€€€€€É•ÑÕÉ¸Í•±˜¹}‰Õ¥±‘•È((€€€‘•˜‰½½ÑÍÑÉ…À¡Í•±˜°É•™É•Í è‰½½°€ô…±Í”¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€É•ÑÕÉ¸Í•±˜¹‰Õ¥±‘•È ¤¹‰Õ¥±‘}…¹‘}ÝÉ¥Ñ”¡É•™É•Í õÉ•™É•Í ¤((€€€‘•˜¡•…±Ñ ¡Í•±˜°‘…Ñ…‰…Í”õ9½¹”¤€´ø‘¥ÑmÍÑÈ°¹åtè(€€€€€€€€ˆˆ‰I•…µ½¹±ä¡•…±Ñ è¥Ð¹•Ù•ÈÉ•…Ñ•Ì½ÈÉ•Á±…•Ì„Í¹…ÁÍ¡½Ð¸ˆˆˆ(€€€€€€€™É½´€¹¡•…±Ñ ¥µÁ½ÉÐ‰½½ÑÍÑÉ…Á}¡•…±Ñ ((€€€€€€€Á…å±½…€ôÉ•…‘}Í¹…ÁÍ¡½Ð¡Í•±˜¹Í¹…ÁÍ¡½Ñ}Á…Ñ ¤¥˜Í•±˜¹Í¹…ÁÍ¡½Ñ}Á…Ñ ¹¥Í}™¥±” ¤•±Í”9½¹”(€€€€€€€É•…Í½¹Ìè±¥ÍÑmÍÑÉt€ômt(€€€€€€€¥˜Á…å±½…¥Ì9½¹”è(€€€€€€€€€€€É•…Í½¹Ì¹…ÁÁ•¹ ‰MUI%Qe}5MQI}M9AM!=Q}5%MM%9ˆ¤(€€€€€€€€€€€É•½É‘Ì€ômt(€€€€€€€•±Í”è(€€€€€€€€€€€É•½É‘Ì€ôÍ¹…ÁÍ¡½Ñ}É•½É‘Ì¡Á…å±½…¤(€€€€€€€™É½´€¹Õ¹¥Ù•ÉÍ”¥µÁ½ÉÐ%¹5•µ½ÉåM•ÕÉ¥Ñå5…ÍÑ•ÉAÉ½Ù¥‘•È(€€€€€€€Í•ÕÉ¥Ñå}µ…ÍÑ•È€ô%¹5•µ½ÉåM•ÕÉ¥Ñå5…ÍÑ•ÉAÉ½Ù¥‘•È¡É•½É‘Ì¤((€€€€€€€É•‘•¹Ñ¥…±Ì€ôÍ•±˜¹½¹™¥œ¹•Ð ‰É•‘•¹Ñ¥…±Ìˆ°íô¤(€€€€€€€µ…É­•Ñ}‘…Ñ„€ô9½¹”(€€€€€€€‰•¹¡µ…É­}ÁÉ½Ù¥‘•È€ô9½¹”(€€€€€€€¥˜¹½ÐÉ•‘•¹Ñ¥…±Ì¹•Ð ‰Ñ½ÍÍ}…ÁÁ}­•äˆ¤½È¹½ÐÉ•‘•¹Ñ¥…±Ì¹•Ð ‰Ñ½ÍÍ}…ÁÁ}Í•É•Ðˆ¤è(€€€€€€€€€€€É•…Í½¹Ì¹…ÁÁ•¹ ‰Q=MM}I9Q%1M}IEU%Iˆ¤(€€€€€€€•±¥˜Í•±˜¹½¹™¥œ¹•Ð ‰µ…É­•Ñ}‘…Ñ…}ÁÉ½Ù¥‘•Èˆ°Í•±˜¹½¹™¥œ¹•Ð ‰ÁÉ½Ù¥‘•Èˆ°€‰Ñ½ÍÌˆ¤¤€ôô€‰Ñ½ÍÌˆè(€€€€€€€€€€€™É½´€¸¹Ñ½ÍÌ¥µÁ½ÉÐQ½ÍÍ±¥•¹Ð(€€€€€€€€€€€™É½´€¹ÁÉ½Ù¥‘•ÉÍ}±¥Ù”¥µÁ½ÉÐQ½ÍÍ¥Í½Ù•Éå	•¹¡µ…É­AÉ½Ù¥‘•È°Q½ÍÍ¥Í½Ù•Éå5…É­•Ñ…Ñ…AÉ½Ù¥‘•È(€€€€€€€€€€€µ…É­•Ñ}‘…Ñ„€ôQ½ÍÍ¥Í½Ù•Éå5…É­•Ñ…Ñ…AÉ½Ù¥‘•È (€€€€€€€€€€€€€€€Q½ÍÍ±¥•¹Ð¡É•‘•¹Ñ¥…±Ì¹•Ð ‰Ñ½ÍÍ}…ÁÁ}­•äˆ°€ˆˆ¤°É•‘•¹Ñ¥…±Ì¹•Ð ‰Ñ½ÍÍ}…ÁÁ}Í•É•Ðˆ°€ˆˆ¤¤¤(€€€€€€€€€€€‰•¹¡µ…É­}ÁÉ½Ù¥‘•È€ôQ½ÍÍ¥Í½Ù•Éå	•¹¡µ…É­AÉ½Ù¥‘•È¡µ…É­•Ñ}‘…Ñ„¤(€€€€€€€™Õ¹‘…µ•¹Ñ…°€ô9½¹”(€€€€€€€…Á¥Ñ…°€ô9½¹”(€€€€€€€¥˜¹½ÐÍ•±˜¹ÕÍ•É}…•¹Ðè(€€€€€€€€€€€É•…Í½¹Ì¹…ÁÁ•¹ ‰M}UMI}9Q}IEU%Iˆ¤(€€€€€€€•±¥˜É•½É‘Ìè(€€€€€€€€€€€™É½´€¹ÁÉ½Ù¥‘•ÉÍ}±¥Ù”¥µÁ½ÉÐM¥Í½Ù•Éå…Á¥Ñ…±AÉ•™±¥¡ÑAÉ½Ù¥‘•È°M¥Í½Ù•ÉåÕ¹‘…µ•¹Ñ…±AÉ½Ù¥‘•È(€€€€€€€€€€€…¡•}‘¥È€ôÍ•±˜¹½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤¹•Ð ‰‰½½ÑÍÑÉ…Àˆ°íô¤¹•Ð ‰™Õ¹‘…µ•¹Ñ…±}…¡•}‘¥Èˆ°€ˆˆ¤(€€€€€€€€€€€™Õ¹‘…µ•¹Ñ…°€ôM¥Í½Ù•ÉåÕ¹‘…µ•¹Ñ…±AÉ½Ù¥‘•È¡Í•±˜¹ÕÍ•É}…•¹Ð°…¡•}‘¥È¤(€€€€€€€€€€€…Á¥Ñ…°€ôM¥Í½Ù•Éå…Á¥Ñ…±AÉ•™±¥¡ÑAÉ½Ù¥‘•È¡Í•±˜¹ÕÍ•É}…•¹Ð°Í•±˜¹Í•Ñ½É}…¡•}‘¥È¤((€€€€€€€¥˜‘…Ñ…‰…Í”¥Ì9½¹”è(€€€€€€€€€€€™É½´€¸¹‘…Ñ…‰…Í”¥µÁ½ÉÐ…Ñ…‰…Í”(€€€€€€€€€€€‘…Ñ…‰…Í”€ô…Ñ…‰…Í”¡Í•±˜¹½¹™¥l‰‘…Ñ…‰…Í•}Á…Ñ ‰t¤(€€€€€€€É•ÍÕ±Ð€ô‰½½ÑÍÑÉ…Á}¡•…±Ñ  (€€€€€€€€€€€‘…Ñ…‰…Í”°Í•ÕÉ¥Ñå}µ…ÍÑ•È°µ…É­•Ñ}‘…Ñ„°‰•¹¡µ…É­}ÁÉ½Ù¥‘•È°(€€€€€€€€€€€µ¥¹}…•ÁÑ•õ¥¹Ð¡Í•±˜¹½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤¹•Ð ‰‰½½ÑÍÑÉ…Àˆ°íô¤¹•Ð ‰µ¥¹}…•ÁÑ•ˆ°€Ä¤¤°(€€€€€€€€€€€µ¥¹}¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁÐõ™±½…Ð¡Í•±˜¹½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤¹•Ð ‰‰½½ÑÍÑÉ…Àˆ°íô¤¹•Ð (€€€€€€€€€€€€€€€€‰µ¥¹}¥‘•¹Ñ¥Ñå}½Ù•É…•}ÁÐˆ°€äÔ¤¤°(€€€€€€€€€€€µ¥¹}Í•Ñ½É}½Ù•É…•}ÁÐõ™±½…Ð¡Í•±˜¹½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤¹•Ð ‰‰½½ÑÍÑÉ…Àˆ°íô¤¹•Ð (€€€€€€€€€€€€€€€€‰µ¥¹}Í•Ñ½É}½Ù•É…•}ÁÐˆ°€äÀ¤¤°(€€€€€€€€€€€™Õ¹‘…µ•¹Ñ…±}ÁÉ½Ù¥‘•Èõ™Õ¹‘…µ•¹Ñ…°°…Á¥Ñ…±}ÁÉ•™±¥¡Ñ}ÁÉ½Ù¥‘•Èõ…Á¥Ñ…°°(€€€€€€€€€€€µ…á}…ÑÕ…±}±±µ}…±±Ìõ¥¹Ð¡Í•±˜¹½¹™¥œ¹•Ð ‰‘¥Í½Ù•Éäˆ°íô¤¹•Ð ‰½ÍÐˆ°íô¤¹•Ð (€€€€€€€€€€€€€€€€‰µ…á}…ÑÕ…±}±±µ}…±±Ìˆ°€À¤½È€À¤°¥¹¥Ñ¥…±¥é•}‘…Ñ…‰…Í”õ…±Í”°(€€€€€€€€¤(€€€€€€€É•ÍÕ±Ñl‰Í¹…ÁÍ¡½Ð‰t€ôì(€€€€€€€€€€€€‰•á¥ÍÑÌˆèÁ…å±½…¥Ì¹½Ð9½¹”°(€€€€€€€€€€€€‰Á…Ñ ˆèÍÑÈ¡Í•±˜¹Í¹…ÁÍ¡½Ñ}Á…Ñ ¤°(€€€€€€€€€€€€‰•¹•É…Ñ•‘}…ÐˆèÁ…å±½…¹•Ð ‰•¹•É…Ñ•‘}…Ðˆ°€ˆˆ¤¥˜Á…å±½…•±Í”€ˆˆ°(€€€€€€€€€€€€‰Í½ÕÉ•}…Í}½˜ˆèÁ…å±½…¹•Ð ‰Í½ÕÉ•}…Í}½˜ˆ°€ˆˆ¤¥˜Á…å±½…•±Í”€ˆˆ°(€€€€€€€€€€€€‰µ•ÑÉ¥ÌˆèÁ…å±½…¹•Ð ‰µ•ÑÉ¥Ìˆ°íô¤¥˜Á…å±½…•±Í”íô°(€€€€€€€ô(€€€€€€€É•ÍÕ±Ñl‰É•‘•¹Ñ¥…±Ì‰t€ôì(€€€€€€€€€€€€‰Í•}ÕÍ•É}…•¹Ðˆè€‰Idˆ¥˜Í•±˜¹ÕÍ•É}…•¹Ð•±Í”€‰	1=-ˆ°(€€€€€€€€€€€€‰Ñ½ÍÌˆè€‰Idˆ¥˜É•‘•¹Ñ¥…±Ì¹•Ð ‰Ñ½ÍÍ}…ÁÁ}­•äˆ¤…¹É•‘•¹Ñ¥…±Ì¹•Ð ‰Ñ½ÍÍ}…ÁÁ}Í•É•Ðˆ¤•±Í”€‰	1=-ˆ°(€€€€€€€ô(€€€€€€€É•ÍÕ±Ñl‰É•…Í½¹}½‘•Ì‰t€ôÍ½ÉÑ•¡Í•Ð¡É•ÍÕ±Ð¹•Ð ‰É•…Í½¹}½‘•Ìˆ°mt¤€¬É•…Í½¹Ì¤¤(€€€€€€€¥˜É•ÍÕ±Ð¹•Ð ‰ÍÑ…ÑÕÌˆ¤€ôô€‰A}!9=}Idˆ…¹É•…Í½¹Ìè(€€€€€€€€€€€É•ÍÕ±Ñl‰ÍÑ…ÑÕÌ‰t€ô€‰	==QMQIA}IEU%Iˆ(€€€€€€€É•ÍÕ±Ñl‰½µµ…¹‰t€ô€‰‘¥Í½Ù•Éäµ¡•…±Ñ ˆ(€€€€€€€É•ÑÕÉ¸É•ÍÕ±Ð
+        ticker=str(row.get("ticker") or "").upper(),
+        company_name=str(row.get("company_name") or ""),
+        cik=_normalise_cik(row.get("cik")),
+        exchange=_normalise_exchange(row.get("exchange")),
+        security_type=str(row.get("security_type") or "UNKNOWN"),
+        country=str(row.get("country") or "US").upper(),
+        is_common_stock=row.get("is_common_stock"), is_etf=row.get("is_etf"),
+        is_unit=row.get("is_unit"), is_warrant=row.get("is_warrant"),
+        is_preferred=row.get("is_preferred"), is_adr=row.get("is_adr"),
+        sector_canonical=str(row.get("sector_canonical") or "UNKNOWN"),
+        industry_canonical=str(row.get("industry_canonical") or "UNKNOWN"),
+        sic=str(row.get("sic") or ""), sic_description=str(row.get("sic_description") or ""),
+        active_status=str(row.get("active_status") or "ACTIVE").upper(),
+        source=str(row.get("source") or "SEC_DIRECTORY+VALIDATED_ENRICHMENT"),
+        source_as_of=str(row.get("source_as_of") or ""),
+        ingested_at=str(row.get("ingested_at") or ""),
+        themes=tuple(row.get("themes") or ()),
+    )
+
+
+def validate_snapshot(payload: dict[str, Any]) -> None:
+    if not isinstance(payload, dict) or payload.get("schema_version") != "security_master_enrichment_v1":
+        raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_SCHEMA_INVALID")
+    rows = payload.get("records")
+    if not isinstance(rows, list):
+        raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_RECORDS_INVALID")
+    seen_tickers: set[str] = set()
+    seen_identity: set[tuple[str, str]] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_RECORD_INVALID")
+        ticker = str(row.get("ticker") or "").upper()
+        raw_cik = str(row.get("cik") or "").strip()
+        if raw_cik and (not raw_cik.isdigit() or len(raw_cik) > 10):
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_MALFORMED_CIK")
+        cik = _normalise_cik(raw_cik)
+        exchange = _normalise_exchange(row.get("exchange"))
+        if not ticker:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_EMPTY_TICKER")
+        if ticker in seen_tickers:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_DUPLICATE_TICKER")
+        seen_tickers.add(ticker)
+        if not exchange:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_INVALID_EXCHANGE")
+        if cik and not re.fullmatch(r"\d{10}", cik):
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_MALFORMED_CIK")
+        identity_key = (cik, ticker)
+        if identity_key in seen_identity:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_DUPLICATE_IDENTITY")
+        seen_identity.add(identity_key)
+        true_flags = []
+        states = row.get("identity_states") or {}
+        provenance = row.get("provenance") or {}
+        for flag in IDENTITY_FLAGS:
+            value = row.get(flag)
+            if value is not None and not isinstance(value, bool):
+                raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_BOOLEAN_INVALID")
+            if value is not None:
+                if value is True:
+                    true_flags.append(flag)
+                state = states.get(flag, {}) if isinstance(states, dict) else {}
+                source_rows = provenance.get(flag, []) if isinstance(provenance, dict) else []
+                if state.get("state") != "KNOWN" or not source_rows:
+                    raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_PROVENANCE_MISSING")
+        if len(true_flags) > 1:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_CONTRADICTORY_FLAGS")
+        if not str(row.get("sector_canonical") or "").strip():
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_SECTOR_INVALID")
+        security_type = str(row.get("security_type") or "UNKNOWN").upper()
+        if security_type not in SECURITY_TYPES:
+            raise SecurityMasterSnapshotValidationError("SECURITY_MASTER_SECURITY_TYPE_INVALID")
+
+
+class SecurityMasterBootstrapBuilder:
+    """Build and atomically publish a validated, provenance-bearing snapshot."""
+
+    def __init__(self, listing_provider, security_type_provider, sector_provider=None,
+                 snapshot_path: str | Path = "data/discovery/security_master_enrichment.json",
+                 raw_cache_dir: str | Path = "data/cache/discovery/security_master/raw",
+                 normalized_cache_dir: str | Path = "data/cache/discovery/security_master/normalized",
+                 supported_exchanges: Iterable[str] | None = None,
+                 min_accepted: int = 1, min_identity_coverage_pct: float = 95.0,
+                 min_sector_coverage_pct: float = 90.0):
+        self.listing_provider = listing_provider
+        self.security_type_provider = security_type_provider
+        self.sector_provider = sector_provider
+        self.snapshot_path = Path(snapshot_path)
+        self.raw_cache_dir = Path(raw_cache_dir)
+        self.normalized_cache_dir = Path(normalized_cache_dir)
+        self.supported_exchanges = {str(item).upper() for item in (supported_exchanges or SUPPORTED_EXCHANGES)}
+        self.min_accepted = int(min_accepted)
+        self.min_identity_coverage_pct = float(min_identity_coverage_pct)
+        self.min_sector_coverage_pct = float(min_sector_coverage_pct)
+
+    def build(self, as_of: str | None = None, refresh: bool = False) -> dict[str, Any]:
+        as_of = as_of or _now()
+        baseline = self._records(self.listing_provider, as_of, refresh)
+        if not baseline:
+            raise SecurityMasterBootstrapError("SEC_DIRECTORY_EMPTY")
+        type_rows = self._records(self.security_type_provider, as_of, refresh)
+        type_groups = self._join_type_rows(baseline, type_rows)
+
+        prelim_records = []
+        for base in baseline:
+            group = type_groups.get(base.ticker, [])
+            merged = self._merge_type_group(group)
+            prelim_records.append(self._row_from_base(base, merged, as_of))
+
+        sector_records = [
+            _record_from_row(row) for row in prelim_records
+            if row["exchange"] in self.supported_exchanges
+            and row.get("is_common_stock") is True
+            and all(row.get(flag) is not None for flag in IDENTITY_FLAGS)
+        ]
+        issuer_profiles: dict[str, dict[str, Any]] = {}
+        if self.sector_provider is not None and sector_records:
+            issuer_profiles = self.sector_provider.profiles(sector_records, refresh=refresh)
+
+        rows: list[dict[str, Any]] = []
+        for row in prelim_records:
+            profile = issuer_profiles.get(_normalise_cik(row.get("cik")), {})
+            sic = str(profile.get("sic") or row.get("sic") or "")
+            sic_description = str(profile.get("sic_description") or row.get("sic_description") or "")
+            sector = sector_from_sic(sic) if sic else "UNKNOWN"
+            if sector == "UNKNOWN" and row.get("sector_canonical") not in {None, "UNKNOWN"}:
+                sector = str(row["sector_canonical"])
+            row["sic"] = sic
+            row["sic_description"] = sic_description
+            row["sector_canonical"] = sector
+            row["industry_canonical"] = sector if sector != "UNKNOWN" else "UNKNOWN"
+            row.setdefault("provenance", {})["sector_canonical"] = ([{
+                "source": profile.get("source", "SEC_SUBMISSIONS"),
+                "source_url": profile.get("source_url", ""),
+                "source_as_of": profile.get("source_as_of", as_of),
+                "sic": sic,
+            }] if sic else [])
+            rows.append(row)
+
+        payload = {
+            "schema_version": "security_master_enrichment_v1",
+            "generated_at": _now(),
+            "source_as_of": as_of,
+            "records": rows,
+            "sources": self._source_metadata(as_of),
+        }
+        metrics = self._metrics(payload)
+        payload["metrics"] = metrics
+        validate_snapshot(payload)
+        return payload
+
+    def build_and_write(self, as_of: str | None = None, refresh: bool = False) -> dict[str, Any]:
+        payload = self.build(as_of=as_of, refresh=refresh)
+        # Re-validate at the publication boundary as well.  This protects the
+        # last-known-good snapshot even if a custom/injected builder returns a
+        # malformed payload.
+        validate_snapshot(payload)
+        normalized = self.normalized_cache_dir / "security_master_normalized.json"
+        normalized_payload = {
+            "schema_version": "security_master_normalized_v1",
+            "source": "SEC_DIRECTORY+NASDAQ_TRADER+SEC_SUBMISSIONS",
+            "fetched_at": payload["generated_at"],
+            "generated_at": payload["generated_at"],
+            "source_as_of": payload["source_as_of"],
+            "checksum": _checksum(json.dumps(payload["records"], sort_keys=True, ensure_ascii=False).encode("utf-8")),
+            "records": payload["records"],
+            "metrics": payload["metrics"],
+        }
+        _atomic_write_bytes(
+            normalized,
+            json.dumps(normalized_payload, ensure_ascii=False, sort_keys=True, indent=2).encode("utf-8"),
+        )
+        _atomic_write_bytes(
+            self.snapshot_path,
+            json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2).encode("utf-8"),
+        )
+        payload["snapshot_path"] = str(self.snapshot_path)
+        payload["normalized_cache_path"] = str(normalized)
+        payload["status"] = self._readiness_status(payload["metrics"])
+        payload["reason_codes"] = self._readiness_reasons(payload["metrics"])
+        return payload
+
+    def refresh(self, as_of: str | None = None) -> dict[str, Any]:
+        return self.build_and_write(as_of=as_of, refresh=True)
+
+    def _records(self, provider, as_of: str, refresh: bool) -> list[Any]:
+        try:
+            return list(provider.records(as_of, refresh=refresh))
+        except TypeError:
+            return list(provider.records(as_of))
+
+    @staticmethod
+    def _join_type_rows(baseline: list[SecurityMasterRecord], rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+        by_cik_ticker: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+        by_cik: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        by_ticker: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in rows:
+            ticker = str(row.get("ticker") or "").upper()
+            cik = _normalise_cik(row.get("cik"))
+            if not ticker:
+                continue
+            row = dict(row)
+            row["ticker"] = ticker
+            row["cik"] = cik
+            by_ticker[ticker].append(row)
+            if cik:
+                by_cik_ticker[(cik, ticker)].append(row)
+                by_cik[cik].append(row)
+        joined: dict[str, list[dict[str, Any]]] = {}
+        for base in baseline:
+            candidates = by_cik_ticker.get((_normalise_cik(base.cik), base.ticker), []) if base.cik else []
+            if not candidates and base.cik and len(by_cik.get(_normalise_cik(base.cik), [])) == 1:
+                candidate = by_cik[_normalise_cik(base.cik)][0]
+                if str(candidate.get("ticker") or "").upper() == base.ticker:
+                    candidates = [candidate]
+            if not candidates:
+                ticker_candidates = by_ticker.get(base.ticker, [])
+                # A source-provided CIK mismatch is an identity blocker, not
+                # permission to fall back to a ticker-only join.  A ticker-only
+                # join remains valid only when the source itself has no CIK.
+                if base.cik and any(row.get("cik") and row.get("cik") != _normalise_cik(base.cik)
+                                    for row in ticker_candidates):
+                    candidates = []
+                else:
+                    candidates = ticker_candidates
+            # Multiple official listings for the same symbol are allowed only
+            # when their type classifications agree; _merge_type_group handles
+            # conflicts as UNKNOWN rather than silently selecting one.
+            joined[base.ticker] = candidates
+        return joined
+
+    @staticmethod
+    def _merge_type_group(group: list[dict[str, Any]]) -> dict[str, Any]:
+        if not group:
+            return {"security_type": "UNKNOWN", "identity": {flag: None for flag in IDENTITY_FLAGS},
+                    "provenance": {flag: [] for flag in IDENTITY_FLAGS}, "conflicted": False,
+                    "sources": []}
+        merged: dict[str, Any] = {
+            "security_type": "UNKNOWN", "identity": {}, "provenance": {}, "conflicted": False,
+            "sources": group,
+        }
+        for flag in IDENTITY_FLAGS:
+            values = {row.get("identity", {}).get(flag) for row in group
+                      if row.get("identity", {}).get(flag) is not None}
+            if len(values) > 1:
+                merged["identity"][flag] = None
+                merged["conflicted"] = True
+            elif values:
+                merged["identity"][flag] = next(iter(values))
+            else:
+                merged["identity"][flag] = None
+            merged["provenance"][flag] = [{
+                "source": row.get("source", ""), "source_url": row.get("source_url", ""),
+                "source_as_of": row.get("source_as_of", ""),
+                "value": row.get("identity", {}).get(flag),
+            } for row in group if row.get("identity", {}).get(flag) is not None]
+        categories = {str(row.get("security_type") or "UNKNOWN") for row in group}
+        known_categories = categories - {"UNKNOWN"}
+        if len(known_categories) == 1:
+            merged["security_type"] = next(iter(known_categories))
+        elif len(known_categories) > 1:
+            merged["security_type"] = "UNKNOWN"
+            merged["conflicted"] = True
+        return merged
+
+    @staticmethod
+    def _row_from_base(base: SecurityMasterRecord, merged: dict[str, Any], as_of: str) -> dict[str, Any]:
+        identity = merged["identity"]
+        conflict = bool(merged.get("conflicted"))
+        states = {
+            flag: {"state": "UNKNOWN_CONFLICTED" if conflict and identity.get(flag) is None
+                   else "KNOWN" if identity.get(flag) is not None else "UNKNOWN_NOT_AVAILABLE"}
+            for flag in IDENTITY_FLAGS
+        }
+        return {
+            "security_id": base.security_id,
+            "ticker": base.ticker,
+            "company_name": base.company_name,
+            "cik": _normalise_cik(base.cik),
+            "exchange": _normalise_exchange(base.exchange),
+            "country": base.country,
+            "active_status": base.active_status,
+            "security_type": merged.get("security_type", "UNKNOWN"),
+            **identity,
+            "sector_canonical": "UNKNOWN",
+            "industry_canonical": "UNKNOWN",
+            "sic": "",
+            "sic_description": "",
+            "source": "SEC_DIRECTORY+NASDAQ_TRADER",
+            "source_as_of": as_of,
+            "ingested_at": _now(),
+            "identity_states": states,
+            "provenance": merged.get("provenance", {}),
+            "identity_conflicted": conflict,
+            "identity_sources": [
+                {"source": row.get("source", ""), "source_url": row.get("source_url", ""),
+                 "source_as_of": row.get("source_as_of", "")}
+                for row in merged.get("sources", [])
+            ],
+        }
+
+    def _metrics(self, payload: dict[str, Any]) -> dict[str, Any]:
+        rows = payload["records"]
+        records = [_record_from_row(row) for row in rows]
+        supported = [row for row in records if row.exchange.upper() in self.supported_exchanges]
+        identity_known_global = sum(self._identity_known(row) for row in records)
+        identity_known_supported = sum(self._identity_known(row) for row in supported)
+        conflict_count = sum(bool(row.get("identity_conflicted")) for row in rows)
+        integrity = UniverseIntegrityEngine(exchanges=set(self.supported_exchanges)).build(
+            InMemorySecurityMasterProvider(records), payload["source_as_of"])
+        health = integrity["health"]
+        accepted = integrity["records"]
+        sector_known = sum(row.sector_canonical.upper() != "UNKNOWN" for row in accepted)
+        raw_count = len(records)
+        supported_count = len(supported)
+        source_matches = sum(bool(row.get("identity_sources")) for row in rows)
+        return {
+            "raw_count": raw_count,
+            "supported_exchange_scope_count": supported_count,
+            "identity_known_global_count": identity_known_global,
+            "identity_coverage_global_pct": round(identity_known_global / raw_count * 100, 4) if raw_count else 0.0,
+            "identity_known_supported_count": identity_known_supported,
+            "identity_coverage_supported_scope_pct": round(
+                identity_known_supported / supported_count * 100, 4) if supported_count else 0.0,
+            # Backward-compatible alias; readiness uses the explicit supported metric.
+            "identity_coverage_pct": round(identity_known_global / raw_count * 100, 4) if raw_count else 0.0,
+            "accepted_common_stock_count": len(accepted),
+            "sector_known_count": sector_known,
+            "sector_coverage_pct": round(sector_known / len(accepted) * 100, 4) if accepted else 0.0,
+            "unknown_identity_count": sum(not self._identity_known(row) for row in records),
+            "identity_conflict_count": conflict_count,
+            "duplicate_count": health.get("duplicate_count", 0),
+            "rejection_counts": dict(integrity.get("rejected", {})),
+            "source_matches": source_matches,
+            "source_unmatched": raw_count - source_matches,
+            "source_conflicted": conflict_count,
+            "security_type_source_calls": int(getattr(self.security_type_provider, "calls", 0) or 0),
+            "sector_source_calls": int(getattr(self.sector_provider, "calls", 0) or 0),
+            "sector_source_failed": int(getattr(self.sector_provider, "failed", 0) or 0),
+            "sector_source_unmatched": int(getattr(self.sector_provider, "unmatched", 0) or 0),
+            "security_master_ready": self._readiness_status({
+                "accepted_common_stock_count": len(accepted),
+                "identity_coverage_supported_scope_pct": round(
+                    identity_known_supported / supported_count * 100, 4) if supported_count else 0.0,
+                "sector_coverage_pct": round(sector_known / len(accepted) * 100, 4) if accepted else 0.0,
+            }) == "SECURITY_MASTER_READY",
+        }
+
+    @staticmethod
+    def _identity_known(record: SecurityMasterRecord) -> bool:
+        return all(getattr(record, flag) is not None for flag in IDENTITY_FLAGS)
+
+    def _readiness_status(self, metrics: dict[str, Any]) -> str:
+        if (metrics.get("accepted_common_stock_count", 0) >= self.min_accepted
+                and metrics.get("identity_coverage_supported_scope_pct", 0.0) >= self.min_identity_coverage_pct
+                and metrics.get("sector_coverage_pct", 0.0) >= self.min_sector_coverage_pct):
+            return "SECURITY_MASTER_READY"
+        return "SECURITY_MASTER_COVERAGE_INSUFFICIENT"
+
+    def _readiness_reasons(self, metrics: dict[str, Any]) -> list[str]:
+        reasons = []
+        if metrics.get("accepted_common_stock_count", 0) < self.min_accepted:
+            reasons.append("SECURITY_MASTER_ACCEPTED_COUNT_INSUFFICIENT")
+        if metrics.get("identity_coverage_supported_scope_pct", 0.0) < self.min_identity_coverage_pct:
+            reasons.append("SECURITY_MASTER_COVERAGE_INSUFFICIENT")
+        if metrics.get("sector_coverage_pct", 0.0) < self.min_sector_coverage_pct:
+            reasons.append("SECURITY_MASTER_SECTOR_COVERAGE_INSUFFICIENT")
+        return reasons
+
+    def _source_metadata(self, as_of: str) -> dict[str, Any]:
+        return {
+            "baseline": {
+                "source": "SEC_DIRECTORY",
+                "source_url": getattr(self.listing_provider, "URL", ""),
+                "source_as_of": as_of,
+            },
+            "security_type": {
+                "source": "NASDAQ_TRADER_SYMBOL_DIRECTORY",
+                "source_urls": list(getattr(self.security_type_provider, "SOURCES", {}).values()),
+                "source_as_of": as_of,
+            },
+            "sector": {
+                "source": "SEC_SUBMISSIONS",
+                "source_url": getattr(self.sector_provider, "URL", "") if self.sector_provider else "",
+                "source_as_of": as_of,
+            },
+        }
+
+
+def snapshot_records(payload: dict[str, Any]) -> list[SecurityMasterRecord]:
+    validate_snapshot(payload)
+    return [_record_from_row(row) for row in payload.get("records", [])]
+
+
+def read_snapshot(path: str | Path) -> dict[str, Any] | None:
+    target = Path(path)
+    if not target.is_file():
+        return None
+    try:
+        payload = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SecurityMasterBootstrapError("SECURITY_MASTER_SNAPSHOT_UNREADABLE", str(exc)) from exc
+    validate_snapshot(payload)
+    payload["snapshot_path"] = str(target)
+    payload["snapshot_file_mtime"] = datetime.fromtimestamp(target.stat().st_mtime, timezone.utc).isoformat()
+    return payload
+
+
+class SecurityMasterBootstrapService:
+    """Configuration-bound service used by bootstrap/refresh/health CLI commands."""
+
+    def __init__(self, config: dict[str, Any]):
+        self.config = config
+        discovery = config.get("discovery", {})
+        bootstrap = discovery.get("bootstrap", {})
+        credentials = config.get("credentials", {})
+        self.user_agent = str(credentials.get("sec_user_agent", ""))
+        self.snapshot_path = Path(bootstrap.get("security_master_enrichment_path", ""))
+        self.raw_cache_dir = Path(bootstrap.get("raw_cache_dir", "data/cache/discovery/security_master/raw"))
+        self.normalized_cache_dir = Path(bootstrap.get("normalized_cache_dir", "data/cache/discovery/security_master/normalized"))
+        self.sector_cache_dir = Path(bootstrap.get("sector_cache_dir", str(self.raw_cache_dir / "sec_submissions")))
+        self._builder: SecurityMasterBootstrapBuilder | None = None
+
+    def builder(self) -> SecurityMasterBootstrapBuilder:
+        if self._builder is not None:
+            return self._builder
+        if not self.user_agent:
+            raise SecurityMasterBootstrapError("SEC_USER_AGENT_REQUIRED")
+        from .providers_live import SECCompanyTickerSecurityMasterProvider
+        listing = SECCompanyTickerSecurityMasterProvider(
+            self.user_agent, self.raw_cache_dir / "company_tickers_exchange.json")
+        security_types = NasdaqTraderSecurityTypeProvider(self.raw_cache_dir / "nasdaq_trader")
+        sector = SECSubmissionsMetadataProvider(
+            self.user_agent, self.sector_cache_dir,
+            max_requests=int(self.config.get("discovery", {}).get("bootstrap", {}).get(
+                "max_issuer_metadata_requests", 10_000)),
+            max_rps=float(self.config.get("sec_max_rps", 4)))
+        bootstrap = self.config.get("discovery", {}).get("bootstrap", {})
+        self._builder = SecurityMasterBootstrapBuilder(
+            listing, security_types, sector, self.snapshot_path, self.raw_cache_dir,
+            self.normalized_cache_dir,
+            supported_exchanges=UniverseIntegrityEngine.DEFAULT_EXCHANGES,
+            min_accepted=int(bootstrap.get("min_accepted", 1)),
+            min_identity_coverage_pct=float(bootstrap.get("min_identity_coverage_pct", 95)),
+            min_sector_coverage_pct=float(bootstrap.get("min_sector_coverage_pct", 90)),
+        )
+        return self._builder
+
+    def bootstrap(self, refresh: bool = False) -> dict[str, Any]:
+        return self.builder().build_and_write(refresh=refresh)
+
+    def health(self, database=None) -> dict[str, Any]:
+        """Read-only health: it never creates or replaces a snapshot."""
+        from .health import bootstrap_health
+
+        payload = read_snapshot(self.snapshot_path) if self.snapshot_path.is_file() else None
+        reasons: list[str] = []
+        if payload is None:
+            reasons.append("SECURITY_MASTER_SNAPSHOT_MISSING")
+            records = []
+        else:
+            records = snapshot_records(payload)
+        from .universe import InMemorySecurityMasterProvider
+        security_master = InMemorySecurityMasterProvider(records)
+
+        credentials = self.config.get("credentials", {})
+        market_data = None
+        benchmark_provider = None
+        if not credentials.get("toss_app_key") or not credentials.get("toss_app_secret"):
+            reasons.append("TOSS_CREDENTIALS_REQUIRED")
+        elif self.config.get("market_data_provider", self.config.get("provider", "toss")) == "toss":
+            from ..toss import TossClient
+            from .providers_live import TossDiscoveryBenchmarkProvider, TossDiscoveryMarketDataProvider
+            market_data = TossDiscoveryMarketDataProvider(
+                TossClient(credentials.get("toss_app_key", ""), credentials.get("toss_app_secret", "")))
+            benchmark_provider = TossDiscoveryBenchmarkProvider(market_data)
+        fundamental = None
+        capital = None
+        if not self.user_agent:
+            reasons.append("SEC_USER_AGENT_REQUIRED")
+        elif records:
+            from .providers_live import SECDiscoveryCapitalPreflightProvider, SECDiscoveryFundamentalProvider
+            cache_dir = self.config.get("discovery", {}).get("bootstrap", {}).get("fundamental_cache_dir", "")
+            fundamental = SECDiscoveryFundamentalProvider(self.user_agent, cache_dir)
+            capital = SECDiscoveryCapitalPreflightProvider(self.user_agent, self.sector_cache_dir)
+
+        if database is None:
+            from ..database import Database
+            database = Database(self.config["database_path"])
+        result = bootstrap_health(
+            database, security_master, market_data, benchmark_provider,
+            min_accepted=int(self.config.get("discovery", {}).get("bootstrap", {}).get("min_accepted", 1)),
+            min_identity_coverage_pct=float(self.config.get("discovery", {}).get("bootstrap", {}).get(
+                "min_identity_coverage_pct", 95)),
+            min_sector_coverage_pct=float(self.config.get("discovery", {}).get("bootstrap", {}).get(
+                "min_sector_coverage_pct", 90)),
+            fundamental_provider=fundamental, capital_preflight_provider=capital,
+            max_actual_llm_calls=int(self.config.get("discovery", {}).get("cost", {}).get(
+                "max_actual_llm_calls", 0) or 0), initialize_database=False,
+        )
+        result["snapshot"] = {
+            "exists": payload is not None,
+            "path": str(self.snapshot_path),
+            "generated_at": payload.get("generated_at", "") if payload else "",
+            "source_as_of": payload.get("source_as_of", "") if payload else "",
+            "metrics": payload.get("metrics", {}) if payload else {},
+        }
+        result["credentials"] = {
+            "sec_user_agent": "READY" if self.user_agent else "BLOCKED",
+            "toss": "READY" if credentials.get("toss_app_key") and credentials.get("toss_app_secret") else "BLOCKED",
+        }
+        result["reason_codes"] = sorted(set(result.get("reason_codes", []) + reasons))
+        if result.get("status") == "DEEP_HANDOFF_READY" and reasons:
+            result["status"] = "BOOTSTRAP_REQUIRED"
+        result["command"] = "discovery-health"
+        return result
