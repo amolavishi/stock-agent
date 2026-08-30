@@ -1,0 +1,19 @@
+{
+  "real_graph_expected": "PASS",
+  "synthetic_negative_cases": [
+    {
+      "case_id": "research_cannot_require_execution_risk",
+      "consumer_stage": "DEEP_RESEARCH",
+      "producer_stage": "EXECUTION_RISK",
+      "expected": "FAIL"
+    },
+    {
+      "case_id": "hunt_only_cannot_require_risk_engine",
+      "run_mode": "HUNT_ONLY",
+      "forbidden_dependency": "RiskEngine",
+      "expected": "FAIL"
+    }
+  ]
+}
+
+

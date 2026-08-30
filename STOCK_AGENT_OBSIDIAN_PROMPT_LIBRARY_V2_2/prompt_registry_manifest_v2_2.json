@@ -1,0 +1,2296 @@
+{
+  "$schema": "prompt-registry-manifest-2.2",
+  "library_version": "2.2.0",
+  "rule_contract_version": "2.0",
+  "architecture_compatibility": "Stock Agent Architecture v1.1",
+  "architecture_source_sha256": "03a7863a49ebe53f7c58ee5d4e90fe1ac5cd4b55c84acb26dfeed84215005cd4",
+  "metadata_schema": "SCHEMAS/prompt_metadata_schema_v2_2.json",
+  "output_schema_registry": "SCHEMAS/output_schema_registry_v2_2.json",
+  "output_schema_registry_hash": "e5284c53f399be9053a336f4c33debcb86ca32571a27798148a87bd0aaa15493",
+  "generated_at": "2026-08-17T22:00:00+09:00",
+  "runtime_contracts": [
+    "RUNTIME_CONTRACTS/architecture_runtime_contract_v1_1.json",
+    "RUNTIME_CONTRACTS/decision_contract_v2.json"
+  ],
+  "prompts": [
+    {
+      "file": "ADVERSARIAL/consensus_revalidation.md",
+      "content_hash": "976d75b304defc78e65d575a9e2ab13dca1b6ad586e9765ced107c526cc9b5ee",
+      "prompt_id": "adversarial.consensus_revalidation",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "ADVERSARIAL",
+      "category": "audit",
+      "role": "consensus_reviewer",
+      "compatible_agents": [
+        "adversarial_reviewer",
+        "final_synthesis_agent"
+      ],
+      "task_tags": [
+        "consensus",
+        "critical-issues",
+        "evidence-refresh"
+      ],
+      "required_rule_packs": [
+        "00",
+        "05",
+        "09",
+        "10"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "issue_ledger",
+        "research_result",
+        "critic_result",
+        "evidence_receipts"
+      ],
+      "optional_inputs": [
+        "fresh_evidence_delta",
+        "capital_structure_snapshot",
+        "context_manifest_receipts",
+        "dependency_receipts"
+      ],
+      "output_schema": "ConsensusRevalidationResult",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "issue ledger + both positions + evidence receipts; bounded history",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Architecture v1.1 consensus readiness의 독립 분석. 다수결·stored consensus_ready 재사용을 금지하며 최종 readiness는 Python live query가 계산.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "AUDIT",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_ConsensusRevalidationResult"
+    },
+    {
+      "file": "ADVERSARIAL/evidence_contradiction_audit.md",
+      "content_hash": "eeb1f58d676edac8173c45044633e081c48535586b797cbaa5137409f5cfa821",
+      "prompt_id": "adversarial.evidence_contradiction_audit",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "ADVERSARIAL",
+      "category": "audit",
+      "role": "adversarial_reviewer",
+      "compatible_agents": [
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "audit",
+        "evidence-contradiction-audit"
+      ],
+      "required_rule_packs": [
+        "00",
+        "05",
+        "09",
+        "10"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "target_analysis",
+        "evidence_packet",
+        "issue_ledger"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot",
+        "valuation_result"
+      ],
+      "output_schema": "AdversarialAuditResult",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "independent evidence packet; minimize exposure to rhetorical conclusion",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "서로 충돌하는 증거의 정의·기간·출처·문맥을 독립적으로 검증한다. Python Python Python Python Python Python Python Python GateDecision은 Python이 소유한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "AUDIT",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_AdversarialAuditResult"
+    },
+    {
+      "file": "ADVERSARIAL/standard_audit.md",
+      "content_hash": "f9a7f06e2e2b5f41675036745723f704a02fc70ffbe8d75ca4163d442954da5c",
+      "prompt_id": "adversarial.standard_audit",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "ADVERSARIAL",
+      "category": "audit",
+      "role": "adversarial_reviewer",
+      "compatible_agents": [
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "audit",
+        "standard-audit"
+      ],
+      "required_rule_packs": [
+        "00",
+        "05",
+        "09",
+        "10"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "target_analysis",
+        "evidence_packet",
+        "issue_ledger"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot",
+        "valuation_result"
+      ],
+      "output_schema": "AdversarialAuditResult",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "independent evidence packet; minimize exposure to rhetorical conclusion",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "원 분석의 사실·논리·누락을 독립적으로 검증한다. Python Python Python Python Python Python Python Python GateDecision은 Python이 소유한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "AUDIT",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_AdversarialAuditResult"
+    },
+    {
+      "file": "ADVERSARIAL/strong_thesis_destruction.md",
+      "content_hash": "cacc20e0830946acc4e16689da1f70bd94b5fdfb2d6c5c15cba4b8408243df1f",
+      "prompt_id": "adversarial.strong_thesis_destruction",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "ADVERSARIAL",
+      "category": "audit",
+      "role": "adversarial_reviewer",
+      "compatible_agents": [
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "audit",
+        "strong-thesis-destruction"
+      ],
+      "required_rule_packs": [
+        "00",
+        "05",
+        "09",
+        "10"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "target_analysis",
+        "evidence_packet",
+        "issue_ledger"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot",
+        "valuation_result"
+      ],
+      "output_schema": "AdversarialAuditResult",
+      "incompatible_with": [],
+      "recommended_model_class": "MAX_REASONING",
+      "context_policy": "independent evidence packet; minimize exposure to rhetorical conclusion",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "가장 강한 Bull thesis를 최대 강도로 파괴 시도한다. Python Python Python Python Python Python Python Python GateDecision은 Python이 소유한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "AUDIT",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_AdversarialAuditResult"
+    },
+    {
+      "file": "CAPABILITIES/accounting_quality.md",
+      "content_hash": "18a7808cdf3a9b9115f0c7ed55df172f1c813af840f6cfab539cf78c06b80db4",
+      "prompt_id": "capability.accounting_quality",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "accounting-quality"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_facts",
+        "financial_statements",
+        "filing_notes"
+      ],
+      "optional_inputs": [],
+      "output_schema": "AccountingQualityAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "보고된 성장·수익성이 회계 정의·기간·조정항목 때문에 왜곡되지 않았는지 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_AccountingQualityAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/capital_structure_forensics.md",
+      "content_hash": "3ff1c63b072c7d72a422baf2bae1a56f3426b2e07efc466276853cd770f44b85",
+      "prompt_id": "capability.capital_structure_forensics",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "capital-structure-forensics"
+      ],
+      "required_rule_packs": [
+        "00",
+        "05",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "capital_structure_snapshot",
+        "sec_evidence"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_prescreen_result",
+        "filing_cutoff_receipt"
+      ],
+      "output_schema": "CapitalStructureForensicAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Python-normalized CapitalStructureSnapshot과 SEC evidence를 해석하는 Full SEC Forensic. CapitalStructureGate 권위는 Python에 유지.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "FULL_SEC",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_CapitalStructureForensicAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/catalyst_expectation_gap.md",
+      "content_hash": "e16a4a84f85a290c540bd1c96f53ce9d06ac63198876837bcdff5488d91f545a",
+      "prompt_id": "capability.catalyst_expectation_gap",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "catalyst-expectation-gap"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "04",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "research_context",
+        "catalyst_evidence"
+      ],
+      "optional_inputs": [
+        "market_expectation_data",
+        "consensus_snapshot",
+        "estimate_revision_snapshot",
+        "implied_move",
+        "short_interest",
+        "historical_event_reactions"
+      ],
+      "output_schema": "CatalystExpectationGapAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "왜 지금인가·왜 아직 안 올랐는가·무엇이 시장을 깨우는가를 하나의 재평가 메커니즘으로 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_CatalystExpectationGapAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/contract_backlog_quality.md",
+      "content_hash": "9b501c3cbec04adad0932b1d6cfa5840f9e9dc0278a99198dc3835ba2972d306",
+      "prompt_id": "capability.contract_backlog_quality",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "contract-backlog-quality"
+      ],
+      "required_rule_packs": [
+        "00",
+        "04",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "contract_evidence",
+        "company_facts"
+      ],
+      "optional_inputs": [
+        "customer_evidence"
+      ],
+      "output_schema": "ContractBacklogQualityAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "계약·수주·backlog/RPO가 실제 주주경제 가치로 전환되는지를 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_ContractBacklogQualityAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/directional_probability_hypothesis.md",
+      "content_hash": "b588cd9e00c33b79d651835e1f3d913f0297f1290224febe85493b998d50b6f3",
+      "prompt_id": "capability.directional_probability_hypothesis",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "directional_probability_analyst",
+      "compatible_agents": [
+        "stock_researcher",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "probability-hypothesis",
+        "scenario-analysis",
+        "research-time"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "04",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "scenario_evidence",
+        "valuation_scenarios"
+      ],
+      "optional_inputs": [
+        "catalyst_distribution",
+        "failure_scenarios"
+      ],
+      "output_schema": "DirectionalProbabilityHypothesisV2",
+      "output_example_case": "positive_DirectionalProbabilityHypothesisV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "Bear/Base/Bull research evidence only; no Risk Engine or portfolio context",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Risk Engine 없이 Research-time 방향성 확률 가설과 swing factor를 구조화한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "conditional_dependencies": {},
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ]
+    },
+    {
+      "file": "CAPABILITIES/entry_readiness_execution_structure.md",
+      "content_hash": "6729da38dd4fa70d0ad067f034c73b584fae09946bbc8e732fd9e45ab74b093e",
+      "prompt_id": "capability.entry_readiness_execution_structure",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "entry_readiness_analyst",
+      "compatible_agents": [
+        "stock_researcher",
+        "portfolio_reviewer",
+        "final_synthesis_agent"
+      ],
+      "task_tags": [
+        "entry-readiness",
+        "technical-structure",
+        "execution"
+      ],
+      "required_rule_packs": [
+        "00",
+        "03",
+        "06",
+        "07",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "run_mode",
+        "fresh_price_snapshot",
+        "stage_assessment",
+        "stage_gate_receipt",
+        "research_result",
+        "risk_metrics",
+        "market_execution_gate_receipt"
+      ],
+      "optional_inputs": [
+        "catalyst_calendar",
+        "technical_levels",
+        "breakout_assessment",
+        "opportunity_cost_inputs",
+        "fresh_evidence_delta"
+      ],
+      "output_schema": "EntryReadinessExecutionAssessmentV2",
+      "incompatible_with": [
+        "workflow.stock_scout"
+      ],
+      "recommended_model_class": "MID",
+      "context_policy": "fresh price/stage/risk packet only",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Execution Review 전용 entry readiness 분석. StageGate/MarketExecutionGate/Risk Engine 결과를 소비하며 자체 GateDecision은 만들지 않는다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "allowed_run_modes": [
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "prompt_kind": "LEAF",
+      "stage": "EXECUTION_RISK",
+      "conditional_dependencies": {},
+      "output_example_case": "positive_EntryReadinessExecutionAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/event_probability_ev.md",
+      "content_hash": "22fb6ffb25e2b99cba896901723c855c8bb5cd34422009f197eceb6bd873070d",
+      "prompt_id": "capability.event_probability_ev",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "event-probability-ev"
+      ],
+      "required_rule_packs": [
+        "00",
+        "04",
+        "06",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "event_terms",
+        "event_evidence",
+        "python_ev_calculation"
+      ],
+      "optional_inputs": [
+        "legal_regulatory_evidence"
+      ],
+      "output_schema": "EventProbabilityAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "M&A·규제·임상·정부계약 등 불연속 이벤트의 확률·payoff·break value를 구조화한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "EXECUTION_RISK",
+      "allowed_run_modes": [
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_EventProbabilityAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/failure_scenarios_invalidation.md",
+      "content_hash": "22accfe8bad5b4bc130979594b9978ae90081ba5d383cf965d4adca2f9173f93",
+      "prompt_id": "capability.failure_scenarios_invalidation",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "failure-scenarios-invalidation"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "research_result",
+        "industry_overlay"
+      ],
+      "optional_inputs": [
+        "capital_structure_result",
+        "valuation_result"
+      ],
+      "output_schema": "FailureScenarioInvalidationAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "최소 3개의 독립 실패 경로와 사전에 검증 가능한 thesis 무효화 조건을 만든다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_FailureScenarioInvalidationAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/fundamental_change_quality.md",
+      "content_hash": "967171724e7eb9196febe60217da3c907e93985eb29763ad91408786a1b81187",
+      "prompt_id": "capability.fundamental_change_quality",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "fundamental-change-quality"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_facts",
+        "earnings_evidence"
+      ],
+      "optional_inputs": [
+        "industry_overlay"
+      ],
+      "output_schema": "FundamentalChangeQualityAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "기업 실적·수요·수익성 변화의 질과 지속성을 분해한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_FundamentalChangeQualityAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/probability_edge_risk_asymmetry.md",
+      "content_hash": "ebbbaee788d62e28cdba30e50901119a709c08b90c6f111dd59957884a9009be",
+      "prompt_id": "capability.probability_edge_risk_asymmetry",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "probability_edge_analyst",
+      "compatible_agents": [
+        "portfolio_reviewer",
+        "final_synthesis_agent",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "probability-edge",
+        "risk-asymmetry",
+        "scenario-analysis",
+        "expected-value"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "06",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "scenario_evidence",
+        "valuation_scenarios",
+        "risk_engine_results"
+      ],
+      "optional_inputs": [
+        "event_probability_result",
+        "failure_scenarios",
+        "market_execution_result"
+      ],
+      "output_schema": "ProbabilityEdgeRiskAsymmetryAssessmentV2",
+      "recommended_model_class": "STRONG",
+      "context_policy": "Bear/Base/Bull evidence + upstream Python risk arithmetic; no raw redundant history",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Execution Review 전용. Python Risk Engine 결과를 소비해 Execution R:R·Structural Asymmetry·Probability EV를 분리 해석한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "EXECUTION_RISK",
+      "allowed_run_modes": [
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "incompatible_with": [],
+      "output_example_case": "positive_ProbabilityEdgeRiskAsymmetryAssessmentV2"
+    },
+    {
+      "file": "CAPABILITIES/reverse_valuation.md",
+      "content_hash": "acbbacdd8c4236e37d55a8b64db1bde4269e73ee5177c3e112f48ef4e33fcdd1",
+      "prompt_id": "capability.reverse_valuation",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "CAPABILITY",
+      "category": "analysis",
+      "role": "capability_worker",
+      "compatible_agents": [
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "reverse-valuation"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "valuation_inputs",
+        "company_facts",
+        "price_snapshot"
+      ],
+      "optional_inputs": [
+        "peer_valuation_packet"
+      ],
+      "output_schema": "ReverseValuationAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "task-minimal context; only relevant evidence",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "현재 가격에 내재된 미래 실적 가정을 역산하고 re-rating 요구조건을 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_ReverseValuationAssessmentV2"
+    },
+    {
+      "file": "INDUSTRY/ai_data_center_infrastructure.md",
+      "content_hash": "abadc35b68f42be33c5d7863ad508891147578cc89cfde0115a42a22e8f560fe",
+      "prompt_id": "industry.ai_data_center_infrastructure",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "ai-data-center-infrastructure"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "AI 데이터센터 전력·냉각·운영 인프라의 프로젝트 경제성과 자본집약도를 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/ai_data_services.md",
+      "content_hash": "b320ff1a2e77885764db45a21b7e7770356e256347f4e9eafca9c0b99d52fe76",
+      "prompt_id": "industry.ai_data_services",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "ai-data-services"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "AI 데이터 엔지니어링·라벨링·서비스 기업의 고객집중과 성장 지속성을 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/biotech.md",
+      "content_hash": "5dadb970b8a33c91fe5425d617553625dbdbd27945bbbda5c981ddc01de39a21",
+      "prompt_id": "industry.biotech",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "biotech"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "임상·규제 이벤트의 확률과 자금조달 runway를 중심으로 평가한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/crypto_linked_equities.md",
+      "content_hash": "7c97034ff33e9ec32f016779f919015e91bdf1e35c3aa9aa767f40680760459b",
+      "prompt_id": "industry.crypto_linked_equities",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "crypto-linked-equities"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "BTC/ETH 등 기초자산 민감도와 자본구조를 분리해 주식의 convexity를 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/defense_space.md",
+      "content_hash": "06839d1e7f42ca132783d87210cf4f02d7a8031d8b1eec886a26e1ab0acecebd",
+      "prompt_id": "industry.defense_space",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "defense-space"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "정부계약·backlog·프로그램 진행도와 자본집약성을 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/e_and_p.md",
+      "content_hash": "46e6ecc1bee7cb1aac8387f29ac2a48cbfa5ee47b1eb7a27b4e3c22980f937c0",
+      "prompt_id": "industry.e_and_p",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "e-and-p"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Upstream E&P의 commodity sensitivity와 자본효율·hedge·FCF 구조를 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/nuclear_critical_minerals.md",
+      "content_hash": "5bb54ecc0324daa78fcf498147e3d1d990b455fa8f9bded14721289edbab88d3",
+      "prompt_id": "industry.nuclear_critical_minerals",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "nuclear-critical-minerals"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "우라늄·enrichment·HALEU·핵심광물 프로젝트의 정책과 실제 생산경제를 분리한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/optical_networking_broadband.md",
+      "content_hash": "df7d916fa9d8c001661da394797b9a03dfe41ca9b6cb29eaf6dc20c329ca7474",
+      "prompt_id": "industry.optical_networking_broadband",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "optical-networking-broadband"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "광통신·네트워크·Broadband의 hardware/software mix와 수주 질을 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/quantum.md",
+      "content_hash": "19d7b3c70094f0d95d1f783eecd8ffbb7686abc6ab8f1cc9bc17cdcd9cd1b8d3",
+      "prompt_id": "industry.quantum",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "quantum"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "양자기업의 기술 KPI와 상업화·희석·M&A 현실성을 분리한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/saas_ai_software.md",
+      "content_hash": "351e3c2caa5a6de7098502c17c6a4fa5e6ba14f8bff4f84265efeb27973a38ab",
+      "prompt_id": "industry.saas_ai_software",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "saas-ai-software"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "SaaS·AI 소프트웨어의 반복매출 품질과 단위경제를 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/semiconductor_advanced_packaging.md",
+      "content_hash": "37c8550622d81aa5b2511f09eeaae548b8eb066a649c7d0db45eed9a0dabec38",
+      "prompt_id": "industry.semiconductor_advanced_packaging",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "semiconductor-advanced-packaging"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "반도체 테스트·패키징·장비의 사이클과 AI 수요 전달경로를 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "INDUSTRY/shipping.md",
+      "content_hash": "eebec71ea02ba791a4e39f8a49140a9f2d29429271bc23d1c76b8eec1e391e8c",
+      "prompt_id": "industry.shipping",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "INDUSTRY",
+      "category": "overlay",
+      "role": "industry_overlay",
+      "compatible_agents": [
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "industry-overlay",
+        "shipping"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "company_or_sector_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "capital_structure_snapshot"
+      ],
+      "output_schema": "IndustryOverlayAssessment",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "overlay adds only industry-specific questions; does not repeat base prompt",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "해운 운임·선대·리스와 M&A 특수상황을 함께 검증한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_IndustryOverlayAssessment"
+    },
+    {
+      "file": "SYSTEM/analysis_grounding_contract.md",
+      "content_hash": "f885db8f98b83ad9464a48cdcf70eff54527e32df0809c75113274eab713005c",
+      "prompt_id": "system.analysis_grounding",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "SYSTEM",
+      "category": "base",
+      "role": "all_analysis_agents",
+      "compatible_agents": [
+        "market_analyst",
+        "sector_analyst",
+        "stock_scout",
+        "stock_researcher",
+        "forensic_analyst",
+        "valuation_analyst",
+        "adversarial_reviewer",
+        "portfolio_reviewer",
+        "final_synthesis_agent"
+      ],
+      "task_tags": [
+        "evidence",
+        "unknown",
+        "contradiction",
+        "structured-output"
+      ],
+      "required_rule_packs": [
+        "00",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "context_manifest",
+        "analysis_context",
+        "evidence_packet"
+      ],
+      "optional_inputs": [
+        "run_mode",
+        "must_review_evidence_ids",
+        "prior_analysis_delta",
+        "company_facts",
+        "capital_structure_snapshot",
+        "dependency_receipt"
+      ],
+      "output_schema": null,
+      "incompatible_with": [],
+      "recommended_model_class": "CHEAP",
+      "context_policy": "canonical facts + task-relevant evidence only; no raw full-history dump",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Architecture v1.1에 맞춘 공통 evidence/context/freshness/authority 계약. LLM은 분석·추천만 수행하며 Python state/gate/final action을 침범하지 않는다.",
+      "compose_with": [],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "MIXIN",
+      "stage": "MIXIN",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": null
+    },
+    {
+      "file": "UTILITIES/capital_structure_prescreen.md",
+      "content_hash": "7483a61c010df2b754cb962903eb2d7ea626ab23b51232d80f1e661efac80d21",
+      "prompt_id": "utility.capital_structure_prescreen",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "UTILITY",
+      "category": "extraction",
+      "role": "capital_structure_prescreen_extractor",
+      "compatible_agents": [
+        "stock_scout",
+        "stock_researcher"
+      ],
+      "task_tags": [
+        "capital-structure",
+        "cheap-prescreen",
+        "sec",
+        "dilution"
+      ],
+      "required_rule_packs": [
+        "00",
+        "05",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "security_identity",
+        "cheap_sec_packet",
+        "stage_gate_receipt"
+      ],
+      "optional_inputs": [
+        "company_facts",
+        "cash_runway_snapshot"
+      ],
+      "output_schema": "CapitalStructurePrescreenResultV2",
+      "recommended_model_class": "CHEAP",
+      "context_policy": "latest identity + minimum SEC/capital packet only",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Python StageGate 허용 receipt 이후 Cheap Capital Prescreen tri-state extraction을 수행한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "PRESCREEN",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "incompatible_with": [],
+      "output_example_case": "positive_CapitalStructurePrescreenResultV2"
+    },
+    {
+      "file": "UTILITIES/claim_evidence_mapping.md",
+      "content_hash": "f6e35afa33dadbca068e20bf4c4270eec4a6e3a19e82154781c615b6c8c8ea2d",
+      "prompt_id": "utility.claim_evidence_mapping",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "UTILITY",
+      "category": "utility",
+      "role": "utility_worker",
+      "compatible_agents": [
+        "market_analyst",
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "claim-evidence-mapping"
+      ],
+      "required_rule_packs": [
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "claims",
+        "evidence_packet"
+      ],
+      "optional_inputs": [],
+      "output_schema": "ClaimEvidenceMap",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "small targeted payload",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "분석 claim과 evidence의 존재·관련성·강도를 매핑한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_ClaimEvidenceMap"
+    },
+    {
+      "file": "UTILITIES/evidence_extraction.md",
+      "content_hash": "144e0116efcfae2a41a8a37d87c6082f54643d1bae5346ab95d3f08e2536bd3b",
+      "prompt_id": "utility.evidence_extraction",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "UTILITY",
+      "category": "utility",
+      "role": "utility_worker",
+      "compatible_agents": [
+        "market_analyst",
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "evidence-extraction"
+      ],
+      "required_rule_packs": [
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "source_document",
+        "extraction_targets"
+      ],
+      "optional_inputs": [],
+      "output_schema": "EvidenceItems",
+      "incompatible_with": [],
+      "recommended_model_class": "CHEAP",
+      "context_policy": "small targeted payload",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "긴 원문에서 claim 검증에 필요한 최소 evidence span과 metadata를 추출한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "DISCOVERY",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_EvidenceItems"
+    },
+    {
+      "file": "UTILITIES/freshness_delta_review.md",
+      "content_hash": "416416ab8423c67adee976287a833cd89e9eb056f9fe61c79a03a45a4adc716c",
+      "prompt_id": "utility.freshness_delta_review",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "UTILITY",
+      "category": "utility",
+      "role": "utility_worker",
+      "compatible_agents": [
+        "market_analyst",
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "freshness-delta-review"
+      ],
+      "required_rule_packs": [
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "prior_analysis",
+        "fresh_evidence",
+        "must_review_evidence_ids"
+      ],
+      "optional_inputs": [
+        "prior_dependency_receipt",
+        "new_evidence_snapshot_receipt"
+      ],
+      "output_schema": "FreshnessDeltaReviewResultV2",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "small targeted payload",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "새 Evidence의 의미 delta와 ADD strengthening 여부를 분석. 실제 stale/invalidation/commit fence는 Python lineage/repository가 결정.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "AUDIT",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_FreshnessDeltaReviewResultV2"
+    },
+    {
+      "file": "UTILITIES/missing_evidence_request.md",
+      "content_hash": "6e03e5020183671d621f5c89744472295635e2ee96ec29fda17cfa64142d54b7",
+      "prompt_id": "utility.missing_evidence_request",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "UTILITY",
+      "category": "utility",
+      "role": "utility_worker",
+      "compatible_agents": [
+        "market_analyst",
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "missing-evidence-request"
+      ],
+      "required_rule_packs": [
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "issue_ledger",
+        "current_evidence_inventory"
+      ],
+      "optional_inputs": [],
+      "output_schema": "EvidenceRequestSet",
+      "incompatible_with": [],
+      "recommended_model_class": "CHEAP",
+      "context_policy": "small targeted payload",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "미해결 issue를 해결하기 위한 가장 작은 directed EvidenceRequest를 생성한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "AUDIT",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_EvidenceRequestSet"
+    },
+    {
+      "file": "UTILITIES/sec_extraction.md",
+      "content_hash": "163cc46bd57e79e0052f2066850eb2bb5f524f6d5498ccad0ae334067af44646",
+      "prompt_id": "utility.sec_extraction",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "UTILITY",
+      "category": "utility",
+      "role": "utility_worker",
+      "compatible_agents": [
+        "market_analyst",
+        "sector_analyst",
+        "stock_researcher",
+        "forensic_analyst",
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "sec-extraction"
+      ],
+      "required_rule_packs": [
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "sec_document",
+        "sec_targets"
+      ],
+      "optional_inputs": [],
+      "output_schema": "SECExtractionResultV2",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "small targeted payload",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "SEC filing에서 자본구조·재무·계약 관련 사실을 구조화한다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "FULL_SEC",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_SECExtractionResultV2"
+    },
+    {
+      "file": "WORKFLOW/adversarial_reviewer.md",
+      "content_hash": "66ce527169b6d72a72e90682e1afaa41c4513667e302536d3ddcbc6fea3fc4ff",
+      "prompt_id": "workflow.adversarial_reviewer",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "WORKFLOW",
+      "category": "role",
+      "role": "adversarial_reviewer",
+      "compatible_agents": [
+        "adversarial_reviewer"
+      ],
+      "task_tags": [
+        "audit",
+        "falsification",
+        "independent-review"
+      ],
+      "required_rule_packs": [
+        "00",
+        "05",
+        "09",
+        "10"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "research_result",
+        "evidence_packet",
+        "issue_ledger"
+      ],
+      "optional_inputs": [
+        "capital_structure_snapshot",
+        "valuation_result",
+        "prior_analysis_delta",
+        "context_manifest_receipt"
+      ],
+      "output_schema": "AdversarialReviewResultV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "research claims + evidence; hide original final button where practical",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Architecture v1.1 AuditResult용 독립 반증. DebateIssue를 제안하되 GateDecision/PASS/REJECT 권위는 갖지 않는다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [
+        "adversarial.standard_audit"
+      ],
+      "requires_capabilities": [],
+      "prompt_kind": "LEAF",
+      "stage": "AUDIT",
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "conditional_dependencies": {},
+      "output_example_case": "positive_AdversarialReviewResultV2"
+    },
+    {
+      "file": "WORKFLOW/final_synthesis_agent.md",
+      "content_hash": "7a1bd662af2c5b28bb93c81881d7f73eebf821f6485c17a2abc584c6bdbd9532",
+      "prompt_id": "workflow.final_synthesis_agent",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "WORKFLOW",
+      "category": "role",
+      "role": "final_synthesis_agent",
+      "compatible_agents": [
+        "final_synthesis_agent"
+      ],
+      "task_tags": [
+        "synthesis",
+        "decision-recommendation",
+        "final-card"
+      ],
+      "required_rule_packs": [
+        "00",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "run_mode",
+        "action_scope",
+        "validated_research_results",
+        "adversarial_results",
+        "portfolio_comparison",
+        "deterministic_gate_snapshot",
+        "market_context",
+        "market_execution_gate_receipt",
+        "risk_engine_results",
+        "context_manifest"
+      ],
+      "optional_inputs": [
+        "entry_readiness",
+        "capital_structure_assessment",
+        "probability_edge_result",
+        "fresh_evidence_delta",
+        "position_snapshot"
+      ],
+      "output_schema": "FinalSynthesisRecommendationV2",
+      "incompatible_with": [
+        "workflow.stock_scout"
+      ],
+      "recommended_model_class": "STRONG",
+      "context_policy": "validated summaries only; no raw redundant history",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Architecture v1.1 Execution Review 전용 non-authoritative Recommendation Card. 정보결함/STALE/CRITICAL을 NO_TRADE와 구분하고 Python FinalAllocationGate가 최종 권위.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [
+        "workflow.portfolio_reviewer",
+        "workflow.adversarial_reviewer",
+        "workflow.market_analyst"
+      ],
+      "requires_capabilities": [
+        "capability.probability_edge_risk_asymmetry",
+        "capability.catalyst_expectation_gap",
+        "capability.capital_structure_forensics",
+        "capability.entry_readiness_execution_structure",
+        "capability.failure_scenarios_invalidation"
+      ],
+      "allowed_run_modes": [
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "prompt_kind": "LEAF",
+      "stage": "FINAL_SYNTHESIS",
+      "conditional_dependencies": {},
+      "output_example_case": "positive_FinalSynthesisRecommendationV2"
+    },
+    {
+      "file": "WORKFLOW/market_analyst.md",
+      "content_hash": "92c712e0e76ba683c0d4c1acf43fb9bb76298cb6459aeec745d7e65445279702",
+      "prompt_id": "workflow.market_analyst",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "WORKFLOW",
+      "category": "role",
+      "role": "market_analyst",
+      "compatible_agents": [
+        "market_analyst"
+      ],
+      "task_tags": [
+        "market-regime",
+        "risk-appetite",
+        "rotation"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "02",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "market_snapshot",
+        "market_breadth",
+        "sector_relative_strength"
+      ],
+      "optional_inputs": [
+        "run_mode",
+        "macro_calendar",
+        "commodity_snapshot",
+        "crypto_snapshot",
+        "market_execution_snapshot"
+      ],
+      "output_schema": "MarketContextExecutionAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "latest market packet only",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Market Context 해석과 execution 관련 관찰을 분리하되 GateDecision은 만들지 않는다. Architecture v1.1 MarketContext/MarketExecution split 호환.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "prompt_kind": "LEAF",
+      "stage": "DISCOVERY",
+      "conditional_dependencies": {},
+      "output_example_case": "positive_MarketContextExecutionAssessmentV2"
+    },
+    {
+      "file": "WORKFLOW/portfolio_reviewer.md",
+      "content_hash": "d43167e4c3c4926ca542321ae798bdc1a2aac0efda25124dc2b80ba5a1b73a26",
+      "prompt_id": "workflow.portfolio_reviewer",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "WORKFLOW",
+      "category": "role",
+      "role": "portfolio_reviewer",
+      "compatible_agents": [
+        "portfolio_reviewer"
+      ],
+      "task_tags": [
+        "relative-value",
+        "capital-allocation",
+        "opportunity-cost"
+      ],
+      "required_rule_packs": [
+        "00",
+        "06",
+        "07",
+        "08",
+        "10",
+        "11"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "run_mode",
+        "candidate_results",
+        "portfolio_snapshot",
+        "cash_state",
+        "risk_metrics",
+        "market_execution_gate_receipt"
+      ],
+      "optional_inputs": [
+        "correlation_factors",
+        "event_calendar",
+        "fresh_evidence_delta"
+      ],
+      "output_schema": "PortfolioComparisonResultV2",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "candidate summary cards + portfolio risk factors only",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Execution Review 전용 read-only Portfolio/Cash 비교. OpportunityCostAssessment와 CashBiasAudit용 rationale를 제공하며 allocation은 Python 전용.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [],
+      "allowed_run_modes": [
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "prompt_kind": "LEAF",
+      "stage": "EXECUTION_RISK",
+      "conditional_dependencies": {},
+      "output_example_case": "positive_PortfolioComparisonResultV2"
+    },
+    {
+      "file": "WORKFLOW/sector_analyst.md",
+      "content_hash": "6fe38663f00402b36f6a8f615408e6274ab068681ee0d193b144f851792913a3",
+      "prompt_id": "workflow.sector_analyst",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "WORKFLOW",
+      "category": "role",
+      "role": "sector_analyst",
+      "compatible_agents": [
+        "sector_analyst"
+      ],
+      "task_tags": [
+        "sector-rotation",
+        "industry-engine",
+        "candidate-scope"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "02",
+        "04",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "market_context_result",
+        "sector_data_packet",
+        "industry_driver_snapshot",
+        "market_context_gate_receipt"
+      ],
+      "optional_inputs": [
+        "policy_data",
+        "earnings_revision_data"
+      ],
+      "output_schema": "SectorOpportunityAssessmentV2",
+      "incompatible_with": [],
+      "recommended_model_class": "MID",
+      "context_policy": "market result + sector evidence; no stock thesis injection",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Market Context와 Python-normalized IndustryDriverSnapshot을 이용해 섹터 경제성을 분석. SectorGate PASS/REJECT는 생성하지 않는다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [
+        "workflow.market_analyst"
+      ],
+      "requires_capabilities": [],
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "prompt_kind": "LEAF",
+      "stage": "DISCOVERY",
+      "conditional_dependencies": {},
+      "output_example_case": "positive_SectorOpportunityAssessmentV2"
+    },
+    {
+      "file": "WORKFLOW/stock_researcher.md",
+      "content_hash": "9e2138d5a835851907444807f8d6977cbc4449ee3e85fa15de9492551459f125",
+      "prompt_id": "workflow.stock_researcher",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "WORKFLOW",
+      "category": "role",
+      "role": "stock_researcher",
+      "compatible_agents": [
+        "stock_researcher"
+      ],
+      "task_tags": [
+        "deep-research",
+        "company-economics",
+        "thesis"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "04",
+        "05",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "candidate_context",
+        "industry_driver_snapshot",
+        "capital_prescreen_extraction_receipt",
+        "evidence_packet",
+        "company_facts",
+        "industry_overlay",
+        "capital_prescreen_gate_receipt",
+        "stage_gate_receipt"
+      ],
+      "optional_inputs": [
+        "market_context_result",
+        "capital_structure_snapshot",
+        "prior_analysis_delta",
+        "valuation_result",
+        "contract_quality_result"
+      ],
+      "output_schema": "StockResearchResultV2",
+      "incompatible_with": [],
+      "recommended_model_class": "STRONG",
+      "context_policy": "canonical company facts + relevant evidence + one industry overlay",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Python CapitalPrescreenGate receipt 이후 Deep Research. HUNT_ONLY에서 Risk Engine 없이 방향성 확률 가설을 만든다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [],
+      "requires_capabilities": [
+        "capability.fundamental_change_quality",
+        "capability.catalyst_expectation_gap",
+        "capability.directional_probability_hypothesis"
+      ],
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "prompt_kind": "LEAF",
+      "stage": "DEEP_RESEARCH",
+      "conditional_dependencies": {},
+      "output_example_case": "positive_StockResearchResultV2"
+    },
+    {
+      "file": "WORKFLOW/stock_scout.md",
+      "content_hash": "c0fc1179189af075e8b3951a0535c3a81244108428b821d5a272af203d114e84",
+      "prompt_id": "workflow.stock_scout",
+      "version": "2.2.0",
+      "schema_version": "prompt-meta-2.2",
+      "layer": "WORKFLOW",
+      "category": "role",
+      "role": "stock_scout",
+      "compatible_agents": [
+        "stock_scout"
+      ],
+      "task_tags": [
+        "discovery",
+        "stage0-1",
+        "good-lag"
+      ],
+      "required_rule_packs": [
+        "00",
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "09"
+      ],
+      "required_inputs": [
+        "effective_rule_pack",
+        "approved_sector_context",
+        "sector_gate_receipt",
+        "industry_driver_snapshot",
+        "candidate_universe_packet",
+        "deterministic_filter_results",
+        "technical_feature_snapshot"
+      ],
+      "optional_inputs": [
+        "stage_assessment_proposal",
+        "catalyst_calendar",
+        "breakout_evidence_packet"
+      ],
+      "output_schema": "DiscoveryCandidateSetV2",
+      "incompatible_with": [
+        "workflow.final_synthesis_agent"
+      ],
+      "recommended_model_class": "MID",
+      "context_policy": "only deterministic survivors + sector thesis",
+      "side_effects": "none",
+      "authoritative_decision": false,
+      "description": "Architecture v1.1 STOCK_DISCOVERY 단계. Stage/Catalyst 기반 후보를 Discovery namespace로 압축하고 Cheap Capital Prescreen은 다음 Python DAG 단계에 맡긴다.",
+      "compose_with": [
+        "system.analysis_grounding"
+      ],
+      "requires_results": [
+        "workflow.sector_analyst"
+      ],
+      "requires_capabilities": [],
+      "allowed_run_modes": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ],
+      "prompt_kind": "LEAF",
+      "stage": "DISCOVERY",
+      "conditional_dependencies": {},
+      "output_example_case": "positive_DiscoveryCandidateSetV2"
+    }
+  ]
+}

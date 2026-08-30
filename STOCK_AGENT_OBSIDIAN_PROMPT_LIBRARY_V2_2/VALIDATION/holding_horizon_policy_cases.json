@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "case_id": "default_v2_rejects_999_day_horizon",
+      "maximum_holding_days": 999,
+      "active_rule_maximum_days": 56,
+      "active_rule_override": false,
+      "expected": "FAIL"
+    },
+    {
+      "case_id": "default_v2_accepts_56_day_horizon",
+      "maximum_holding_days": 56,
+      "active_rule_maximum_days": 56,
+      "active_rule_override": false,
+      "expected": "PASS"
+    },
+    {
+      "case_id": "active_override_accepts_extended_horizon",
+      "maximum_holding_days": 80,
+      "active_rule_maximum_days": 90,
+      "active_rule_override": true,
+      "expected": "PASS"
+    },
+    {
+      "case_id": "inactive_override_cannot_extend_default",
+      "maximum_holding_days": 80,
+      "active_rule_maximum_days": 90,
+      "active_rule_override": false,
+      "expected": "FAIL"
+    }
+  ]
+}
+
+

@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stock-agent:prompt-metadata:2.2",
+  "type": "object",
+  "required": [
+    "prompt_id",
+    "version",
+    "schema_version",
+    "prompt_kind",
+    "stage",
+    "role",
+    "allowed_run_modes",
+    "compose_with",
+    "requires_results",
+    "requires_capabilities",
+    "conditional_dependencies",
+    "required_inputs",
+    "output_schema",
+    "output_example_case",
+    "recommended_model_class",
+    "authoritative_decision",
+    "side_effects"
+  ],
+  "properties": {
+    "prompt_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+$"
+    },
+    "version": {
+      "const": "2.2.0"
+    },
+    "schema_version": {
+      "const": "prompt-meta-2.2"
+    },
+    "prompt_kind": {
+      "type": "string",
+      "enum": [
+        "MIXIN",
+        "LEAF"
+      ]
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "MIXIN",
+        "DISCOVERY",
+        "PRESCREEN",
+        "DEEP_RESEARCH",
+        "FULL_SEC",
+        "AUDIT",
+        "EXECUTION_RISK",
+        "FINAL_SYNTHESIS"
+      ]
+    },
+    "layer": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "compatible_agents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "task_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "required_rule_packs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "required_inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "optional_inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "output_schema": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "output_example_case": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "incompatible_with": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "recommended_model_class": {
+      "type": "string",
+      "enum": [
+        "CHEAP",
+        "MID",
+        "STRONG",
+        "MAX_REASONING"
+      ]
+    },
+    "context_policy": {
+      "type": "string"
+    },
+    "side_effects": {
+      "const": "none"
+    },
+    "authoritative_decision": {
+      "const": false
+    },
+    "description": {
+      "type": "string"
+    },
+    "compose_with": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "requires_results": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "requires_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "conditional_dependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "uniqueItems": true
+      }
+    },
+    "allowed_run_modes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "HUNT_ONLY",
+          "HUNT_AND_EXECUTION_REVIEW"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "prompt_kind": {
+            "const": "MIXIN"
+          }
+        },
+        "required": [
+          "prompt_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "output_schema": {
+            "type": "null"
+          },
+          "output_example_case": {
+            "type": "null"
+          },
+          "stage": {
+            "const": "MIXIN"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "prompt_kind": {
+            "const": "LEAF"
+          }
+        },
+        "required": [
+          "prompt_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "output_schema": {
+            "type": "string",
+            "minLength": 1
+          },
+          "output_example_case": {
+            "type": "string",
+            "minLength": 1
+          },
+          "stage": {
+            "not": {
+              "const": "MIXIN"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+
+

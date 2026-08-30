@@ -1,0 +1,11 @@
+{
+  "fixture": "strict_provider_recorded_input.json",
+  "sha256": "FBBCDC861BBBA707EB76BADD4713D362901CDC4898551EBE7CF650B353BCE39F",
+  "sanitized": true,
+  "contains_secrets": false,
+  "authority": "raw_recorded_observation_only",
+  "coverage": ["HUNT_ONLY", "market_context", "universe", "capital_prescreen", "sec_placeholder", "portfolio_placeholder"],
+  "note": "Provider fixture values are not authoritative GateDecision, action, sizing, or final allocation."
+}
+
+

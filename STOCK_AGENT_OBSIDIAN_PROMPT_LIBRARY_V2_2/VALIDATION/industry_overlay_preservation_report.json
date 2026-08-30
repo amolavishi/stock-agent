@@ -1,0 +1,81 @@
+{
+  "industry_overlay_count": 12,
+  "all_analytical_bodies_preserved": true,
+  "contract_change": "inline JSON Output Contract replaced by canonical formal-schema reference",
+  "files": [
+    {
+      "file": "INDUSTRY/ai_data_center_infrastructure.md",
+      "baseline_analytical_body_hash": "b050e6e7e5406f471b7f11f6a4192bc8f6d05e9e75fd9292b0c9f5919fa04e56",
+      "v2_2_analytical_body_hash": "b050e6e7e5406f471b7f11f6a4192bc8f6d05e9e75fd9292b0c9f5919fa04e56",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/ai_data_services.md",
+      "baseline_analytical_body_hash": "2c5a2f753411a472482b988a9ec9b76bf1e93b804da4acf4ff6daa99b8b8eedc",
+      "v2_2_analytical_body_hash": "2c5a2f753411a472482b988a9ec9b76bf1e93b804da4acf4ff6daa99b8b8eedc",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/biotech.md",
+      "baseline_analytical_body_hash": "71b09d468baf37ad9ab6367bbb4cafea881240d65a31db8b7d9f5c7d02ff6f8e",
+      "v2_2_analytical_body_hash": "71b09d468baf37ad9ab6367bbb4cafea881240d65a31db8b7d9f5c7d02ff6f8e",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/crypto_linked_equities.md",
+      "baseline_analytical_body_hash": "b1e301eff50c7684acc69d685f942fff12efe51021b82aa4a240291f2e85c561",
+      "v2_2_analytical_body_hash": "b1e301eff50c7684acc69d685f942fff12efe51021b82aa4a240291f2e85c561",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/defense_space.md",
+      "baseline_analytical_body_hash": "80fc584de1f8afa1f7496b51d2760e71dfe8fd34665291559e302421f5d6cdfd",
+      "v2_2_analytical_body_hash": "80fc584de1f8afa1f7496b51d2760e71dfe8fd34665291559e302421f5d6cdfd",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/e_and_p.md",
+      "baseline_analytical_body_hash": "062b61cc419ba1b6430c77e3ad41831646125ab4fc5c3a3250e21b02d6e068ce",
+      "v2_2_analytical_body_hash": "062b61cc419ba1b6430c77e3ad41831646125ab4fc5c3a3250e21b02d6e068ce",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/nuclear_critical_minerals.md",
+      "baseline_analytical_body_hash": "cab398e78013bdf540ed91aab110a2b35ffb62d4bb7ee9f1ac3ee75dab6460df",
+      "v2_2_analytical_body_hash": "cab398e78013bdf540ed91aab110a2b35ffb62d4bb7ee9f1ac3ee75dab6460df",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/optical_networking_broadband.md",
+      "baseline_analytical_body_hash": "20569678724177e357708bf0e8af9e2cae052e64bf02140790bc10d77e823b21",
+      "v2_2_analytical_body_hash": "20569678724177e357708bf0e8af9e2cae052e64bf02140790bc10d77e823b21",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/quantum.md",
+      "baseline_analytical_body_hash": "7ff63a1f2f7bb105650d1eb4354a6ac13580f23c01446e5960a01ddef4881c23",
+      "v2_2_analytical_body_hash": "7ff63a1f2f7bb105650d1eb4354a6ac13580f23c01446e5960a01ddef4881c23",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/saas_ai_software.md",
+      "baseline_analytical_body_hash": "9c2f895a1464d1fa65bac9c3fb2ad76437862510133e76927d61e521ba850733",
+      "v2_2_analytical_body_hash": "9c2f895a1464d1fa65bac9c3fb2ad76437862510133e76927d61e521ba850733",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/semiconductor_advanced_packaging.md",
+      "baseline_analytical_body_hash": "5fe33c2828c5d045b343dd2ca1958310887cae326aa60c7fbfdbd965102ca26f",
+      "v2_2_analytical_body_hash": "5fe33c2828c5d045b343dd2ca1958310887cae326aa60c7fbfdbd965102ca26f",
+      "analytical_content_preserved": true
+    },
+    {
+      "file": "INDUSTRY/shipping.md",
+      "baseline_analytical_body_hash": "0bc1e654862ed8522c4ae36ac4281c3fc947ef89b1b560617ad18aad8a428829",
+      "v2_2_analytical_body_hash": "0bc1e654862ed8522c4ae36ac4281c3fc947ef89b1b560617ad18aad8a428829",
+      "analytical_content_preserved": true
+    }
+  ]
+}
+
+
