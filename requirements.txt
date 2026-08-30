@@ -1,4 +1,0 @@
-# Core providers and tests remain standard-library compatible.
-# Discord runtime:
-discord.py>=2.6,<3
-httpx>=0.27,<1
