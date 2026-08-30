@@ -1,0 +1,23 @@
+{
+  "context_ids": ["run_mode", "effective_rule_pack"],
+  "market_context": {"complete": true},
+  "sector": {"eligible": true},
+  "candidates": [
+    {
+      "security_id": "SEC1",
+      "recommended_discovery_action": "DEEP_DIVE_NOW",
+      "proposed_stage": "STAGE_1",
+      "stage_eligible": true,
+      "capital_prescreen": {"complete": true},
+      "research_status": "COMPLETE",
+      "audit_recommendation": "SUPPORTS_CONTINUATION",
+      "failure_paths": [
+        {"category": "FUNDAMENTAL", "scenario": "demand failure", "causal_path": "demand to revenue", "source_evidence_ids": ["E1"]},
+        {"category": "CAPITAL_STRUCTURE", "scenario": "financing failure", "causal_path": "cash to dilution", "source_evidence_ids": ["E2"]},
+        {"category": "PRICING_EXPECTATION", "scenario": "multiple compression", "causal_path": "expectation to rerating", "source_evidence_ids": ["E3"]}
+      ]
+    }
+  ]
+}
+
+

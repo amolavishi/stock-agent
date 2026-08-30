@@ -1,0 +1,476 @@
+{
+  "contract_version": "1.1-prompt-integration-2.2",
+  "architecture_reference": "STOCK_AGENT_ARCHITECTURE_V1.1",
+  "architecture_sha256": "03a7863a49ebe53f7c58ee5d4e90fe1ac5cd4b55c84acb26dfeed84215005cd4",
+  "rule_contract_version": "2.0",
+  "library_version": "2.2.0",
+  "stage_order": [
+    "INPUT",
+    "DISCOVERY",
+    "PRESCREEN",
+    "DEEP_RESEARCH",
+    "FULL_SEC",
+    "AUDIT",
+    "EXECUTION_RISK",
+    "FINAL_SYNTHESIS"
+  ],
+  "prompt_composer": {
+    "algorithm": [
+      "expand dependency graph",
+      "dedupe by prompt_id",
+      "deterministic topological order",
+      "MIXIN first",
+      "exactly one LEAF output owner",
+      "canonical composition hash"
+    ],
+    "dedupe_key": "prompt_id",
+    "output_owner_invariant": "exactly_one_leaf_output_schema",
+    "composition_hash": "sha256(canonical ordered prompt_id + content_hash list)"
+  },
+  "schema_validation": {
+    "draft": "2020-12",
+    "registry": "SCHEMAS/output_schema_registry_v2_2.json",
+    "flow": [
+      "strict JSON extraction",
+      "schema validation",
+      "bounded repair",
+      "reject"
+    ]
+  },
+  "run_modes": {
+    "HUNT_ONLY": {
+      "terminal_projection": "QualifiedCandidatePool + DiscoveryDecision",
+      "forbidden_dependencies": [
+        "PortfolioSnapshot",
+        "PositionSnapshot",
+        "MarketExecutionGate",
+        "RiskEngine",
+        "FinalAllocation",
+        "ExecutionAction",
+        "ActionCard"
+      ],
+      "terminal_outcome_when_empty": "NO_QUALIFIED_CANDIDATE"
+    },
+    "HUNT_AND_EXECUTION_REVIEW": {
+      "requires": [
+        "fresh PortfolioSnapshot",
+        "MarketExecutionGate receipt",
+        "RiskAssessment"
+      ],
+      "allows": "non-authoritative ExecutionRecommendation"
+    }
+  },
+  "gate_decisions": [
+    "PASS",
+    "PASS_WITH_PARTIAL",
+    "PASS_WITH_CONSTRAINTS",
+    "REJECT",
+    "RETRY_WITH_NEW_EVIDENCE",
+    "INSUFFICIENT_EVIDENCE",
+    "SYSTEM_ERROR",
+    "MANUAL_REVIEW_REQUIRED"
+  ],
+  "gate_decision_owner": "Python Domain Gate Engine",
+  "capital_prescreen_receipts": {
+    "llm_extraction": "capital_prescreen_extraction_receipt",
+    "python_gate": "capital_prescreen_gate_receipt",
+    "deep_research_required_gate_decisions": [
+      "PASS",
+      "PASS_WITH_CONSTRAINTS"
+    ]
+  },
+  "typed_gate_receipts": {
+    "MarketContextGateReceipt": {
+      "producer": "Python MarketContextGate",
+      "produced_at_stage": "DISCOVERY"
+    },
+    "SectorGateReceipt": {
+      "producer": "Python SectorGate",
+      "produced_at_stage": "DISCOVERY"
+    },
+    "StageGateReceipt": {
+      "producer": "Python StageGate",
+      "produced_at_stage": "DISCOVERY"
+    },
+    "CapitalPrescreenGateReceipt": {
+      "producer": "Python CapitalPrescreenGate",
+      "produced_at_stage": "PRESCREEN"
+    },
+    "MarketExecutionGateReceipt": {
+      "producer": "Python MarketExecutionGate",
+      "produced_at_stage": "EXECUTION_RISK"
+    }
+  },
+  "market_execution_gate_contract": {
+    "passing_decisions": [
+      "PASS",
+      "PASS_WITH_CONSTRAINTS"
+    ],
+    "passing_requires_core_input_complete": true,
+    "forbidden_passing_decision": "PASS_WITH_PARTIAL"
+  },
+  "add_lineage_receipts": {
+    "PositionSnapshotReceiptV2": {
+      "producer": "Python PortfolioRepository",
+      "subject_must_match": "target_security_id"
+    },
+    "PriorAddTriggerReceiptV2": {
+      "producer": "Python PlanRepository",
+      "subject_must_match": "target_security_id",
+      "trigger_must_match": "add_plan.trigger_id"
+    },
+    "FreshnessDeltaReceiptV2": {
+      "producer": "Python FreshnessFence",
+      "subject_must_match": "target_security_id",
+      "delta_state": "STRENGTHENED"
+    },
+    "StrengtheningEvidenceReceiptV2": {
+      "producer": "Python EvidenceRepository",
+      "subject_must_match": "target_security_id"
+    }
+  },
+  "semantic_invariants": {
+    "StarterPlanV2": [
+      "starter <= resulting post-add <= maximum position",
+      "starter + planned add <= resulting post-add",
+      "minimum_days <= maximum_days"
+    ],
+    "FailurePathV2": [
+      "at least 3 distinct categories",
+      "scenario+causal_path pairs are unique"
+    ],
+    "PortfolioComparisonResultV2": [
+      "relative_rank unique",
+      "asset_id+capital_path unique",
+      "preferred row resolves exactly once",
+      "capital_snapshot_id consistent"
+    ],
+    "ADD": [
+      "all receipt subjects equal target_security_id",
+      "trigger lineage matches",
+      "AddPlan evidence is a non-empty subset of both strengthening receipts"
+    ]
+  },
+  "holding_horizon_policy": {
+    "owner": "Python RiskEngine / FinalAllocationGate",
+    "default_rule_contract": "Investment Rules v2.0",
+    "default_strategy_weeks": {
+      "minimum": 1,
+      "maximum": 8
+    },
+    "default_maximum_days": 56,
+    "validation_rule": "starter_plan.maximum_holding_period.maximum_days <= active EffectiveRuleSet maximum_holding_days",
+    "non_default_horizon_requires_active_rule_override": true
+  },
+  "capital_funnel": [
+    "MARKET_CONTEXT",
+    "MARKET_CONTEXT_GATE",
+    "SECTOR_ANALYSIS",
+    "SECTOR_GATE",
+    "STOCK_DISCOVERY",
+    "STAGE_GATE",
+    "CAPITAL_STRUCTURE_PRESCREEN",
+    "CAPITAL_PRESCREEN_GATE",
+    "STOCK_RANKING",
+    "STOCK_DEEP_RESEARCH",
+    "FULL_SEC_FORENSIC",
+    "STOCK_AUDIT",
+    "QUALIFIED_POOL",
+    "EXECUTION_RISK_IF_REQUESTED",
+    "FINAL_SYNTHESIS_IF_REQUESTED"
+  ],
+  "stage_ownership": {
+    "features": "Python TechnicalFeatureCalculator",
+    "assessment": "LLM proposed_stage allowed",
+    "eligibility": "Python StageGate"
+  },
+  "freshness_fence": {
+    "owner": "Python result repositories / FinalAllocation transaction",
+    "late_result_state": "STALE_ON_ARRIVAL"
+  },
+  "final_action_owner": "Python FinalAllocationGate only",
+  "fresh_money_positive_commitment_cardinality": "0..1 per Run",
+  "portfolio_access": "READ_ONLY",
+  "orders": "NOT_PRESENT",
+  "llm_authority": "analysis/claim/scenario/audit/recommendation only",
+  "data_products": {
+    "action_scope": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "adversarial_results": {
+      "producer": "workflow.adversarial_reviewer",
+      "produced_at_stage": "AUDIT"
+    },
+    "analysis_context": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "approved_sector_context": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "candidate_context": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "candidate_results": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "candidate_universe_packet": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "capital_prescreen_extraction_receipt": {
+      "producer": "utility.capital_structure_prescreen",
+      "produced_at_stage": "PRESCREEN"
+    },
+    "capital_prescreen_gate_receipt": {
+      "producer": "Python CapitalPrescreenGate",
+      "produced_at_stage": "PRESCREEN"
+    },
+    "capital_structure_snapshot": {
+      "producer": "Python CapitalStructureRepository",
+      "produced_at_stage": "FULL_SEC"
+    },
+    "cash_state": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "catalyst_evidence": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "cheap_sec_packet": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "claims": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "company_facts": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "company_or_sector_context": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "context_manifest": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "contract_evidence": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "critic_result": {
+      "producer": "adversarial.standard_audit",
+      "produced_at_stage": "AUDIT"
+    },
+    "current_evidence_inventory": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "deterministic_filter_results": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "deterministic_gate_snapshot": {
+      "producer": "Python DomainGateSnapshot",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "earnings_evidence": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "effective_rule_pack": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "event_evidence": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "event_terms": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "evidence_packet": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "evidence_receipts": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "extraction_targets": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "filing_notes": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "financial_statements": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "fresh_evidence": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "fresh_price_snapshot": {
+      "producer": "Python MarketDataRepository",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "industry_driver_snapshot": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "industry_overlay": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "issue_ledger": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "market_breadth": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "market_context": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "market_context_gate_receipt": {
+      "producer": "Python MarketContextGate",
+      "produced_at_stage": "DISCOVERY"
+    },
+    "market_context_result": {
+      "producer": "workflow.market_analyst",
+      "produced_at_stage": "DISCOVERY"
+    },
+    "market_execution_gate_receipt": {
+      "producer": "Python MarketExecutionGate",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "market_snapshot": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "must_review_evidence_ids": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "portfolio_comparison": {
+      "producer": "workflow.portfolio_reviewer",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "portfolio_snapshot": {
+      "producer": "Python PortfolioRepository",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "price_snapshot": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "prior_analysis": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "python_ev_calculation": {
+      "producer": "Python RiskEngine",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "research_context": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "research_result": {
+      "producer": "workflow.stock_researcher",
+      "produced_at_stage": "DEEP_RESEARCH"
+    },
+    "risk_engine_results": {
+      "producer": "Python RiskEngine",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "risk_metrics": {
+      "producer": "Python RiskEngine",
+      "produced_at_stage": "EXECUTION_RISK"
+    },
+    "run_mode": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "scenario_evidence": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "sec_document": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "sec_evidence": {
+      "producer": "Python EvidenceRepository",
+      "produced_at_stage": "FULL_SEC"
+    },
+    "sec_targets": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "sector_data_packet": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "sector_gate_receipt": {
+      "producer": "Python SectorGate",
+      "produced_at_stage": "DISCOVERY"
+    },
+    "sector_relative_strength": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "security_identity": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "source_document": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "stage_assessment": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "stage_gate_receipt": {
+      "producer": "Python StageGate",
+      "produced_at_stage": "DISCOVERY"
+    },
+    "target_analysis": {
+      "producer": "Python AuditOrchestrator",
+      "produced_at_stage": "AUDIT"
+    },
+    "technical_feature_snapshot": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "validated_research_results": {
+      "producer": "Python ResearchSchemaValidator",
+      "produced_at_stage": "AUDIT"
+    },
+    "valuation_inputs": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    },
+    "valuation_scenarios": {
+      "producer": "Python Runtime Input/Repository",
+      "produced_at_stage": "INPUT"
+    }
+  }
+}
+
+

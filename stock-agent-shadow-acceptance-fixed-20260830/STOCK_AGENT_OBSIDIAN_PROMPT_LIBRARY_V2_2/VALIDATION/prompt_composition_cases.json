@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "case_id": "adversarial_reviewer_diamond_dedup",
+      "root_prompt_id": "workflow.adversarial_reviewer",
+      "expect_system_grounding_count": 1,
+      "expect_leaf_output_owner_count": 1
+    },
+    {
+      "case_id": "stock_researcher_one_owner",
+      "root_prompt_id": "workflow.stock_researcher",
+      "expect_system_grounding_count": 1,
+      "expect_leaf_output_owner_count": 1
+    },
+    {
+      "case_id": "final_synthesis_one_owner",
+      "root_prompt_id": "workflow.final_synthesis_agent",
+      "expect_system_grounding_count": 1,
+      "expect_leaf_output_owner_count": 1
+    }
+  ]
+}
+
+

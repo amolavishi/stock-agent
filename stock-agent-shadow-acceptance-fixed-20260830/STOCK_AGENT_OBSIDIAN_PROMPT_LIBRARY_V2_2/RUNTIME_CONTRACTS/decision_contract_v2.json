@@ -1,0 +1,61 @@
+{
+  "contract_version": "2.2",
+  "architecture_reference": "STOCK_AGENT_ARCHITECTURE_V1.1",
+  "rule_contract_version": "2.0",
+  "discovery_decisions": [
+    "DEEP_DIVE_NOW",
+    "DEEP_DIVE_SECONDARY",
+    "WATCH_STAGE0",
+    "WATCH_RESET",
+    "EXCLUDE"
+  ],
+  "execution_recommendation_actions": [
+    "NO_TRADE",
+    "WATCH",
+    "STARTER",
+    "ADD",
+    "FULL",
+    "TRIM",
+    "EXIT"
+  ],
+  "audit_recommendations": [
+    "SUPPORTS_CONTINUATION",
+    "CHALLENGES_CONTINUATION",
+    "NEEDS_NEW_EVIDENCE",
+    "AUDIT_EVIDENCE_INCOMPLETE"
+  ],
+  "final_recommendation_statuses": [
+    "READY",
+    "BLOCKED_BY_EVIDENCE_GAP",
+    "BLOCKED_BY_CONTEXT",
+    "BLOCKED_BY_CRITICAL_ISSUE",
+    "STALE_INPUT",
+    "MODE_INVALID"
+  ],
+  "python_gate_decisions": [
+    "PASS",
+    "PASS_WITH_PARTIAL",
+    "PASS_WITH_CONSTRAINTS",
+    "REJECT",
+    "RETRY_WITH_NEW_EVIDENCE",
+    "INSUFFICIENT_EVIDENCE",
+    "SYSTEM_ERROR",
+    "MANUAL_REVIEW_REQUIRED"
+  ],
+  "namespace_overlap_policy": "LLM AuditRecommendation and FinalRecommendationStatus must not reuse Python GateDecision symbols.",
+  "authoritative_final_action_owner": "Python FinalAllocationGate",
+  "llm_authority": "recommendation_only",
+  "legacy_execution_actions_forbidden_as_current_output": [
+    "BUY",
+    "CONDITIONAL_BUY",
+    "HOLD",
+    "SELL",
+    "WAIT"
+  ],
+  "add_semantics": "existing position + prior add trigger + fresh strengthening Evidence; price decline alone is forbidden",
+  "hunt_only_terminal": "QualifiedCandidatePool / NO_QUALIFIED_CANDIDATE",
+  "hunt_only_execution_outputs_forbidden": true,
+  "late_result_policy": "STALE_ON_ARRIVAL; blocked recommendation with null action/plans"
+}
+
+

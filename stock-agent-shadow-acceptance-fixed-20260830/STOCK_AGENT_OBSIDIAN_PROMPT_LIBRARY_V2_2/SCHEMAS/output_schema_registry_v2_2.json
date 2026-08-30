@@ -1,0 +1,7503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stock-agent:output-schema-registry:2.2",
+  "registry_version": "2.2.0",
+  "json_schema_draft": "2020-12",
+  "resolver_contract": "Select schemas[schema_id], inject this registry's $defs unchanged, then validate with Draft 2020-12 and format checking.",
+  "authority_note": "Schemas validate LLM analysis/recommendation only. Python owns gates, arithmetic, allocation, and authoritative state.",
+  "$defs": {
+    "Hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "EvidenceId": {
+      "type": "string",
+      "pattern": "^E[A-Za-z0-9._:-]+$"
+    },
+    "ClaimId": {
+      "type": "string",
+      "pattern": "^C[A-Za-z0-9._:-]+$"
+    },
+    "SecurityId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "AddTriggerType": {
+      "type": "string",
+      "enum": [
+        "CONTRACT",
+        "EARNINGS",
+        "GUIDANCE",
+        "CAPITAL_STRUCTURE_RESOLUTION",
+        "MARGIN_FCF_IMPROVEMENT",
+        "REGULATORY",
+        "CLINICAL",
+        "TECHNICAL_CONFIRMATION",
+        "OTHER_MATERIAL"
+      ]
+    },
+    "FailureCategory": {
+      "type": "string",
+      "enum": [
+        "FUNDAMENTAL",
+        "CAPITAL_STRUCTURE",
+        "PRICING_EXPECTATION",
+        "COMPETITION",
+        "POLICY_REGULATORY",
+        "CLINICAL",
+        "CONTRACT",
+        "CUSTOMER_CONCENTRATION",
+        "MARGIN_UNIT_ECONOMICS",
+        "MACRO_COMMODITY",
+        "LIQUIDITY",
+        "ACCOUNTING",
+        "EXECUTION_OPERATIONAL",
+        "OTHER_MATERIAL"
+      ]
+    },
+    "RunMode": {
+      "type": "string",
+      "enum": [
+        "HUNT_ONLY",
+        "HUNT_AND_EXECUTION_REVIEW"
+      ]
+    },
+    "DiscoveryDecision": {
+      "type": "string",
+      "enum": [
+        "DEEP_DIVE_NOW",
+        "DEEP_DIVE_SECONDARY",
+        "WATCH_STAGE0",
+        "WATCH_RESET",
+        "EXCLUDE"
+      ]
+    },
+    "ExecutionAction": {
+      "type": "string",
+      "enum": [
+        "NO_TRADE",
+        "WATCH",
+        "STARTER",
+        "ADD",
+        "FULL",
+        "TRIM",
+        "EXIT"
+      ]
+    },
+    "EvidenceGrade": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "UNKNOWN"
+      ]
+    },
+    "ConfidenceBand": {
+      "type": "string",
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNKNOWN"
+      ]
+    },
+    "AsOfTimestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "AnalysisStatus": {
+      "type": "string",
+      "enum": [
+        "COMPLETE",
+        "INCOMPLETE",
+        "CONTEXT_INCOMPLETE"
+      ]
+    },
+    "AnalysisObject": {
+      "type": "object",
+      "required": [
+        "summary",
+        "evidence_ids",
+        "unknowns"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Receipt": {
+      "type": "object",
+      "required": [
+        "receipt_type",
+        "receipt_hash"
+      ],
+      "properties": {
+        "receipt_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "rule_set_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GateReceipt": {
+      "type": "object",
+      "required": [
+        "gate_type",
+        "decision",
+        "input_hash",
+        "rule_set_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "gate_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_PARTIAL",
+            "PASS_WITH_CONSTRAINTS"
+          ]
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "rule_set_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StageGateReceipt": {
+      "type": "object",
+      "required": [
+        "gate_type",
+        "decision",
+        "input_hash",
+        "rule_set_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "gate_type": {
+          "const": "StageGate"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_CONSTRAINTS"
+          ]
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "rule_set_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MarketContextGateReceipt": {
+      "type": "object",
+      "required": [
+        "gate_type",
+        "decision",
+        "input_hash",
+        "rule_set_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "gate_type": {
+          "const": "MarketContextGate"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_PARTIAL",
+            "PASS_WITH_CONSTRAINTS"
+          ]
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "rule_set_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SectorGateReceipt": {
+      "type": "object",
+      "required": [
+        "gate_type",
+        "decision",
+        "input_hash",
+        "rule_set_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "gate_type": {
+          "const": "SectorGate"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_CONSTRAINTS"
+          ]
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "rule_set_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CapitalPrescreenGateReceipt": {
+      "type": "object",
+      "required": [
+        "gate_type",
+        "decision",
+        "input_hash",
+        "rule_set_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "gate_type": {
+          "const": "CapitalPrescreenGate"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_CONSTRAINTS"
+          ]
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "rule_set_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MarketExecutionGateReceipt": {
+      "type": "object",
+      "required": [
+        "gate_type",
+        "decision",
+        "core_input_complete",
+        "input_hash",
+        "rule_set_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "gate_type": {
+          "const": "MarketExecutionGate"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "PASS_WITH_CONSTRAINTS"
+          ]
+        },
+        "core_input_complete": {
+          "const": true
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "rule_set_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FreshnessDeltaReceiptV2": {
+      "type": "object",
+      "required": [
+        "receipt_type",
+        "subject_id",
+        "delta_state",
+        "strengthening_evidence_ids",
+        "evidence_snapshot_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "receipt_type": {
+          "const": "FreshnessDeltaReceiptV2"
+        },
+        "subject_id": {
+          "$ref": "#/$defs/SecurityId"
+        },
+        "delta_state": {
+          "const": "STRENGTHENED"
+        },
+        "strengthening_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          },
+          "minItems": 1
+        },
+        "evidence_snapshot_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PositionSnapshotReceiptV2": {
+      "type": "object",
+      "required": [
+        "receipt_type",
+        "subject_id",
+        "position_exists",
+        "snapshot_hash",
+        "as_of",
+        "receipt_hash"
+      ],
+      "properties": {
+        "receipt_type": {
+          "const": "PositionSnapshotReceiptV2"
+        },
+        "subject_id": {
+          "$ref": "#/$defs/SecurityId"
+        },
+        "position_exists": {
+          "const": true
+        },
+        "snapshot_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "as_of": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PriorAddTriggerReceiptV2": {
+      "type": "object",
+      "required": [
+        "receipt_type",
+        "subject_id",
+        "trigger_id",
+        "trigger_type",
+        "defined_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "receipt_type": {
+          "const": "PriorAddTriggerReceiptV2"
+        },
+        "subject_id": {
+          "$ref": "#/$defs/SecurityId"
+        },
+        "trigger_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trigger_type": {
+          "$ref": "#/$defs/AddTriggerType"
+        },
+        "defined_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StrengtheningEvidenceReceiptV2": {
+      "type": "object",
+      "required": [
+        "receipt_type",
+        "subject_id",
+        "strengthening_evidence_ids",
+        "evidence_snapshot_hash",
+        "evaluated_at",
+        "receipt_hash"
+      ],
+      "properties": {
+        "receipt_type": {
+          "const": "StrengtheningEvidenceReceiptV2"
+        },
+        "subject_id": {
+          "$ref": "#/$defs/SecurityId"
+        },
+        "strengthening_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          },
+          "minItems": 1
+        },
+        "evidence_snapshot_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        },
+        "receipt_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContextReceipt": {
+      "type": "object",
+      "required": [
+        "complete",
+        "manifest_hash",
+        "included_context_ids",
+        "omitted_required"
+      ],
+      "properties": {
+        "complete": {
+          "const": true
+        },
+        "manifest_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "included_context_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "omitted_required": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "TriStateFact": {
+      "type": "object",
+      "required": [
+        "state",
+        "details",
+        "evidence_ids"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "TRUE",
+            "FALSE",
+            "UNKNOWN"
+          ]
+        },
+        "details": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "EvidenceRequestItemV2": {
+      "type": "object",
+      "required": [
+        "request_key",
+        "subject_id",
+        "evidence_type",
+        "source_classes",
+        "preferred_document_types",
+        "query",
+        "freshness_requirement",
+        "reason",
+        "priority"
+      ],
+      "properties": {
+        "request_key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        },
+        "target_claim_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClaimId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_issue_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subject_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_type": {
+          "type": "string",
+          "enum": [
+            "SEC_FILING",
+            "COMPANY_IR",
+            "REGULATORY",
+            "MARKET_DATA",
+            "INDUSTRY_DATA",
+            "CUSTOMER_PARTNER",
+            "CONSENSUS",
+            "OTHER"
+          ]
+        },
+        "source_classes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "SEC",
+              "GOVERNMENT",
+              "COMPANY",
+              "CUSTOMER_PARTNER_ACADEMIC",
+              "INDUSTRY_DATA",
+              "BROKER_CONSENSUS",
+              "NEWS",
+              "COMMUNITY"
+            ]
+          },
+          "minItems": 1
+        },
+        "preferred_document_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "query": {
+          "type": "string",
+          "minLength": 3
+        },
+        "date_window": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "start",
+                "end"
+              ],
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "date"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "freshness_requirement": {
+          "type": "string",
+          "enum": [
+            "LATEST_AVAILABLE",
+            "AS_OF_RUN",
+            "WITHIN_24H",
+            "WITHIN_7D",
+            "SPECIFIED_WINDOW"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 3
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "CRITICAL",
+            "HIGH",
+            "MEDIUM",
+            "LOW"
+          ]
+        },
+        "duplicate_check_key": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Issue": {
+      "type": "object",
+      "required": [
+        "issue_id",
+        "severity",
+        "category",
+        "finding",
+        "evidence_ids"
+      ],
+      "properties": {
+        "issue_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "MINOR",
+            "MAJOR",
+            "CRITICAL"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "finding": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "target_claim_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClaimId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Scenario": {
+      "type": "object",
+      "required": [
+        "assumptions",
+        "value_or_price",
+        "probability_band",
+        "catalysts_or_failures",
+        "evidence_ids"
+      ],
+      "properties": {
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "value_or_price": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "probability_band": {
+          "type": "string",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "UNKNOWN"
+          ]
+        },
+        "catalysts_or_failures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PositionLimitV2": {
+      "type": "object",
+      "required": [
+        "shares",
+        "capital_pct"
+      ],
+      "properties": {
+        "shares": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "capital_pct": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlannedAddV2": {
+      "type": "object",
+      "required": [
+        "trigger_id",
+        "trigger_type",
+        "trigger_description",
+        "required_evidence_classes",
+        "planned_add_shares",
+        "planned_add_capital_pct",
+        "resulting_position_cap"
+      ],
+      "properties": {
+        "trigger_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trigger_type": {
+          "$ref": "#/$defs/AddTriggerType"
+        },
+        "trigger_description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required_evidence_classes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "SEC",
+              "GOVERNMENT",
+              "COMPANY",
+              "CUSTOMER_PARTNER_ACADEMIC",
+              "INDUSTRY_DATA",
+              "BROKER_CONSENSUS",
+              "MARKET_DATA"
+            ]
+          },
+          "minItems": 1
+        },
+        "planned_add_shares": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "planned_add_capital_pct": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resulting_position_cap": {
+          "type": "object",
+          "required": [
+            "shares",
+            "capital_pct"
+          ],
+          "properties": {
+            "shares": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "capital_pct": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "properties": {
+                "planned_add_shares": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            {
+              "properties": {
+                "planned_add_capital_pct": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "StarterPlanV2": {
+      "type": "object",
+      "required": [
+        "starter_zone",
+        "starter_shares",
+        "starter_capital_pct",
+        "maximum_position",
+        "execution_stop",
+        "thesis_stop",
+        "structural_bear",
+        "worst_plausible_gap",
+        "maximum_account_loss",
+        "maximum_holding_period",
+        "time_stop_or_reassessment_condition",
+        "breakout_response",
+        "pullback_response",
+        "planned_add"
+      ],
+      "properties": {
+        "starter_zone": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "starter_shares": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "starter_capital_pct": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "maximum_position": {
+          "type": "object",
+          "required": [
+            "shares",
+            "capital_pct"
+          ],
+          "properties": {
+            "shares": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "capital_pct": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "thesis_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_bear": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "worst_plausible_gap": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "maximum_account_loss": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "maximum_holding_period": {
+          "type": "object",
+          "required": [
+            "minimum_days",
+            "maximum_days"
+          ],
+          "properties": {
+            "minimum_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maximum_days": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "time_stop_or_reassessment_condition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "breakout_response": {
+          "type": "object",
+          "required": [
+            "response",
+            "conditions"
+          ],
+          "properties": {
+            "response": {
+              "type": "string",
+              "enum": [
+                "ADD_ONLY_IF_STRENGTHENED",
+                "HOLD_WITHIN_PLAN",
+                "DO_NOT_CHASE",
+                "REASSESS",
+                "TRIM_OR_EXIT"
+              ]
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "pullback_response": {
+          "type": "object",
+          "required": [
+            "response",
+            "conditions"
+          ],
+          "properties": {
+            "response": {
+              "type": "string",
+              "enum": [
+                "ADD_ONLY_IF_STRENGTHENED",
+                "HOLD_WITHIN_PLAN",
+                "DO_NOT_CHASE",
+                "REASSESS",
+                "TRIM_OR_EXIT"
+              ]
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "planned_add": {
+          "type": "object",
+          "required": [
+            "trigger_id",
+            "trigger_type",
+            "trigger_description",
+            "required_evidence_classes",
+            "planned_add_shares",
+            "planned_add_capital_pct",
+            "resulting_position_cap"
+          ],
+          "properties": {
+            "trigger_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "trigger_type": {
+              "$ref": "#/$defs/AddTriggerType"
+            },
+            "trigger_description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required_evidence_classes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "SEC",
+                  "GOVERNMENT",
+                  "COMPANY",
+                  "CUSTOMER_PARTNER_ACADEMIC",
+                  "INDUSTRY_DATA",
+                  "BROKER_CONSENSUS",
+                  "MARKET_DATA"
+                ]
+              },
+              "minItems": 1
+            },
+            "planned_add_shares": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "planned_add_capital_pct": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "resulting_position_cap": {
+              "type": "object",
+              "required": [
+                "shares",
+                "capital_pct"
+              ],
+              "properties": {
+                "shares": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "capital_pct": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 100
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "properties": {
+                    "planned_add_shares": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "planned_add_capital_pct": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AddPlanV2": {
+      "type": "object",
+      "required": [
+        "trigger_id",
+        "trigger_type",
+        "trigger_description",
+        "strengthening_evidence_ids",
+        "shares"
+      ],
+      "properties": {
+        "trigger_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trigger_type": {
+          "$ref": "#/$defs/AddTriggerType"
+        },
+        "trigger_description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strengthening_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          },
+          "minItems": 1
+        },
+        "shares": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "FailurePathV2": {
+      "type": "object",
+      "required": [
+        "category",
+        "severity",
+        "scenario",
+        "causal_path",
+        "probability_direction",
+        "impact",
+        "observable_trigger",
+        "thesis_invalidation_link",
+        "source_evidence_ids"
+      ],
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/FailureCategory"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "MINOR",
+            "MAJOR",
+            "CRITICAL"
+          ]
+        },
+        "scenario": {
+          "type": "string",
+          "minLength": 1
+        },
+        "causal_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "probability_direction": {
+          "type": "string",
+          "enum": [
+            "INCREASES_DOWNSIDE",
+            "REDUCES_UPSIDE",
+            "BOTH",
+            "UNKNOWN"
+          ]
+        },
+        "impact": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "observable_trigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thesis_invalidation_link": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "schemas": {
+    "MarketContextExecutionAssessmentV2": {
+      "type": "object",
+      "required": [
+        "run_mode",
+        "market_context",
+        "market_execution_observations",
+        "sector_rotation",
+        "unknowns",
+        "context_manifest_receipt",
+        "as_of"
+      ],
+      "properties": {
+        "run_mode": {
+          "$ref": "#/$defs/RunMode"
+        },
+        "market_context": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "market_execution_observations": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "sector_rotation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context_manifest_receipt": {
+          "$ref": "#/$defs/ContextReceipt"
+        },
+        "as_of": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiscoveryCandidateSetV2": {
+      "type": "object",
+      "required": [
+        "run_mode",
+        "sector_gate_receipt",
+        "industry_driver_snapshot_receipt",
+        "candidates",
+        "excluded",
+        "data_gaps",
+        "context_manifest_receipt"
+      ],
+      "properties": {
+        "run_mode": {
+          "$ref": "#/$defs/RunMode"
+        },
+        "sector_gate_receipt": {
+          "$ref": "#/$defs/SectorGateReceipt"
+        },
+        "industry_driver_snapshot_receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "security_id",
+              "recommended_discovery_action",
+              "proposed_stage",
+              "rationale",
+              "evidence_ids"
+            ],
+            "properties": {
+              "security_id": {
+                "$ref": "#/$defs/SecurityId"
+              },
+              "recommended_discovery_action": {
+                "$ref": "#/$defs/DiscoveryDecision"
+              },
+              "proposed_stage": {
+                "type": "string",
+                "enum": [
+                  "STAGE_0",
+                  "STAGE_1",
+                  "STAGE_2",
+                  "STAGE_3",
+                  "UNKNOWN"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "security_id",
+              "recommended_discovery_action",
+              "proposed_stage",
+              "rationale",
+              "evidence_ids"
+            ],
+            "properties": {
+              "security_id": {
+                "$ref": "#/$defs/SecurityId"
+              },
+              "recommended_discovery_action": {
+                "$ref": "#/$defs/DiscoveryDecision"
+              },
+              "proposed_stage": {
+                "type": "string",
+                "enum": [
+                  "STAGE_0",
+                  "STAGE_1",
+                  "STAGE_2",
+                  "STAGE_3",
+                  "UNKNOWN"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "data_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context_manifest_receipt": {
+          "$ref": "#/$defs/ContextReceipt"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SectorOpportunityAssessmentV2": {
+      "type": "object",
+      "required": [
+        "market_context_gate_receipt",
+        "sector_opportunity_assessment",
+        "research_priority",
+        "sector_thesis",
+        "economic_engine",
+        "capital_flow_direction",
+        "estimate_revision_direction",
+        "leading_indicators",
+        "expectation_risks",
+        "industry_driver_snapshot_receipt",
+        "search_scope",
+        "avoid_scope",
+        "data_gaps",
+        "evidence_ids"
+      ],
+      "properties": {
+        "market_context_gate_receipt": {
+          "$ref": "#/$defs/MarketContextGateReceipt"
+        },
+        "sector_opportunity_assessment": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "research_priority": {
+          "type": "string",
+          "enum": [
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "EXCLUDE"
+          ]
+        },
+        "sector_thesis": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "economic_engine": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "capital_flow_direction": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "estimate_revision_direction": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "leading_indicators": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "expectation_risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "industry_driver_snapshot_receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "search_scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "avoid_scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "data_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "StockResearchResultV2": {
+      "type": "object",
+      "required": [
+        "research_status",
+        "stage_gate_receipt",
+        "industry_driver_snapshot_receipt",
+        "capital_prescreen_extraction_receipt",
+        "capital_prescreen_gate_receipt",
+        "economic_engine",
+        "good_lag_status",
+        "breakout_type",
+        "material_claims",
+        "why_now",
+        "why_not_priced",
+        "wakeup_event",
+        "directional_probability_hypothesis",
+        "thesis_invalidation",
+        "failure_paths",
+        "evidence_ids"
+      ],
+      "properties": {
+        "research_status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "stage_gate_receipt": {
+          "$ref": "#/$defs/StageGateReceipt"
+        },
+        "industry_driver_snapshot_receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "capital_prescreen_extraction_receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "capital_prescreen_gate_receipt": {
+          "$ref": "#/$defs/CapitalPrescreenGateReceipt"
+        },
+        "economic_engine": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "good_lag_status": {
+          "type": "string",
+          "enum": [
+            "GOOD_LAG",
+            "BAD_LAG",
+            "MIXED",
+            "UNKNOWN"
+          ]
+        },
+        "breakout_type": {
+          "type": "string",
+          "enum": [
+            "NO_BREAKOUT",
+            "PRICE_ONLY_BREAKOUT",
+            "FUNDAMENTAL_BREAKOUT",
+            "UNKNOWN"
+          ]
+        },
+        "material_claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "why_now": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "why_not_priced": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "wakeup_event": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "directional_probability_hypothesis": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "thesis_invalidation": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "failure_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FailurePathV2"
+          },
+          "minItems": 3
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "DirectionalProbabilityHypothesisV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "directional_hypothesis",
+        "scenarios",
+        "probability_swing_factors",
+        "evidence_ids",
+        "unknowns"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "directional_hypothesis": {
+          "type": "string",
+          "enum": [
+            "UPSIDE_HYPOTHESIS",
+            "BALANCED_HYPOTHESIS",
+            "DOWNSIDE_HYPOTHESIS",
+            "UNKNOWN"
+          ]
+        },
+        "scenarios": {
+          "type": "object",
+          "required": [
+            "bear",
+            "base",
+            "bull"
+          ],
+          "properties": {
+            "bear": {
+              "$ref": "#/$defs/Scenario"
+            },
+            "base": {
+              "$ref": "#/$defs/Scenario"
+            },
+            "bull": {
+              "$ref": "#/$defs/Scenario"
+            }
+          },
+          "additionalProperties": false
+        },
+        "probability_swing_factors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PortfolioComparisonResultV2": {
+      "type": "object",
+      "required": [
+        "run_mode",
+        "capital_snapshot_id",
+        "alternatives",
+        "preferred_recommendation",
+        "opportunity_cost_assessment",
+        "cash_bias_audit",
+        "replacement_case",
+        "portfolio_risks",
+        "data_gaps",
+        "portfolio_snapshot_receipt",
+        "as_of"
+      ],
+      "properties": {
+        "run_mode": {
+          "const": "HUNT_AND_EXECUTION_REVIEW"
+        },
+        "capital_snapshot_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "asset_id",
+              "asset_kind",
+              "action_scope",
+              "capital_path",
+              "capital_snapshot_id",
+              "relative_rank",
+              "probability_weighted_ev",
+              "execution_rr",
+              "structural_asymmetry",
+              "time_to_catalyst",
+              "opportunity_cost_if_waiting",
+              "factor_overlap",
+              "capital_structure_risk",
+              "strengthening_evidence_ids",
+              "position_snapshot_receipt",
+              "prior_add_trigger_id",
+              "evidence_ids"
+            ],
+            "properties": {
+              "asset_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "asset_kind": {
+                "type": "string",
+                "enum": [
+                  "SECURITY",
+                  "CASH"
+                ]
+              },
+              "action_scope": {
+                "type": "string",
+                "enum": [
+                  "CANDIDATE",
+                  "EXISTING_POSITION",
+                  "RUN"
+                ]
+              },
+              "capital_path": {
+                "type": "string",
+                "enum": [
+                  "NEW_STARTER",
+                  "EXISTING_ADD",
+                  "EXISTING_FULL",
+                  "HOLD_CASH",
+                  "TRIM",
+                  "EXIT",
+                  "OTHER"
+                ]
+              },
+              "capital_snapshot_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "relative_rank": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "probability_weighted_ev": {
+                "type": "object",
+                "required": [
+                  "summary",
+                  "evidence_ids",
+                  "unknowns"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/EvidenceId"
+                    }
+                  },
+                  "unknowns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "execution_rr": {
+                "type": "object",
+                "required": [
+                  "summary",
+                  "evidence_ids",
+                  "unknowns"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/EvidenceId"
+                    }
+                  },
+                  "unknowns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "structural_asymmetry": {
+                "type": "object",
+                "required": [
+                  "summary",
+                  "evidence_ids",
+                  "unknowns"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/EvidenceId"
+                    }
+                  },
+                  "unknowns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "time_to_catalyst": {
+                "type": "object",
+                "required": [
+                  "summary",
+                  "evidence_ids",
+                  "unknowns"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/EvidenceId"
+                    }
+                  },
+                  "unknowns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "opportunity_cost_if_waiting": {
+                "type": "object",
+                "required": [
+                  "summary",
+                  "evidence_ids",
+                  "unknowns"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/EvidenceId"
+                    }
+                  },
+                  "unknowns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "factor_overlap": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "capital_structure_risk": {
+                "type": "object",
+                "required": [
+                  "summary",
+                  "evidence_ids",
+                  "unknowns"
+                ],
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/EvidenceId"
+                    }
+                  },
+                  "unknowns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "strengthening_evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "position_snapshot_receipt": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PositionSnapshotReceiptV2"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "prior_add_trigger_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "asset_kind": {
+                      "const": "CASH"
+                    }
+                  },
+                  "required": [
+                    "asset_kind"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "asset_id": {
+                      "type": "string",
+                      "pattern": "^CASH:[A-Z]{3}$"
+                    },
+                    "action_scope": {
+                      "const": "RUN"
+                    },
+                    "capital_path": {
+                      "const": "HOLD_CASH"
+                    },
+                    "strengthening_evidence_ids": {
+                      "maxItems": 0
+                    },
+                    "position_snapshot_receipt": {
+                      "type": "null"
+                    },
+                    "prior_add_trigger_id": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "asset_kind": {
+                      "const": "SECURITY"
+                    }
+                  },
+                  "required": [
+                    "asset_kind"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "asset_id": {
+                      "not": {
+                        "pattern": "^CASH:"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "capital_path": {
+                      "const": "HOLD_CASH"
+                    }
+                  },
+                  "required": [
+                    "capital_path"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "asset_kind": {
+                      "const": "CASH"
+                    },
+                    "action_scope": {
+                      "const": "RUN"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "capital_path": {
+                      "const": "NEW_STARTER"
+                    }
+                  },
+                  "required": [
+                    "capital_path"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "asset_kind": {
+                      "const": "SECURITY"
+                    },
+                    "action_scope": {
+                      "const": "CANDIDATE"
+                    },
+                    "position_snapshot_receipt": {
+                      "type": "null"
+                    },
+                    "prior_add_trigger_id": {
+                      "type": "null"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "capital_path": {
+                      "enum": [
+                        "EXISTING_ADD",
+                        "EXISTING_FULL",
+                        "TRIM",
+                        "EXIT"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "capital_path"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "asset_kind": {
+                      "const": "SECURITY"
+                    },
+                    "action_scope": {
+                      "const": "EXISTING_POSITION"
+                    },
+                    "position_snapshot_receipt": {
+                      "$ref": "#/$defs/PositionSnapshotReceiptV2"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "capital_path": {
+                      "const": "EXISTING_ADD"
+                    }
+                  },
+                  "required": [
+                    "capital_path"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "strengthening_evidence_ids": {
+                      "minItems": 1
+                    },
+                    "prior_add_trigger_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "minItems": 1
+        },
+        "preferred_recommendation": {
+          "type": "object",
+          "required": [
+            "asset_id",
+            "capital_path",
+            "rationale"
+          ],
+          "properties": {
+            "asset_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capital_path": {
+              "type": "string",
+              "enum": [
+                "NEW_STARTER",
+                "EXISTING_ADD",
+                "EXISTING_FULL",
+                "HOLD_CASH",
+                "TRIM",
+                "EXIT",
+                "NONE"
+              ]
+            },
+            "rationale": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "opportunity_cost_assessment": {
+          "type": "object",
+          "required": [
+            "waiting_upside",
+            "price_leads_probability",
+            "time_to_catalyst",
+            "alternative_ev"
+          ],
+          "properties": {
+            "waiting_upside": {
+              "type": "object",
+              "required": [
+                "summary",
+                "evidence_ids",
+                "unknowns"
+              ],
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "evidence_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/EvidenceId"
+                  }
+                },
+                "unknowns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "price_leads_probability": {
+              "type": "object",
+              "required": [
+                "summary",
+                "evidence_ids",
+                "unknowns"
+              ],
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "evidence_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/EvidenceId"
+                  }
+                },
+                "unknowns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "time_to_catalyst": {
+              "type": "object",
+              "required": [
+                "summary",
+                "evidence_ids",
+                "unknowns"
+              ],
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "evidence_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/EvidenceId"
+                  }
+                },
+                "unknowns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "alternative_ev": {
+              "type": "object",
+              "required": [
+                "summary",
+                "evidence_ids",
+                "unknowns"
+              ],
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "evidence_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/EvidenceId"
+                  }
+                },
+                "unknowns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "cash_bias_audit": {
+          "type": "object",
+          "required": [
+            "assessment",
+            "flags",
+            "rationale"
+          ],
+          "properties": {
+            "assessment": {
+              "type": "string",
+              "enum": [
+                "NO_BIAS_FOUND",
+                "BIAS_FLAGGED",
+                "UNKNOWN"
+              ]
+            },
+            "flags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "rationale": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "replacement_case": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "portfolio_risks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "data_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "portfolio_snapshot_receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "as_of": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FinalSynthesisRecommendationV2": {
+      "type": "object",
+      "required": [
+        "run_mode",
+        "target_security_id",
+        "recommendation_status",
+        "action_scope",
+        "recommended_action",
+        "blocking_reason_codes",
+        "confidence",
+        "probability_edge",
+        "stage",
+        "market_context",
+        "market_execution_gate_receipt",
+        "upside_fuel",
+        "expectation_gap",
+        "why_now",
+        "why_not_priced",
+        "wakeup_event",
+        "starter_plan",
+        "add_plan",
+        "maximum_position",
+        "execution_stop",
+        "thesis_stop",
+        "structural_bear",
+        "worst_plausible_gap",
+        "maximum_holding_or_time_stop",
+        "execution_rr",
+        "structural_asymmetry",
+        "probability_weighted_ev",
+        "account_loss",
+        "opportunity_cost",
+        "capital_structure",
+        "failure_paths",
+        "portfolio_comparison",
+        "unresolved_issues",
+        "context_manifest_receipt",
+        "dependency_receipt",
+        "position_snapshot_receipt",
+        "prior_add_trigger_receipt",
+        "fresh_evidence_delta_receipt",
+        "strengthening_evidence_receipt",
+        "as_of"
+      ],
+      "properties": {
+        "run_mode": {
+          "const": "HUNT_AND_EXECUTION_REVIEW"
+        },
+        "target_security_id": {
+          "$ref": "#/$defs/SecurityId"
+        },
+        "recommendation_status": {
+          "type": "string",
+          "enum": [
+            "READY",
+            "BLOCKED_BY_EVIDENCE_GAP",
+            "BLOCKED_BY_CONTEXT",
+            "BLOCKED_BY_CRITICAL_ISSUE",
+            "STALE_INPUT",
+            "MODE_INVALID"
+          ]
+        },
+        "action_scope": {
+          "type": "string",
+          "enum": [
+            "CANDIDATE",
+            "EXISTING_POSITION",
+            "RUN"
+          ]
+        },
+        "recommended_action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionAction"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "blocking_reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceBand"
+        },
+        "probability_edge": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "stage": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "market_context": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "market_execution_gate_receipt": {
+          "$ref": "#/$defs/MarketExecutionGateReceipt"
+        },
+        "upside_fuel": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectation_gap": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "why_now": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "why_not_priced": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "wakeup_event": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "starter_plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StarterPlanV2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "add_plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AddPlanV2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "maximum_position": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "thesis_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_bear": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "worst_plausible_gap": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "maximum_holding_or_time_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution_rr": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_asymmetry": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "probability_weighted_ev": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "account_loss": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "opportunity_cost": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "capital_structure": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "failure_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FailurePathV2"
+          },
+          "minItems": 3
+        },
+        "portfolio_comparison": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "unresolved_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "context_manifest_receipt": {
+          "$ref": "#/$defs/ContextReceipt"
+        },
+        "dependency_receipt": {
+          "$ref": "#/$defs/Receipt"
+        },
+        "position_snapshot_receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PositionSnapshotReceiptV2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prior_add_trigger_receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PriorAddTriggerReceiptV2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fresh_evidence_delta_receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FreshnessDeltaReceiptV2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "strengthening_evidence_receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StrengtheningEvidenceReceiptV2"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "as_of": {
+          "$ref": "#/$defs/AsOfTimestamp"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "recommendation_status": {
+                "const": "READY"
+              }
+            },
+            "required": [
+              "recommendation_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recommended_action": {
+                "$ref": "#/$defs/ExecutionAction"
+              },
+              "blocking_reason_codes": {
+                "maxItems": 0
+              },
+              "unresolved_issues": {
+                "not": {
+                  "contains": {
+                    "properties": {
+                      "severity": {
+                        "const": "CRITICAL"
+                      }
+                    },
+                    "required": [
+                      "severity"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "recommendation_status": {
+                "not": {
+                  "const": "READY"
+                }
+              }
+            },
+            "required": [
+              "recommendation_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recommended_action": {
+                "type": "null"
+              },
+              "starter_plan": {
+                "type": "null"
+              },
+              "add_plan": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "recommended_action": {
+                "const": "STARTER"
+              }
+            },
+            "required": [
+              "recommended_action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "action_scope": {
+                "const": "CANDIDATE"
+              },
+              "starter_plan": {
+                "$ref": "#/$defs/StarterPlanV2"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "recommended_action": {
+                "const": "ADD"
+              }
+            },
+            "required": [
+              "recommended_action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "action_scope": {
+                "const": "EXISTING_POSITION"
+              },
+              "position_snapshot_receipt": {
+                "$ref": "#/$defs/PositionSnapshotReceiptV2"
+              },
+              "prior_add_trigger_receipt": {
+                "$ref": "#/$defs/PriorAddTriggerReceiptV2"
+              },
+              "fresh_evidence_delta_receipt": {
+                "$ref": "#/$defs/FreshnessDeltaReceiptV2"
+              },
+              "strengthening_evidence_receipt": {
+                "$ref": "#/$defs/StrengtheningEvidenceReceiptV2"
+              },
+              "add_plan": {
+                "$ref": "#/$defs/AddPlanV2"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "recommended_action": {
+                "enum": [
+                  "FULL",
+                  "TRIM",
+                  "EXIT"
+                ]
+              }
+            },
+            "required": [
+              "recommended_action"
+            ]
+          },
+          "then": {
+            "properties": {
+              "action_scope": {
+                "const": "EXISTING_POSITION"
+              },
+              "position_snapshot_receipt": {
+                "$ref": "#/$defs/PositionSnapshotReceiptV2"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ProbabilityEdgeRiskAsymmetryAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "directional_edge",
+        "scenarios",
+        "execution_stop",
+        "thesis_stop",
+        "structural_bear",
+        "worst_plausible_gap",
+        "execution_rr",
+        "structural_asymmetry",
+        "probability_weighted_ev",
+        "probability_swing_factors",
+        "arithmetic_source",
+        "risk_engine_receipt"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "directional_edge": {
+          "type": "string",
+          "enum": [
+            "UPSIDE_EDGE",
+            "BALANCED",
+            "DOWNSIDE_EDGE",
+            "UNKNOWN"
+          ]
+        },
+        "scenarios": {
+          "type": "object",
+          "required": [
+            "bear",
+            "base",
+            "bull"
+          ],
+          "properties": {
+            "bear": {
+              "$ref": "#/$defs/Scenario"
+            },
+            "base": {
+              "$ref": "#/$defs/Scenario"
+            },
+            "bull": {
+              "$ref": "#/$defs/Scenario"
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "thesis_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_bear": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "worst_plausible_gap": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "execution_rr": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_asymmetry": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "probability_weighted_ev": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "probability_swing_factors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "arithmetic_source": {
+          "const": "PYTHON_RISK_ENGINE"
+        },
+        "risk_engine_receipt": {
+          "$ref": "#/$defs/Receipt"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CapitalStructurePrescreenResultV2": {
+      "type": "object",
+      "required": [
+        "extraction_status",
+        "identity_status",
+        "active_atm",
+        "large_shelf_and_financing_need",
+        "toxic_convertible",
+        "material_warrant",
+        "imminent_financing",
+        "cash_runway_critical",
+        "full_forensic_required",
+        "required_full_forensic_questions",
+        "evidence_ids",
+        "unknowns"
+      ],
+      "properties": {
+        "extraction_status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "PARTIAL",
+            "INCOMPLETE"
+          ]
+        },
+        "identity_status": {
+          "type": "string",
+          "enum": [
+            "CONFIRMED",
+            "UNKNOWN",
+            "CONFLICT"
+          ]
+        },
+        "active_atm": {
+          "$ref": "#/$defs/TriStateFact"
+        },
+        "large_shelf_and_financing_need": {
+          "$ref": "#/$defs/TriStateFact"
+        },
+        "toxic_convertible": {
+          "$ref": "#/$defs/TriStateFact"
+        },
+        "material_warrant": {
+          "$ref": "#/$defs/TriStateFact"
+        },
+        "imminent_financing": {
+          "$ref": "#/$defs/TriStateFact"
+        },
+        "cash_runway_critical": {
+          "$ref": "#/$defs/TriStateFact"
+        },
+        "full_forensic_required": {
+          "type": "boolean"
+        },
+        "required_full_forensic_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CapitalStructureForensicAssessmentV2": {
+      "type": "object",
+      "required": [
+        "analysis_status",
+        "atm",
+        "shelf",
+        "warrants",
+        "convertibles",
+        "basic_shares",
+        "diluted_shares",
+        "potential_dilution",
+        "financing_need",
+        "toxicity_interpretation"
+      ],
+      "properties": {
+        "analysis_status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "atm": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "shelf": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "warrants": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "convertibles": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "basic_shares": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "diluted_shares": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "potential_dilution": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "financing_need": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "toxicity_interpretation": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CatalystExpectationGapAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "market_expectation",
+        "actual_economic_change",
+        "expectation_gap",
+        "catalysts",
+        "why_now",
+        "why_not_priced",
+        "wakeup_event"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "market_expectation": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "actual_economic_change": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "expectation_gap": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "catalysts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "why_now": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "why_not_priced": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "wakeup_event": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReverseValuationAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "valuation_framework",
+        "implied_revenue",
+        "implied_growth",
+        "implied_margin",
+        "implied_fcf",
+        "implied_multiple",
+        "base_requirement",
+        "bull_requirement",
+        "priced_in_assessment",
+        "rerating_dependency"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "valuation_framework": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "implied_revenue": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "implied_growth": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "implied_margin": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "implied_fcf": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "implied_multiple": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "base_requirement": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "bull_requirement": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "priced_in_assessment": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "rerating_dependency": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "FailureScenarioInvalidationAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "failure_paths",
+        "execution_stop_inputs",
+        "thesis_stop",
+        "structural_bear",
+        "structural_bear_is_not_execution_stop"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "failure_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FailurePathV2"
+          },
+          "minItems": 3
+        },
+        "execution_stop_inputs": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "thesis_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_bear": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_bear_is_not_execution_stop": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "EntryReadinessExecutionAssessmentV2": {
+      "type": "object",
+      "required": [
+        "analysis_status",
+        "readiness_recommendation",
+        "stage_gate_receipt",
+        "market_execution_gate_receipt",
+        "stage_interpretation",
+        "breakout_type",
+        "execution_stop",
+        "thesis_stop",
+        "structural_bear",
+        "worst_plausible_gap",
+        "maximum_holding_or_time_stop",
+        "opportunity_cost_if_waiting"
+      ],
+      "properties": {
+        "analysis_status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "readiness_recommendation": {
+          "type": "string",
+          "enum": [
+            "READY_FOR_RECOMMENDATION",
+            "NOT_READY",
+            "DATA_INCOMPLETE"
+          ]
+        },
+        "stage_gate_receipt": {
+          "$ref": "#/$defs/StageGateReceipt"
+        },
+        "market_execution_gate_receipt": {
+          "$ref": "#/$defs/MarketExecutionGateReceipt"
+        },
+        "stage_interpretation": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "breakout_type": {
+          "type": "string",
+          "enum": [
+            "NO_BREAKOUT",
+            "PRICE_ONLY_BREAKOUT",
+            "FUNDAMENTAL_BREAKOUT",
+            "UNKNOWN"
+          ]
+        },
+        "execution_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "thesis_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "structural_bear": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "worst_plausible_gap": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "maximum_holding_or_time_stop": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "opportunity_cost_if_waiting": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventProbabilityAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "event_type",
+        "event_window",
+        "states",
+        "worst_plausible_gap_input",
+        "python_probability_weighted_ev"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "event_type": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "event_window": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "worst_plausible_gap_input": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "python_probability_weighted_ev": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "FundamentalChangeQualityAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "reported_growth",
+        "organic_growth",
+        "growth_acceleration",
+        "demand_leading_indicators",
+        "margin_and_fcf_quality",
+        "durability_assessment"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "reported_growth": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "organic_growth": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "growth_acceleration": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "demand_leading_indicators": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "margin_and_fcf_quality": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "durability_assessment": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccountingQualityAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "gaap_non_gaap_bridge",
+        "revenue_recognition_risks",
+        "sbc_and_share_economics",
+        "cash_conversion",
+        "accounting_red_flags",
+        "quality_assessment"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "gaap_non_gaap_bridge": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "revenue_recognition_risks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "sbc_and_share_economics": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "cash_conversion": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "accounting_red_flags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "quality_assessment": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContractBacklogQualityAssessmentV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "contract_type",
+        "binding_status",
+        "stated_value",
+        "minimum_committed_value",
+        "backlog_rpo_inclusion",
+        "revenue_recognition_timing",
+        "economic_transmission"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "contract_type": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "binding_status": {
+          "type": "string",
+          "enum": [
+            "BINDING",
+            "NON_BINDING",
+            "MIXED",
+            "UNKNOWN"
+          ]
+        },
+        "stated_value": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "minimum_committed_value": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "backlog_rpo_inclusion": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "revenue_recognition_timing": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "economic_transmission": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "FreshnessDeltaReviewResultV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "claim_deltas",
+        "thesis_delta",
+        "capital_structure_delta",
+        "probability_edge_delta",
+        "add_evidence_strengthened",
+        "strengthening_evidence_ids",
+        "strengthening_reason",
+        "potentially_affected_domains",
+        "dependency_receipts",
+        "evidence_ids",
+        "unknowns"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "claim_deltas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "claim_id",
+              "delta",
+              "evidence_ids",
+              "reason"
+            ],
+            "properties": {
+              "claim_id": {
+                "$ref": "#/$defs/ClaimId"
+              },
+              "delta": {
+                "type": "string",
+                "enum": [
+                  "UNCHANGED",
+                  "STRENGTHENED",
+                  "WEAKENED",
+                  "INVALIDATED",
+                  "NEW_CONFLICT"
+                ]
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "thesis_delta": {
+          "type": "string",
+          "enum": [
+            "UNCHANGED",
+            "STRENGTHENED",
+            "WEAKENED",
+            "INVALIDATED",
+            "NEW_CONFLICT",
+            "UNKNOWN"
+          ]
+        },
+        "capital_structure_delta": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "probability_edge_delta": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "add_evidence_strengthened": {
+          "type": "boolean"
+        },
+        "strengthening_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "strengthening_reason": {
+          "type": "string"
+        },
+        "potentially_affected_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dependency_receipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Receipt"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "add_evidence_strengthened": {
+                "const": true
+              }
+            },
+            "required": [
+              "add_evidence_strengthened"
+            ]
+          },
+          "then": {
+            "properties": {
+              "strengthening_evidence_ids": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SECExtractionResultV2": {
+      "type": "object",
+      "required": [
+        "status",
+        "filing_identity",
+        "basic_and_diluted_shares",
+        "atm",
+        "shelf",
+        "warrants",
+        "convertibles",
+        "cash_debt_and_maturities",
+        "evidence_spans"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "filing_identity": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "basic_and_diluted_shares": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "atm": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "shelf": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "warrants": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "convertibles": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "cash_debt_and_maturities": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "evidence_spans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "summary",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "AdversarialAuditResult": {
+      "type": "object",
+      "required": [
+        "audit_recommendation",
+        "issues",
+        "failure_paths",
+        "surviving_claims",
+        "evidence_requests",
+        "unresolved_critical"
+      ],
+      "properties": {
+        "audit_recommendation": {
+          "type": "string",
+          "enum": [
+            "SUPPORTS_CONTINUATION",
+            "CHALLENGES_CONTINUATION",
+            "NEEDS_NEW_EVIDENCE",
+            "AUDIT_EVIDENCE_INCOMPLETE"
+          ]
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "failure_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FailurePathV2"
+          },
+          "minItems": 3
+        },
+        "surviving_claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClaimId"
+          }
+        },
+        "evidence_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRequestItemV2"
+          }
+        },
+        "unresolved_critical": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConsensusRevalidationResult": {
+      "type": "object",
+      "required": [
+        "consensus_recommendation",
+        "unresolved_critical_issues",
+        "evidence_review_gaps",
+        "position_independence"
+      ],
+      "properties": {
+        "consensus_recommendation": {
+          "type": "string",
+          "enum": [
+            "SUPPORTS_CONTINUATION",
+            "CHALLENGES_CONTINUATION",
+            "NEEDS_NEW_EVIDENCE",
+            "AUDIT_EVIDENCE_INCOMPLETE"
+          ]
+        },
+        "unresolved_critical_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "evidence_review_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "position_independence": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "AdversarialReviewResultV2": {
+      "type": "object",
+      "required": [
+        "audit_recommendation",
+        "attacks",
+        "failure_paths",
+        "surviving_claims",
+        "new_evidence_requests",
+        "unresolved_critical_issues",
+        "confidence"
+      ],
+      "properties": {
+        "audit_recommendation": {
+          "type": "string",
+          "enum": [
+            "SUPPORTS_CONTINUATION",
+            "CHALLENGES_CONTINUATION",
+            "NEEDS_NEW_EVIDENCE",
+            "AUDIT_EVIDENCE_INCOMPLETE"
+          ]
+        },
+        "attacks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "failure_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FailurePathV2"
+          },
+          "minItems": 3
+        },
+        "surviving_claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClaimId"
+          }
+        },
+        "new_evidence_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRequestItemV2"
+          }
+        },
+        "unresolved_critical_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceBand"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EvidenceRequestSet": {
+      "type": "object",
+      "required": [
+        "status",
+        "items",
+        "unknowns",
+        "receipts"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRequestItemV2"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "receipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Receipt"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "EvidenceItems": {
+      "type": "object",
+      "required": [
+        "status",
+        "items",
+        "unknowns"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "evidence_id",
+              "source_class",
+              "grade",
+              "as_of",
+              "excerpt",
+              "source_hash"
+            ],
+            "properties": {
+              "evidence_id": {
+                "$ref": "#/$defs/EvidenceId"
+              },
+              "source_class": {
+                "type": "string"
+              },
+              "grade": {
+                "$ref": "#/$defs/EvidenceGrade"
+              },
+              "as_of": {
+                "$ref": "#/$defs/AsOfTimestamp"
+              },
+              "excerpt": {
+                "type": "string"
+              },
+              "source_hash": {
+                "$ref": "#/$defs/Hash"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClaimEvidenceMap": {
+      "type": "object",
+      "required": [
+        "status",
+        "mappings",
+        "unmapped_claim_ids",
+        "unused_evidence_ids"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "claim_id",
+              "evidence_ids",
+              "support_status"
+            ],
+            "properties": {
+              "claim_id": {
+                "$ref": "#/$defs/ClaimId"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "support_status": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "PARTIAL",
+                  "CONTRADICTED",
+                  "UNSUPPORTED",
+                  "UNKNOWN"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "unmapped_claim_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClaimId"
+          }
+        },
+        "unused_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "IndustryOverlayAssessment": {
+      "type": "object",
+      "required": [
+        "status",
+        "industry",
+        "economic_engine",
+        "key_kpis",
+        "leading_indicators",
+        "expectation_measurement_hooks",
+        "probability_swing_factors",
+        "structural_bear_drivers",
+        "capital_structure_sensitivities",
+        "fundamental_breakout_confirmation",
+        "industry_failure_paths",
+        "valuation_hooks",
+        "evidence_ids",
+        "unknowns"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "CONTEXT_INCOMPLETE"
+          ]
+        },
+        "industry": {
+          "type": "string",
+          "minLength": 1
+        },
+        "economic_engine": {
+          "type": "object",
+          "required": [
+            "summary",
+            "evidence_ids",
+            "unknowns"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "evidence_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EvidenceId"
+              }
+            },
+            "unknowns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "key_kpis": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "leading_indicators": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "expectation_measurement_hooks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "probability_swing_factors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "structural_bear_drivers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "capital_structure_sensitivities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fundamental_breakout_confirmation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "industry_failure_paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "valuation_hooks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "assessment",
+              "evidence_ids",
+              "unknowns"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assessment": {
+                "type": "string"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EvidenceId"
+                }
+              },
+              "unknowns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceId"
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+
+

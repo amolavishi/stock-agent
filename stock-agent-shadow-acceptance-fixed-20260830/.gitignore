@@ -1,0 +1,14 @@
+.env
+*.db
+*.db-shm
+*.db-wal
+auth.json
+**/auth.json
+work/
+shadow_runs/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+outputs/*/VALIDATION/.cache/

@@ -1,0 +1,174 @@
+{
+  "provider_recordings": {
+    "_recorded_at": "2026-08-23T23:59:00Z",
+    "market_context": {
+      "complete": true,
+      "regime": "RISK_ON",
+      "breadth": "BROAD",
+      "volatility": "NORMAL",
+      "normalization_status": "COMPLETE",
+      "assets": {
+        "SPY": {"symbol": "SPY", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "QQQ": {"symbol": "QQQ", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "IWM": {"symbol": "IWM", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "SOXX": {"symbol": "SOXX", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "VIX": {"symbol": "VIX", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "US10Y": {"symbol": "US10Y", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "DXY": {"symbol": "DXY", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "WTI": {"symbol": "WTI", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "BTC": {"symbol": "BTC", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3},
+        "ETH": {"symbol": "ETH", "observed_at": "2026-08-23T00:00:00Z", "source": "recorded-market", "observation_count": 3}
+      }
+    },
+    "candidates": [
+      {
+        "security_id": "SEC1",
+        "ticker": "SEC1",
+        "issuer_name": "Recorded Issuer",
+        "venue": "NASDAQ",
+        "cik": "0000000000",
+        "sector": "TECH",
+        "prices": [
+          10.0,
+          10.5,
+          11.0
+        ],
+        "sector_eligible": true,
+        "evidence_ids": [
+          "E1"
+        ],
+        "market_cap": 550000000,
+        "average_dollar_volume": 20000000
+      }
+    ],
+    "market_execution": {
+      "core_input_complete": true,
+      "current_price": 10.0,
+      "execution_stop": 9.0,
+      "account_equity": 1000.0
+    },
+    "portfolio_snapshot": {
+      "_recorded_at": "2026-08-23T23:59:00Z",
+      "as_of": "2026-08-18T00:00:00Z",
+      "cash": 1000.0,
+      "total_equity": 1000.0,
+      "positions": []
+    },
+    "research": {
+      "_recorded_at": "2026-08-23T23:59:00Z",
+      "SEC1": {
+        "source_type": "recorded_ir",
+        "title": "Recorded issuer research evidence",
+        "content": "Sanitized raw research observation for contract tests.",
+        "observed_at": "2026-08-18T00:00:00Z",
+        "source_url": "https://issuer.example/ir",
+        "catalysts": [
+          {
+            "catalyst_id": "C-RECORDED-1",
+            "event_type": "EARNINGS",
+            "event_date": "2026-09-15T20:00:00Z",
+            "verification_status": "CONFIRMED",
+            "binding_status": "NOT_APPLICABLE",
+            "economic_transmission": {
+              "metric": "revenue_growth_pct",
+              "direction": "UP",
+              "magnitude": 20.0,
+              "unit": "percent"
+            },
+            "confirmation_metric": "reported revenue and forward guidance"
+          }
+        ],
+        "valuation_inputs": {
+          "valuation_basis": "EV_REVENUE",
+          "metric_name": "FORWARD_REVENUE",
+          "diluted_shares": 50000000,
+          "net_cash": 50000000,
+          "forward_metric_value": 100000000,
+          "benchmark_multiple": 8.0,
+          "benchmark_description": "recorded peer/consensus forward revenue benchmark"
+        }
+      }
+    },
+    "sec": {
+      "_recorded_at": "2026-08-23T23:59:00Z",
+      "SEC1": {
+        "submissions": {
+          "name": "Recorded Issuer",
+          "filings": {
+            "recent": {
+              "form": [
+                "10-K"
+              ],
+              "accessionNumber": [
+                "0000000000-26-000001"
+              ],
+              "primaryDocument": [
+                "recorded-10k.htm"
+              ]
+            }
+          }
+        },
+        "facts": {
+          "entityName": "Recorded Issuer",
+          "facts": {
+            "us-gaap": {
+              "Revenue": {
+                "units": {
+                  "USD": [
+                    {
+                      "val": 100
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "cheap_facts": {
+          "extraction_status": "COMPLETE",
+          "active_atm": {
+            "state": "FALSE",
+            "evidence_ids": [
+              "SEC-CHEAP"
+            ]
+          },
+          "large_shelf_and_financing_need": {
+            "state": "FALSE",
+            "evidence_ids": [
+              "SEC-CHEAP"
+            ]
+          },
+          "toxic_convertible": {
+            "state": "FALSE",
+            "evidence_ids": [
+              "SEC-CHEAP"
+            ]
+          },
+          "material_warrant": {
+            "state": "FALSE",
+            "evidence_ids": [
+              "SEC-CHEAP"
+            ]
+          },
+          "imminent_financing": {
+            "state": "FALSE",
+            "evidence_ids": [
+              "SEC-CHEAP"
+            ]
+          },
+          "cash_runway_critical": {
+            "state": "FALSE",
+            "evidence_ids": [
+              "SEC-CHEAP"
+            ]
+          }
+        },
+        "filings": {
+          "accession_number": "0000000000-26-000001",
+          "form": "10-K",
+          "document": "Sanitized recorded filing document"
+        }
+      }
+    }
+  }
+}

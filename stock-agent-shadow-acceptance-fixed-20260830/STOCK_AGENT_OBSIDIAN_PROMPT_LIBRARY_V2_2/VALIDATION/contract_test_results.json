@@ -1,0 +1,103 @@
+{
+  "typed_schema_registry": {
+    "status": "PASS",
+    "schema_count": 27,
+    "strict_object_failures": []
+  },
+  "schema_positive_cases": {
+    "status": "PASS",
+    "passed": 32,
+    "total": 32,
+    "failures": []
+  },
+  "schema_negative_cases": {
+    "status": "PASS",
+    "rejected": 62,
+    "total": 62,
+    "unexpected_passes": []
+  },
+  "prompt_metadata": {
+    "status": "PASS",
+    "prompt_count": 41,
+    "unique_prompt_ids": 41,
+    "failures": []
+  },
+  "prompt_body_contract_lint": {
+    "status": "PASS",
+    "leaf_prompts_checked": 40,
+    "inline_json_contract_count": 0,
+    "failures": []
+  },
+  "manifest_consistency": {
+    "status": "PASS",
+    "semantic_diff_count": 0,
+    "content_hash_passed": 41,
+    "content_hash_total": 41,
+    "diffs": []
+  },
+  "dependency_references": {
+    "status": "PASS",
+    "failures": []
+  },
+  "composition_contract": {
+    "status": "PASS",
+    "explicit_case_count": 3,
+    "all_leaf_prompts_checked": 40,
+    "failures": []
+  },
+  "semantic_dependency": {
+    "status": "PASS",
+    "cycle_count": 0,
+    "future_dependency_failures": []
+  },
+  "hunt_only_dependency": {
+    "status": "PASS",
+    "execution_dependency_count": 0,
+    "failures": []
+  },
+  "gate_provenance_and_sequencing": {
+    "status": "PASS",
+    "failures": []
+  },
+  "semantic_dependency_negative_cases": {
+    "status": "PASS",
+    "rejected": 2,
+    "total": 2
+  },
+  "holding_horizon_runtime_policy": {
+    "status": "PASS",
+    "passed": 4,
+    "total": 4,
+    "default_maximum_days": 56,
+    "failures": []
+  },
+  "namespace_separation": {
+    "status": "PASS",
+    "overlap": []
+  },
+  "authority_boundary": {
+    "status": "PASS",
+    "final_action_owner": "Python FinalAllocationGate only",
+    "fresh_money_cardinality": "0..1 per Run"
+  },
+  "legacy_action_scan": {
+    "status": "PASS",
+    "hit_count": 0,
+    "hits": []
+  },
+  "python_authority_preservation": {
+    "status": "PASS",
+    "intrusion_count": 0,
+    "intrusions": []
+  },
+  "industry_overlay_preservation": {
+    "status": "PASS",
+    "overlay_count": 12,
+    "all_analytical_bodies_preserved": true
+  },
+  "overall": "PASS",
+  "failure_count": 0,
+  "failures": []
+}
+
+

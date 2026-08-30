@@ -1,0 +1,2509 @@
+{
+  "cases": [
+    {
+      "case_id": "positive_MarketContextExecutionAssessmentV2",
+      "schema_id": "MarketContextExecutionAssessmentV2",
+      "instance": {
+        "run_mode": "HUNT_ONLY",
+        "market_context": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_execution_observations": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "sector_rotation": [],
+        "unknowns": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        },
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    },
+    {
+      "case_id": "positive_DiscoveryCandidateSetV2",
+      "schema_id": "DiscoveryCandidateSetV2",
+      "instance": {
+        "run_mode": "HUNT_ONLY",
+        "sector_gate_receipt": {
+          "gate_type": "SectorGate",
+          "decision": "PASS",
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "industry_driver_snapshot_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "candidates": [],
+        "excluded": [],
+        "data_gaps": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_SectorOpportunityAssessmentV2",
+      "schema_id": "SectorOpportunityAssessmentV2",
+      "instance": {
+        "market_context_gate_receipt": {
+          "gate_type": "MarketContextGate",
+          "decision": "PASS",
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "sector_opportunity_assessment": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "research_priority": "HIGH",
+        "sector_thesis": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "economic_engine": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "capital_flow_direction": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "estimate_revision_direction": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "leading_indicators": [],
+        "expectation_risks": [],
+        "industry_driver_snapshot_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "search_scope": [],
+        "avoid_scope": [],
+        "data_gaps": [],
+        "evidence_ids": []
+      }
+    },
+    {
+      "case_id": "positive_StockResearchResultV2",
+      "schema_id": "StockResearchResultV2",
+      "instance": {
+        "research_status": "COMPLETE",
+        "stage_gate_receipt": {
+          "gate_type": "StageGate",
+          "decision": "PASS",
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "industry_driver_snapshot_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "capital_prescreen_extraction_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "capital_prescreen_gate_receipt": {
+          "gate_type": "CapitalPrescreenGate",
+          "decision": "PASS",
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "economic_engine": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "good_lag_status": "GOOD_LAG",
+        "breakout_type": "NO_BREAKOUT",
+        "material_claims": [
+          {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          }
+        ],
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "directional_probability_hypothesis": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_invalidation": [
+          "example"
+        ],
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "evidence_ids": []
+      }
+    },
+    {
+      "case_id": "positive_DirectionalProbabilityHypothesisV2",
+      "schema_id": "DirectionalProbabilityHypothesisV2",
+      "instance": {
+        "status": "COMPLETE",
+        "directional_hypothesis": "UPSIDE_HYPOTHESIS",
+        "scenarios": {
+          "bear": {
+            "assumptions": [],
+            "value_or_price": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "probability_band": "LOW",
+            "catalysts_or_failures": [],
+            "evidence_ids": []
+          },
+          "base": {
+            "assumptions": [],
+            "value_or_price": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "probability_band": "LOW",
+            "catalysts_or_failures": [],
+            "evidence_ids": []
+          },
+          "bull": {
+            "assumptions": [],
+            "value_or_price": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "probability_band": "LOW",
+            "catalysts_or_failures": [],
+            "evidence_ids": []
+          }
+        },
+        "probability_swing_factors": [
+          "example"
+        ],
+        "evidence_ids": [],
+        "unknowns": []
+      }
+    },
+    {
+      "case_id": "positive_PortfolioComparisonResultV2",
+      "schema_id": "PortfolioComparisonResultV2",
+      "instance": {
+        "run_mode": "HUNT_AND_EXECUTION_REVIEW",
+        "capital_snapshot_id": "CS1",
+        "alternatives": [
+          {
+            "asset_id": "SEC1",
+            "asset_kind": "SECURITY",
+            "action_scope": "CANDIDATE",
+            "capital_path": "NEW_STARTER",
+            "capital_snapshot_id": "CS1",
+            "relative_rank": 1,
+            "probability_weighted_ev": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "execution_rr": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "structural_asymmetry": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "time_to_catalyst": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "opportunity_cost_if_waiting": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "factor_overlap": [],
+            "capital_structure_risk": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "strengthening_evidence_ids": [],
+            "position_snapshot_receipt": null,
+            "prior_add_trigger_id": null,
+            "evidence_ids": []
+          }
+        ],
+        "preferred_recommendation": {
+          "asset_id": "SEC1",
+          "capital_path": "NEW_STARTER",
+          "rationale": "example"
+        },
+        "opportunity_cost_assessment": {
+          "waiting_upside": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "price_leads_probability": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "time_to_catalyst": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "alternative_ev": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          }
+        },
+        "cash_bias_audit": {
+          "assessment": "NO_BIAS_FOUND",
+          "flags": [],
+          "rationale": "example"
+        },
+        "replacement_case": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "portfolio_risks": [],
+        "data_gaps": [],
+        "portfolio_snapshot_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    },
+    {
+      "case_id": "positive_FinalSynthesisRecommendationV2",
+      "schema_id": "FinalSynthesisRecommendationV2",
+      "instance": {
+        "run_mode": "HUNT_AND_EXECUTION_REVIEW",
+        "target_security_id": "SEC1",
+        "recommendation_status": "READY",
+        "action_scope": "RUN",
+        "recommended_action": "NO_TRADE",
+        "blocking_reason_codes": [],
+        "confidence": "HIGH",
+        "probability_edge": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "stage": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_context": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_execution_gate_receipt": {
+          "gate_type": "MarketExecutionGate",
+          "decision": "PASS",
+          "core_input_complete": true,
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "upside_fuel": [],
+        "expectation_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "starter_plan": null,
+        "add_plan": null,
+        "maximum_position": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "maximum_holding_or_time_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_rr": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_asymmetry": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "account_loss": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "opportunity_cost": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "capital_structure": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "portfolio_comparison": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "unresolved_issues": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        },
+        "dependency_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "position_snapshot_receipt": null,
+        "prior_add_trigger_receipt": null,
+        "fresh_evidence_delta_receipt": null,
+        "strengthening_evidence_receipt": null,
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    },
+    {
+      "case_id": "positive_ProbabilityEdgeRiskAsymmetryAssessmentV2",
+      "schema_id": "ProbabilityEdgeRiskAsymmetryAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "directional_edge": "UPSIDE_EDGE",
+        "scenarios": {
+          "bear": {
+            "assumptions": [],
+            "value_or_price": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "probability_band": "LOW",
+            "catalysts_or_failures": [],
+            "evidence_ids": []
+          },
+          "base": {
+            "assumptions": [],
+            "value_or_price": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "probability_band": "LOW",
+            "catalysts_or_failures": [],
+            "evidence_ids": []
+          },
+          "bull": {
+            "assumptions": [],
+            "value_or_price": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "probability_band": "LOW",
+            "catalysts_or_failures": [],
+            "evidence_ids": []
+          }
+        },
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_rr": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_asymmetry": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_swing_factors": [
+          "example"
+        ],
+        "arithmetic_source": "PYTHON_RISK_ENGINE",
+        "risk_engine_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "case_id": "positive_CapitalStructurePrescreenResultV2",
+      "schema_id": "CapitalStructurePrescreenResultV2",
+      "instance": {
+        "extraction_status": "COMPLETE",
+        "identity_status": "CONFIRMED",
+        "active_atm": {
+          "state": "TRUE",
+          "details": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "evidence_ids": []
+        },
+        "large_shelf_and_financing_need": {
+          "state": "TRUE",
+          "details": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "evidence_ids": []
+        },
+        "toxic_convertible": {
+          "state": "TRUE",
+          "details": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "evidence_ids": []
+        },
+        "material_warrant": {
+          "state": "TRUE",
+          "details": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "evidence_ids": []
+        },
+        "imminent_financing": {
+          "state": "TRUE",
+          "details": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "evidence_ids": []
+        },
+        "cash_runway_critical": {
+          "state": "TRUE",
+          "details": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "evidence_ids": []
+        },
+        "full_forensic_required": false,
+        "required_full_forensic_questions": [],
+        "evidence_ids": [],
+        "unknowns": []
+      }
+    },
+    {
+      "case_id": "positive_CapitalStructureForensicAssessmentV2",
+      "schema_id": "CapitalStructureForensicAssessmentV2",
+      "instance": {
+        "analysis_status": "COMPLETE",
+        "atm": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "shelf": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "warrants": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "convertibles": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "basic_shares": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "diluted_shares": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "potential_dilution": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "financing_need": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "toxicity_interpretation": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_CatalystExpectationGapAssessmentV2",
+      "schema_id": "CatalystExpectationGapAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "market_expectation": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "actual_economic_change": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "expectation_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "catalysts": [],
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_ReverseValuationAssessmentV2",
+      "schema_id": "ReverseValuationAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "valuation_framework": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "implied_revenue": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "implied_growth": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "implied_margin": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "implied_fcf": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "implied_multiple": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "base_requirement": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "bull_requirement": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "priced_in_assessment": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "rerating_dependency": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_FailureScenarioInvalidationAssessmentV2",
+      "schema_id": "FailureScenarioInvalidationAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "execution_stop_inputs": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear_is_not_execution_stop": true
+      }
+    },
+    {
+      "case_id": "positive_EntryReadinessExecutionAssessmentV2",
+      "schema_id": "EntryReadinessExecutionAssessmentV2",
+      "instance": {
+        "analysis_status": "COMPLETE",
+        "readiness_recommendation": "READY_FOR_RECOMMENDATION",
+        "stage_gate_receipt": {
+          "gate_type": "StageGate",
+          "decision": "PASS",
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "market_execution_gate_receipt": {
+          "gate_type": "MarketExecutionGate",
+          "decision": "PASS",
+          "core_input_complete": true,
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "stage_interpretation": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "breakout_type": "NO_BREAKOUT",
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "maximum_holding_or_time_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "opportunity_cost_if_waiting": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_EventProbabilityAssessmentV2",
+      "schema_id": "EventProbabilityAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "event_type": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "event_window": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "states": [],
+        "worst_plausible_gap_input": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "python_probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_FundamentalChangeQualityAssessmentV2",
+      "schema_id": "FundamentalChangeQualityAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "reported_growth": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "organic_growth": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "growth_acceleration": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "demand_leading_indicators": [],
+        "margin_and_fcf_quality": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "durability_assessment": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_AccountingQualityAssessmentV2",
+      "schema_id": "AccountingQualityAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "gaap_non_gaap_bridge": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "revenue_recognition_risks": [],
+        "sbc_and_share_economics": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "cash_conversion": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "accounting_red_flags": [],
+        "quality_assessment": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_ContractBacklogQualityAssessmentV2",
+      "schema_id": "ContractBacklogQualityAssessmentV2",
+      "instance": {
+        "status": "COMPLETE",
+        "contract_type": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "binding_status": "BINDING",
+        "stated_value": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "minimum_committed_value": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "backlog_rpo_inclusion": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "revenue_recognition_timing": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "economic_transmission": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_FreshnessDeltaReviewResultV2",
+      "schema_id": "FreshnessDeltaReviewResultV2",
+      "instance": {
+        "status": "COMPLETE",
+        "claim_deltas": [],
+        "thesis_delta": "UNCHANGED",
+        "capital_structure_delta": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_edge_delta": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "add_evidence_strengthened": false,
+        "strengthening_evidence_ids": [],
+        "strengthening_reason": "example",
+        "potentially_affected_domains": [],
+        "dependency_receipts": [],
+        "evidence_ids": [],
+        "unknowns": []
+      }
+    },
+    {
+      "case_id": "positive_SECExtractionResultV2",
+      "schema_id": "SECExtractionResultV2",
+      "instance": {
+        "status": "COMPLETE",
+        "filing_identity": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "basic_and_diluted_shares": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "atm": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "shelf": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "warrants": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "convertibles": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "cash_debt_and_maturities": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "evidence_spans": []
+      }
+    },
+    {
+      "case_id": "positive_AdversarialAuditResult",
+      "schema_id": "AdversarialAuditResult",
+      "instance": {
+        "audit_recommendation": "SUPPORTS_CONTINUATION",
+        "issues": [],
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "surviving_claims": [],
+        "evidence_requests": [],
+        "unresolved_critical": []
+      }
+    },
+    {
+      "case_id": "positive_ConsensusRevalidationResult",
+      "schema_id": "ConsensusRevalidationResult",
+      "instance": {
+        "consensus_recommendation": "SUPPORTS_CONTINUATION",
+        "unresolved_critical_issues": [],
+        "evidence_review_gaps": [],
+        "position_independence": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        }
+      }
+    },
+    {
+      "case_id": "positive_AdversarialReviewResultV2",
+      "schema_id": "AdversarialReviewResultV2",
+      "instance": {
+        "audit_recommendation": "SUPPORTS_CONTINUATION",
+        "attacks": [],
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "surviving_claims": [],
+        "new_evidence_requests": [],
+        "unresolved_critical_issues": [],
+        "confidence": "HIGH"
+      }
+    },
+    {
+      "case_id": "positive_EvidenceRequestSet",
+      "schema_id": "EvidenceRequestSet",
+      "instance": {
+        "status": "COMPLETE",
+        "items": [],
+        "unknowns": [],
+        "receipts": []
+      }
+    },
+    {
+      "case_id": "positive_EvidenceItems",
+      "schema_id": "EvidenceItems",
+      "instance": {
+        "status": "COMPLETE",
+        "items": [],
+        "unknowns": []
+      }
+    },
+    {
+      "case_id": "positive_ClaimEvidenceMap",
+      "schema_id": "ClaimEvidenceMap",
+      "instance": {
+        "status": "COMPLETE",
+        "mappings": [],
+        "unmapped_claim_ids": [],
+        "unused_evidence_ids": []
+      }
+    },
+    {
+      "case_id": "positive_IndustryOverlayAssessment",
+      "schema_id": "IndustryOverlayAssessment",
+      "instance": {
+        "status": "COMPLETE",
+        "industry": "example",
+        "economic_engine": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "key_kpis": [],
+        "leading_indicators": [],
+        "expectation_measurement_hooks": [],
+        "probability_swing_factors": [],
+        "structural_bear_drivers": [],
+        "capital_structure_sensitivities": [],
+        "fundamental_breakout_confirmation": [],
+        "industry_failure_paths": [
+          {
+            "name": "example",
+            "assessment": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          }
+        ],
+        "valuation_hooks": [],
+        "evidence_ids": [],
+        "unknowns": []
+      }
+    },
+    {
+      "case_id": "positive_FinalSynthesisRecommendationV2_ADD_lineage",
+      "schema_id": "FinalSynthesisRecommendationV2",
+      "instance": {
+        "run_mode": "HUNT_AND_EXECUTION_REVIEW",
+        "target_security_id": "SEC1",
+        "recommendation_status": "READY",
+        "action_scope": "EXISTING_POSITION",
+        "recommended_action": "ADD",
+        "blocking_reason_codes": [],
+        "confidence": "HIGH",
+        "probability_edge": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "stage": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_context": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_execution_gate_receipt": {
+          "gate_type": "MarketExecutionGate",
+          "decision": "PASS",
+          "core_input_complete": true,
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "upside_fuel": [],
+        "expectation_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "starter_plan": null,
+        "add_plan": {
+          "trigger_id": "ADD-T1",
+          "trigger_type": "CONTRACT",
+          "trigger_description": "example",
+          "strengthening_evidence_ids": [
+            "E1"
+          ],
+          "shares": 1
+        },
+        "maximum_position": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "maximum_holding_or_time_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_rr": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_asymmetry": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "account_loss": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "opportunity_cost": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "capital_structure": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "portfolio_comparison": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "unresolved_issues": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        },
+        "dependency_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "position_snapshot_receipt": {
+          "receipt_type": "PositionSnapshotReceiptV2",
+          "subject_id": "SEC1",
+          "position_exists": true,
+          "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "as_of": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "prior_add_trigger_receipt": {
+          "receipt_type": "PriorAddTriggerReceiptV2",
+          "subject_id": "SEC1",
+          "trigger_id": "ADD-T1",
+          "trigger_type": "CONTRACT",
+          "defined_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "fresh_evidence_delta_receipt": {
+          "receipt_type": "FreshnessDeltaReceiptV2",
+          "subject_id": "SEC1",
+          "delta_state": "STRENGTHENED",
+          "strengthening_evidence_ids": [
+            "E1",
+            "E2"
+          ],
+          "evidence_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "strengthening_evidence_receipt": {
+          "receipt_type": "StrengtheningEvidenceReceiptV2",
+          "subject_id": "SEC1",
+          "strengthening_evidence_ids": [
+            "E1",
+            "E2"
+          ],
+          "evidence_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    },
+    {
+      "case_id": "positive_FinalSynthesisRecommendationV2_STARTER",
+      "schema_id": "FinalSynthesisRecommendationV2",
+      "instance": {
+        "run_mode": "HUNT_AND_EXECUTION_REVIEW",
+        "target_security_id": "SEC1",
+        "recommendation_status": "READY",
+        "action_scope": "CANDIDATE",
+        "recommended_action": "STARTER",
+        "blocking_reason_codes": [],
+        "confidence": "HIGH",
+        "probability_edge": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "stage": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_context": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_execution_gate_receipt": {
+          "gate_type": "MarketExecutionGate",
+          "decision": "PASS",
+          "core_input_complete": true,
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "upside_fuel": [],
+        "expectation_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "starter_plan": {
+          "starter_zone": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "starter_shares": 1,
+          "starter_capital_pct": 0.01,
+          "maximum_position": {
+            "shares": 2,
+            "capital_pct": 0.02
+          },
+          "execution_stop": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "thesis_stop": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "structural_bear": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "worst_plausible_gap": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "maximum_account_loss": {
+            "summary": "example",
+            "evidence_ids": [],
+            "unknowns": []
+          },
+          "maximum_holding_period": {
+            "minimum_days": 1,
+            "maximum_days": 1
+          },
+          "time_stop_or_reassessment_condition": "example",
+          "breakout_response": {
+            "response": "ADD_ONLY_IF_STRENGTHENED",
+            "conditions": [
+              "example"
+            ]
+          },
+          "pullback_response": {
+            "response": "ADD_ONLY_IF_STRENGTHENED",
+            "conditions": [
+              "example"
+            ]
+          },
+          "planned_add": {
+            "trigger_id": "example",
+            "trigger_type": "CONTRACT",
+            "trigger_description": "example",
+            "required_evidence_classes": [
+              "SEC"
+            ],
+            "planned_add_shares": 1,
+            "planned_add_capital_pct": 0.01,
+            "resulting_position_cap": {
+              "shares": 2,
+              "capital_pct": 0.02
+            }
+          }
+        },
+        "add_plan": null,
+        "maximum_position": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "maximum_holding_or_time_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_rr": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_asymmetry": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "account_loss": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "opportunity_cost": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "capital_structure": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "portfolio_comparison": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "unresolved_issues": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        },
+        "dependency_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "position_snapshot_receipt": null,
+        "prior_add_trigger_receipt": null,
+        "fresh_evidence_delta_receipt": null,
+        "strengthening_evidence_receipt": null,
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    },
+    {
+      "case_id": "positive_FinalSynthesisRecommendationV2_FULL",
+      "schema_id": "FinalSynthesisRecommendationV2",
+      "instance": {
+        "run_mode": "HUNT_AND_EXECUTION_REVIEW",
+        "target_security_id": "SEC1",
+        "recommendation_status": "READY",
+        "action_scope": "EXISTING_POSITION",
+        "recommended_action": "FULL",
+        "blocking_reason_codes": [],
+        "confidence": "HIGH",
+        "probability_edge": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "stage": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_context": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_execution_gate_receipt": {
+          "gate_type": "MarketExecutionGate",
+          "decision": "PASS",
+          "core_input_complete": true,
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "upside_fuel": [],
+        "expectation_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "starter_plan": null,
+        "add_plan": null,
+        "maximum_position": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "maximum_holding_or_time_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_rr": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_asymmetry": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "account_loss": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "opportunity_cost": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "capital_structure": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "portfolio_comparison": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "unresolved_issues": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        },
+        "dependency_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "position_snapshot_receipt": {
+          "receipt_type": "PositionSnapshotReceiptV2",
+          "subject_id": "SEC1",
+          "position_exists": true,
+          "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "as_of": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "prior_add_trigger_receipt": null,
+        "fresh_evidence_delta_receipt": null,
+        "strengthening_evidence_receipt": null,
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    },
+    {
+      "case_id": "positive_FinalSynthesisRecommendationV2_TRIM",
+      "schema_id": "FinalSynthesisRecommendationV2",
+      "instance": {
+        "run_mode": "HUNT_AND_EXECUTION_REVIEW",
+        "target_security_id": "SEC1",
+        "recommendation_status": "READY",
+        "action_scope": "EXISTING_POSITION",
+        "recommended_action": "TRIM",
+        "blocking_reason_codes": [],
+        "confidence": "HIGH",
+        "probability_edge": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "stage": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_context": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_execution_gate_receipt": {
+          "gate_type": "MarketExecutionGate",
+          "decision": "PASS",
+          "core_input_complete": true,
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "upside_fuel": [],
+        "expectation_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "starter_plan": null,
+        "add_plan": null,
+        "maximum_position": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "maximum_holding_or_time_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_rr": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_asymmetry": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "account_loss": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "opportunity_cost": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "capital_structure": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "portfolio_comparison": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "unresolved_issues": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        },
+        "dependency_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "position_snapshot_receipt": {
+          "receipt_type": "PositionSnapshotReceiptV2",
+          "subject_id": "SEC1",
+          "position_exists": true,
+          "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "as_of": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "prior_add_trigger_receipt": null,
+        "fresh_evidence_delta_receipt": null,
+        "strengthening_evidence_receipt": null,
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    },
+    {
+      "case_id": "positive_FinalSynthesisRecommendationV2_EXIT",
+      "schema_id": "FinalSynthesisRecommendationV2",
+      "instance": {
+        "run_mode": "HUNT_AND_EXECUTION_REVIEW",
+        "target_security_id": "SEC1",
+        "recommendation_status": "READY",
+        "action_scope": "EXISTING_POSITION",
+        "recommended_action": "EXIT",
+        "blocking_reason_codes": [],
+        "confidence": "HIGH",
+        "probability_edge": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "stage": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_context": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "market_execution_gate_receipt": {
+          "gate_type": "MarketExecutionGate",
+          "decision": "PASS",
+          "core_input_complete": true,
+          "input_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "rule_set_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "evaluated_at": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "upside_fuel": [],
+        "expectation_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_now": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "why_not_priced": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "wakeup_event": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "starter_plan": null,
+        "add_plan": null,
+        "maximum_position": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "thesis_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_bear": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "worst_plausible_gap": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "maximum_holding_or_time_stop": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "execution_rr": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "structural_asymmetry": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "probability_weighted_ev": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "account_loss": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "opportunity_cost": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "capital_structure": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "failure_paths": [
+          {
+            "category": "FUNDAMENTAL",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 1",
+            "causal_path": "distinct causal chain 1",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 1",
+            "thesis_invalidation_link": "thesis link 1",
+            "source_evidence_ids": [
+              "E1"
+            ]
+          },
+          {
+            "category": "CAPITAL_STRUCTURE",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 2",
+            "causal_path": "distinct causal chain 2",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 2",
+            "thesis_invalidation_link": "thesis link 2",
+            "source_evidence_ids": [
+              "E2"
+            ]
+          },
+          {
+            "category": "PRICING_EXPECTATION",
+            "severity": "INFO",
+            "scenario": "distinct failure scenario 3",
+            "causal_path": "distinct causal chain 3",
+            "probability_direction": "INCREASES_DOWNSIDE",
+            "impact": {
+              "summary": "example",
+              "evidence_ids": [],
+              "unknowns": []
+            },
+            "observable_trigger": "observable trigger 3",
+            "thesis_invalidation_link": "thesis link 3",
+            "source_evidence_ids": [
+              "E3"
+            ]
+          }
+        ],
+        "portfolio_comparison": {
+          "summary": "example",
+          "evidence_ids": [],
+          "unknowns": []
+        },
+        "unresolved_issues": [],
+        "context_manifest_receipt": {
+          "complete": true,
+          "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "included_context_ids": [],
+          "omitted_required": []
+        },
+        "dependency_receipt": {
+          "receipt_type": "example",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "position_snapshot_receipt": {
+          "receipt_type": "PositionSnapshotReceiptV2",
+          "subject_id": "SEC1",
+          "position_exists": true,
+          "snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "as_of": "2026-08-17T12:00:00Z",
+          "receipt_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "prior_add_trigger_receipt": null,
+        "fresh_evidence_delta_receipt": null,
+        "strengthening_evidence_receipt": null,
+        "as_of": "2026-08-17T12:00:00Z"
+      }
+    }
+  ]
+}
+
+

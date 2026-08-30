@@ -1,0 +1,8 @@
+{
+  "technical_query": {
+    "count": 30
+  },
+  "universe_query": {
+    "liquidity_full_probe_limit": 30
+  }
+}
