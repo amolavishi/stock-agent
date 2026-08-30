@@ -920,7 +920,7 @@ class CompositeLiveMarketContextProvider:
             elif symbol in {"VIX", "US10Y", "WTI"}:
                 details.setdefault("sync_group", "daily")
             elif symbol == "DXY":
-                details.setdefault("sync_group", "exchange")
+                details.setdefault("sync_group", "fx")
             elif symbol in {"BTC", "ETH"}:
                 details.setdefault("sync_group", "crypto")
             normalized.setdefault("assets", {}).setdefault(symbol, {}).update(details)

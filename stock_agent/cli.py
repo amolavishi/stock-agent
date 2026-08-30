@@ -164,7 +164,7 @@ def main() -> int:
                 "assets": {
                     symbol: {
                         key: details.get(key)
-                        for key in ("provider", "source_identifier", "value", "unit", "currency", "observed_at", "fetched_at", "observation_count", "raw_artifact_id", "evidence_id")
+                        for key in ("provider", "source_identifier", "sync_group", "value", "unit", "currency", "observed_at", "fetched_at", "observation_count", "raw_artifact_id", "evidence_id")
                     }
                     for symbol, details in assets.items()
                 },
