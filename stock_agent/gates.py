@@ -356,7 +356,11 @@ class MarketContextGate:
                 if age_seconds(str(observed_at), now=evaluation_time, max_future_skew_seconds=rules.max_future_skew_seconds) > asset_max_age:
                     invalid_assets.append(selected)
                     continue
-                if group in {"exchange", "fx"} and observed_dt.date() < latest_session_date:
+                # Exchange-session assets must belong to the latest completed U.S.
+                # equity session. FX observations use their own clock and can
+                # legitimately lag the U.S. equity session date while still
+                # satisfying FX max-age and synchronization rules.
+                if group == "exchange" and observed_dt.date() < latest_session_date:
                     invalid_assets.append(selected)
                     continue
                 observed_times.append(observed_dt)
