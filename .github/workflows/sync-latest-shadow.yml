@@ -5,7 +5,7 @@ on:
     branches:
       - agent/shadow-acceptance-fix-20260830
     paths:
-      - bootstrap/latest_shadow_source.b64
+      - bootstrap/READY
 
 permissions:
   contents: write
@@ -19,11 +19,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Decode latest source package
+      - name: Reassemble and verify latest source package
         shell: bash
         run: |
           set -euo pipefail
-          base64 -d bootstrap/latest_shadow_source.b64 > /tmp/latest-shadow.zip
+          cat bootstrap/parts/*.b64 > /tmp/latest-shadow.b64
+          base64 -d /tmp/latest-shadow.b64 > /tmp/latest-shadow.zip
           echo "79d3e07d969507fafc5b495939117ace0f81a4e7f7072030258b8348ed326093  /tmp/latest-shadow.zip" | sha256sum -c -
 
       - name: Replace branch tree with latest Shadow source
