@@ -1100,7 +1100,8 @@ class StockAgent:
                     # NOT_EVALUATED so Shadow attribution never counts a data
                     # problem as an investment rejection.
                     stale_sec = "stale SEC cheap prescreen input exceeds max-age" in reason
-                    failure = {"security_id": sid, "error": reason}
+                    failure_provider = str(getattr(sec_provider, "provider_name", sec_provider.__class__.__name__))
+                    failure = {"security_id": sid, "error": reason, "provider": failure_provider}
                     stage_name = "SEC_STALE_DATA" if stale_sec else "SEC_PROVIDER_FAILURE"
                     if stale_sec:
                         sec_stale_data.append(failure)
@@ -1108,7 +1109,7 @@ class StockAgent:
                         sec_provider_failures.append(failure)
                     self.store.record_stage_result(
                         run.run_id, None, stage_name, sid,
-                        {"status": "NOT_EVALUATED" if stale_sec else "FAILED", "decision": "INSUFFICIENT_EVIDENCE" if stale_sec else "FAILED", "reason": reason, "security_id": sid},
+                        {"status": "NOT_EVALUATED" if stale_sec else "FAILED", "decision": "INSUFFICIENT_EVIDENCE" if stale_sec else "FAILED", "reason": reason, "security_id": sid, "provider": failure_provider},
                         evidence_ids,
                         self.store.dependency_hash(evidence_ids, rules.rule_set_hash, run.context_manifest_hash),
                         self.store.current_evidence_epoch_for(evidence_ids),
@@ -1135,6 +1136,7 @@ class StockAgent:
                 research_provider = self.config.research_provider
                 if research_provider is None:
                     continue
+                research_artifact = None
                 try:
                     research_artifact = research_provider.fetch(sid, data.get("research_query") or {})
                     self._require_provider_artifact_fresh(research_artifact, research_provider, rules.max_age_research_hours * 3600, "research", rules.max_future_skew_seconds)
@@ -1144,10 +1146,14 @@ class StockAgent:
                     # The candidate remains non-qualified and the run records
                     # the exact sanitized failure for operations review.
                     reason = str(exc)[:240]
-                    research_provider_failures.append({"security_id": sid, "error": reason})
+                    failure_provider = str(
+                        getattr(research_artifact, "provider", "")
+                        or getattr(research_provider, "provider_name", research_provider.__class__.__name__)
+                    )
+                    research_provider_failures.append({"security_id": sid, "error": reason, "provider": failure_provider})
                     self.store.record_stage_result(
                         run.run_id, None, "RESEARCH_PROVIDER_FAILURE", sid,
-                        {"status": "FAILED", "reason": reason, "security_id": sid},
+                        {"status": "FAILED", "reason": reason, "security_id": sid, "provider": failure_provider},
                         evidence_ids,
                         self.store.dependency_hash(evidence_ids, rules.rule_set_hash, run.context_manifest_hash),
                         self.store.current_evidence_epoch_for(evidence_ids),
@@ -1171,10 +1177,10 @@ class StockAgent:
                     nested_source.get("source_url") or nested_source.get("url")
                 ) and nested_source.get("content") not in (None, "", [], {})
                 if not direct_source and not nested_valid:
-                    research_provider_failures.append({"security_id": sid, "error": "normalized research source contract incomplete"})
+                    research_provider_failures.append({"security_id": sid, "error": "normalized research source contract incomplete", "provider": research_artifact.provider})
                     self.store.record_stage_result(
                         run.run_id, None, "RESEARCH_PROVIDER_FAILURE", sid,
-                        {"status": "FAILED", "reason": "normalized research source contract incomplete", "security_id": sid},
+                        {"status": "FAILED", "reason": "normalized research source contract incomplete", "security_id": sid, "provider": research_artifact.provider},
                         evidence_ids,
                         self.store.dependency_hash(evidence_ids, rules.rule_set_hash, run.context_manifest_hash),
                         self.store.current_evidence_epoch_for(evidence_ids),
