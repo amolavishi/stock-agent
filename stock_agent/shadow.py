@@ -23,7 +23,7 @@ from .vault import SecureVault, content_digest
 
 # P0 correctness hotfixes are a new immutable Shadow minor version.  Existing
 # V1.0 rows remain readable and append-only; new operator runs use V1.1.
-SHADOW_VERSION = "SHADOW_V1.1"
+SHADOW_VERSION = "SHADOW_V1.2"
 HORIZONS = (1, 3, 5, 10, 20, 40)
 
 
@@ -702,6 +702,8 @@ class DailyShadowRunner:
                 "status": (
                     "PASS"
                     if hunt_run.outcome == "QUALIFIED_CANDIDATE_POOL" and sum(workitems.get(hunt_run_id, {}).values()) == 11
+                    else "BLOCKED_MARKET_CONTEXT"
+                    if hunt_run.outcome == "NO_QUALIFIED_CANDIDATE" and funnel.get("MARKET_CONTEXT_GATE") == 0 and "RAW_UNIVERSE" not in funnel
                     else "SUCCEEDED_NO_CANDIDATE"
                     if hunt_run.outcome == "NO_QUALIFIED_CANDIDATE" and broad_discovery
                     else "NO_OPPORTUNITY_BOUNDED"
@@ -846,6 +848,9 @@ class DailyShadowRunner:
                 self.store.update_shadow_run(shadow_run_id, checkpoint="HUNT_DONE", hunt_run_id=hunt_run_id, broker_write_count=0)
                 if hunt.outcome.startswith("BLOCKED"):
                     errors.append({"component": "HUNT", "error": hunt.blocked_reason or hunt.outcome})
+                elif hunt.outcome == "NO_QUALIFIED_CANDIDATE" and hunt.blocked_reason:
+                    component = "MARKET" if hunt.blocked_reason in {"MARKET_CONTEXT_GATE", "UNIVERSE_FILTER"} else "HUNT"
+                    errors.append({"component": component, "error": hunt.blocked_reason, "classification": "PRE_DISCOVERY_BLOCK"})
                 elif hunt.outcome == "QUALIFIED_CANDIDATE_POOL":
                     hunt_count = sum(self.store.work_item_counts(hunt_run_id).values())
                     if hunt_count != 11:
@@ -898,16 +903,30 @@ class DailyShadowRunner:
             # mislabeled PENDING merely because a different candidate later
             # failed a SEC freshness fence.
             component_errors = {str(error.get("component") or "").upper() for error in errors}
-            if hunt_run_id and "HUNT" not in component_errors:
+            funnel_rows = self.store.list_funnel(hunt_run_id) if hunt_run_id else []
+            funnel = {str(row["funnel_stage"]): int(row["count"]) for row in funnel_rows}
+            market_gate_observed = "MARKET_CONTEXT_GATE" in funnel
+            market_gate_passed = funnel.get("MARKET_CONTEXT_GATE", 0) == 1
+            if hunt_run_id and "HUNT" not in component_errors and "MARKET" not in component_errors and market_gate_passed:
                 health["market"] = {**dict(health.get("market") or {}), "status": "PASS"}
                 health["evidence"] = {**dict(health.get("evidence") or {}), "status": "PASS"}
                 health["gate_integrity"] = {**dict(health.get("gate_integrity") or {}), "status": "PASS"}
-            if "SEC" not in component_errors:
+            elif market_gate_observed and not market_gate_passed:
+                health["market"] = {**dict(health.get("market") or {}), "status": "DEGRADED"}
+            sec_reached = any(funnel.get(key, 0) > 0 for key in ("CAPITAL_PRESCREEN_PASS", "CAPITAL_PRESCREEN_FAIL", "CAPITAL_PRESCREEN_UNKNOWN", "FULL_SEC_FORENSIC", "SEC_PROVIDER_FAILURE", "SEC_STALE_DATA"))
+            research_reached = any(funnel.get(key, 0) > 0 for key in ("CATALYST_PASS", "CATALYST_UNKNOWN", "CATALYST_NOT_EVALUATED", "DEEP_RESEARCH", "RESEARCH_PROVIDER_FAILURE"))
+            if sec_reached and "SEC" not in component_errors:
                 health["sec"] = {**dict(health.get("sec") or {}), "status": "PASS"}
-            if "RESEARCH" not in component_errors:
+            elif not sec_reached and "SEC" not in component_errors:
+                health["sec"] = {**dict(health.get("sec") or {}), "status": "NOT_RUN"}
+            if research_reached and "RESEARCH" not in component_errors:
                 health["research"] = {**dict(health.get("research") or {}), "status": "PASS"}
+            elif not research_reached and "RESEARCH" not in component_errors:
+                health["research"] = {**dict(health.get("research") or {}), "status": "NOT_RUN"}
             if execution_run_id and "EXECUTION_REVIEW" not in component_errors:
                 health["portfolio"] = {**dict(health.get("portfolio") or {}), "status": "PASS"}
+            elif not execution_run_id and "EXECUTION_REVIEW" not in component_errors:
+                health["portfolio"] = {**dict(health.get("portfolio") or {}), "status": "NOT_RUN"}
             decisions = self._decisions(shadow_run_id, hunt_run_id, execution_run_id)
             if errors:
                 affected_components: set[str] = set()
