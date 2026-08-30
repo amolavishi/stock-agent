@@ -1,0 +1,131 @@
+from pathlib import Path
+
+adapters = Path("stock_agent/adapters.py")
+text = adapters.read_text(encoding="utf-8")
+
+marker = "def _close_series(payload: Any) -> list[float]:\n"
+helper = '''def _chronological_observation_rows(rows: list[Any]) -> list[Any]:
+    """Return timestamped observations oldest-to-newest without mutating raw payloads.
+
+    Toss candle responses are newest-first. Deterministic market/technical
+    calculations consume chronological series, so timestamped rows are sorted
+    explicitly before extracting closes or volumes. Untimestamped/generic
+    payloads retain provider order rather than inventing chronology.
+    """
+    materialized = list(rows)
+    if len(materialized) < 2:
+        return materialized
+    sortable: list[tuple[datetime, int, Any]] = []
+    for index, row in enumerate(materialized):
+        if not isinstance(row, dict):
+            return materialized
+        raw_timestamp = row.get("timestamp") or row.get("observed_at") or row.get("date")
+        if raw_timestamp in (None, ""):
+            return materialized
+        parsed = _parse_observation_time(str(raw_timestamp))
+        if parsed is None:
+            return materialized
+        sortable.append((parsed, index, row))
+    sortable.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in sortable]
+
+
+'''
+if "def _chronological_observation_rows" not in text:
+    if marker not in text:
+        raise SystemExit("close-series insertion point not found")
+    text = text.replace(marker, helper + marker, 1)
+
+old = "    for row in payload:\n        if isinstance(row, dict):\n"
+new = "    for row in _chronological_observation_rows(payload):\n        if isinstance(row, dict):\n"
+if old not in text:
+    raise SystemExit("close-series loop target not found")
+text = text.replace(old, new, 1)
+
+old = "                    for candle in candles if isinstance(candles, list) else []:\n"
+new = "                    for candle in _chronological_observation_rows(candles if isinstance(candles, list) else []):\n"
+if old not in text:
+    raise SystemExit("broad-universe candle loop target not found")
+text = text.replace(old, new, 1)
+
+old = "            for candle in candles:\n                if not isinstance(candle, dict):\n"
+new = "            for candle in _chronological_observation_rows(candles):\n                if not isinstance(candle, dict):\n"
+if old not in text:
+    raise SystemExit("explicit-universe candle loop target not found")
+text = text.replace(old, new, 1)
+adapters.write_text(text, encoding="utf-8")
+
+test = Path("tests/test_toss_candle_chronology.py")
+test.write_text('''from __future__ import annotations
+
+import unittest
+
+from stock_agent.adapters import CompositeLiveMarketContextProvider, _close_series
+from stock_agent.models import RawArtifact, canonical_hash
+
+STAMP = "2026-08-30T12:00:00Z"
+NEWEST = "2026-08-28T09:00:00-04:00"
+OLDER = "2026-08-27T09:00:00-04:00"
+
+
+def artifact(artifact_id, artifact_type, payload, observed_at=NEWEST):
+    return RawArtifact(artifact_id, "fixture", artifact_type, None, observed_at, payload, canonical_hash(payload), observed_at, STAMP)
+
+
+class TossCandleChronologyTests(unittest.TestCase):
+    def test_close_series_sorts_timestamped_newest_first_payload(self):
+        payload = {"result": {"candles": [
+            {"timestamp": NEWEST, "closePrice": "120", "volume": "2000"},
+            {"timestamp": OLDER, "closePrice": "100", "volume": "1000"},
+        ]}}
+        self.assertEqual(_close_series(payload), [100.0, 120.0])
+        self.assertEqual(payload["result"]["candles"][0]["timestamp"], NEWEST)
+
+    def test_broad_universe_stores_chronological_prices_and_volumes(self):
+        rows = [{"security_id": "AAA", "ticker": "AAA", "venue": "NASDAQ", "price": 120.0, "market_cap": 1_000_000_000}]
+        class Screener:
+            def fetch_universe(self, query):
+                payload = {"securities": [dict(row) for row in rows], "source": [{"provider": "fixture"}]}
+                return artifact("screen", "UNIVERSE", payload)
+        class Toss:
+            base_url = "https://toss.test"
+            def fetch_prices(self, symbols):
+                return artifact("prices", "PRICES", {"result": [{"symbol": "AAA", "lastPrice": "120", "timestamp": NEWEST, "currency": "USD"}]})
+            def fetch_candles(self, ticker, interval, count):
+                return artifact("candles", "CANDLES", {"result": {"candles": [
+                    {"timestamp": NEWEST, "closePrice": "120", "volume": "2000000"},
+                    {"timestamp": OLDER, "closePrice": "100", "volume": "1000000"},
+                ]}})
+        provider = CompositeLiveMarketContextProvider(Toss(), screener=Screener())
+        result = provider.fetch_universe({"broad": True, "min_price": 3, "min_market_cap": 300_000_000, "min_average_dollar_volume": 10_000_000, "liquidity_full_probe_limit": 1, "liquidity_rotation_key": "2026-08-30"})
+        row = result.payload["securities"][0]
+        self.assertEqual(row["prices"], [100.0, 120.0])
+        self.assertEqual(row["volumes"], [1_000_000.0, 2_000_000.0])
+        self.assertEqual(row["average_volume"], 1_500_000.0)
+
+    def test_explicit_universe_stores_chronological_prices_and_volumes(self):
+        class Toss:
+            base_url = "https://toss.test"
+            def fetch_universe(self, query):
+                return artifact("universe", "UNIVERSE", {"securities": [{"security_id": "AAA", "ticker": "AAA", "venue": "NASDAQ", "currency": "USD"}]})
+            def fetch_prices(self, symbols):
+                return artifact("prices", "PRICES", {"result": [{"symbol": "AAA", "lastPrice": "120", "timestamp": NEWEST, "currency": "USD"}]})
+            def fetch_candles(self, ticker, interval, count):
+                return artifact("candles", "CANDLES", {"result": {"candles": [
+                    {"timestamp": NEWEST, "closePrice": "120", "volume": "2000000"},
+                    {"timestamp": OLDER, "closePrice": "100", "volume": "1000000"},
+                ]}})
+        class Yahoo:
+            def fetch_market_cap(self, symbol):
+                return {"market_cap": 1_000_000_000.0, "market_cap_observed_at": "2026-08-28T00:00:00Z", "market_cap_source": "https://example.test/cap", "market_cap_provider": "fixture"}
+        provider = CompositeLiveMarketContextProvider(Toss(), yahoo=Yahoo())
+        result = provider.fetch_universe({"symbols": ["AAA"], "technical_count": 2})
+        row = result.payload["securities"][0]
+        self.assertEqual(row["prices"], [100.0, 120.0])
+        self.assertEqual(row["volumes"], [1_000_000.0, 2_000_000.0])
+        self.assertEqual(row["average_volume"], 1_500_000.0)
+
+
+if __name__ == "__main__":
+    unittest.main()
+''', encoding="utf-8")
