@@ -341,6 +341,32 @@ class _RateLimiter:
             self._last = time.monotonic()
 
 
+def _chronological_observation_rows(rows: list[Any]) -> list[Any]:
+    """Return timestamped observations oldest-to-newest without mutating raw payloads.
+
+    Toss candle responses are newest-first. Deterministic market/technical
+    calculations consume chronological series, so timestamped rows are sorted
+    explicitly before extracting closes or volumes. Untimestamped/generic
+    payloads retain provider order rather than inventing chronology.
+    """
+    materialized = list(rows)
+    if len(materialized) < 2:
+        return materialized
+    sortable: list[tuple[datetime, int, Any]] = []
+    for index, row in enumerate(materialized):
+        if not isinstance(row, dict):
+            return materialized
+        raw_timestamp = row.get("timestamp") or row.get("observed_at") or row.get("date")
+        if raw_timestamp in (None, ""):
+            return materialized
+        parsed = _parse_observation_time(str(raw_timestamp))
+        if parsed is None:
+            return materialized
+        sortable.append((parsed, index, row))
+    sortable.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in sortable]
+
+
 def _close_series(payload: Any) -> list[float]:
     """Extract close observations from common candle JSON shapes."""
     if isinstance(payload, dict):
@@ -354,7 +380,7 @@ def _close_series(payload: Any) -> list[float]:
     if not isinstance(payload, list):
         return []
     closes: list[float] = []
-    for row in payload:
+    for row in _chronological_observation_rows(payload):
         if isinstance(row, dict):
             value = next((row.get(key) for key in ("close", "closePrice", "lastPrice", "adjClose", "c", "value") if row.get(key) is not None), None)
         elif isinstance(row, (list, tuple)) and row:
@@ -1085,7 +1111,7 @@ class CompositeLiveMarketContextProvider:
                     candles = candle_payload.get("candles") if isinstance(candle_payload, dict) else candle_payload
                     closes: list[float] = []
                     volumes: list[float] = []
-                    for candle in candles if isinstance(candles, list) else []:
+                    for candle in _chronological_observation_rows(candles if isinstance(candles, list) else []):
                         if not isinstance(candle, dict):
                             continue
                         try:
@@ -1164,7 +1190,7 @@ class CompositeLiveMarketContextProvider:
                 raise ProviderError(f"Toss live candles missing for {ticker}")
             closes: list[float] = []
             volumes: list[float] = []
-            for candle in candles:
+            for candle in _chronological_observation_rows(candles):
                 if not isinstance(candle, dict):
                     continue
                 try:
