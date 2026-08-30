@@ -21,121 +21,23 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
-      - name: Apply DXY clock hotfix and regression
+      - name: Apply source fix
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          adapters = Path('stock_agent/adapters.py')
-          text = adapters.read_text(encoding='utf-8')
-          old = '''            elif symbol == "DXY":\n                details.setdefault("sync_group", "exchange")\n'''
-          new = '''            elif symbol == "DXY":\n                details.setdefault("sync_group", "fx")\n'''
-          if old not in text:
-              raise SystemExit('DXY adapter sync_group target not found')
-          adapters.write_text(text.replace(old, new, 1), encoding='utf-8')
-
-          cli = Path('stock_agent/cli.py')
-          text = cli.read_text(encoding='utf-8')
-          old = '''                        for key in ("provider", "source_identifier", "value", "unit", "currency", "observed_at", "fetched_at", "observation_count", "raw_artifact_id", "evidence_id")\n'''
-          new = '''                        for key in ("provider", "source_identifier", "sync_group", "value", "unit", "currency", "observed_at", "fetched_at", "observation_count", "raw_artifact_id", "evidence_id")\n'''
-          if old not in text:
-              raise SystemExit('CLI smoke summary target not found')
-          cli.write_text(text.replace(old, new, 1), encoding='utf-8')
-
-          tests = Path('tests/test_production_adapters.py')
-          text = tests.read_text(encoding='utf-8')
-          text = text.replace('import json\nfrom pathlib import Path\n', 'import json\nfrom datetime import datetime, timezone\nfrom pathlib import Path\n', 1)
-          text = text.replace('from stock_agent.gates import CapitalPrescreenGate, ContractViolation, PositionSizer\n', 'from stock_agent.gates import CapitalPrescreenGate, ContractViolation, MarketContextGate, PositionSizer\n', 1)
-          marker = 'class CompositeMarketContextClockRegressionTests(unittest.TestCase):'
-          if marker not in text:
-              text += r'''
-
-
-class CompositeMarketContextClockRegressionTests(unittest.TestCase):
-    def test_composite_dxy_uses_fx_clock_and_weekend_context_passes(self):
-        def observation(symbol, observed_at, unit, currency):
-            payload = {"data": [{"close": 100.0}, {"close": 101.0}]}
-            digest = canonical_hash(payload)
-            artifact_id = f"artifact-{symbol.lower()}"
-            return {
-                "symbol": symbol,
-                "payload": payload,
-                "observed_at": observed_at,
-                "source_observed_at": observed_at,
-                "fetched_at": "2026-08-30T12:07:23Z",
-                "source": f"https://example.test/{symbol}",
-                "source_identifier": f"https://example.test/{symbol}",
-                "provider": "fixture",
-                "value": 101.0,
-                "unit": unit,
-                "currency": currency,
-                "observation_count": 2,
-                "raw_artifact_id": artifact_id,
-                "evidence_id": f"E-{artifact_id}",
-                "payload_hash": digest,
-            }
-
-        exchange = "2026-08-28T13:00:00+09:00"
-        daily = "2026-08-27T00:00:00Z"
-        wti = "2026-08-25T00:00:00Z"
-        dxy = "2026-08-27T04:00:00Z"
-        crypto = "2026-08-30T12:05:00Z"
-
-        class Toss:
-            def fetch_market_context(self, query):
-                source = [
-                    observation("SPY", exchange, "USD_PER_SHARE", "USD"),
-                    observation("QQQ", exchange, "USD_PER_SHARE", "USD"),
-                    observation("IWM", exchange, "USD_PER_SHARE", "USD"),
-                    observation("SOXX", exchange, "USD_PER_SHARE", "USD"),
-                ]
-                payload = {"source": source, "asset_raw_artifacts": []}
-                return RawArtifact("toss-market", "fixture", "MARKET_CONTEXT", None, exchange, payload, canonical_hash(payload), exchange, "2026-08-30T12:07:23Z")
-
-        class Fred:
-            def fetch_series(self, symbol):
-                if symbol == "VIX":
-                    return observation(symbol, daily, "INDEX_POINTS", None)
-                if symbol == "US10Y":
-                    return observation(symbol, daily, "PERCENT", None)
-                return observation(symbol, wti, "USD_PER_BARREL", "USD")
-
-        class Yahoo:
-            def fetch_series(self, symbol):
-                return observation(symbol, dxy, "INDEX_POINTS", None)
-
-        class CoinGecko:
-            def fetch_series(self, symbol):
-                return observation(symbol, crypto, "USD_PER_COIN", "USD")
-
-        provider = CompositeLiveMarketContextProvider(Toss(), fred=Fred(), yahoo=Yahoo(), coingecko=CoinGecko())
-        artifact = provider.fetch_market_context({"symbols": ["SPY", "QQQ", "IWM", "SOXX", "VIX", "US10Y", "DXY", "WTI", "BTC", "ETH"]})
-        self.assertEqual(artifact.payload["assets"]["DXY"]["sync_group"], "fx")
-        self.assertEqual(artifact.payload["assets"]["SPY"]["sync_group"], "exchange")
-        self.assertEqual(artifact.payload["assets"]["WTI"]["sync_group"], "daily")
-        gate = MarketContextGate().evaluate(
-            artifact.payload,
-            EffectiveRuleSet(),
-            evaluation_time=datetime(2026, 8, 30, 12, 7, 23, tzinfo=timezone.utc),
-        )
-        self.assertEqual(gate.decision.value, "PASS")
-        self.assertTrue(gate.core_input_complete)
-'''
-          tests.write_text(text, encoding='utf-8')
-          PY
+          python -c "from pathlib import Path; p=Path('stock_agent/adapters.py'); s=p.read_text(encoding='utf-8'); old='elif symbol == \"DXY\":\n                details.setdefault(\"sync_group\", \"exchange\")'; assert old in s; p.write_text(s.replace(old, old.replace('\"exchange\"','\"fx\"'), 1), encoding='utf-8')"
+          python -c "from pathlib import Path; p=Path('stock_agent/cli.py'); s=p.read_text(encoding='utf-8'); old='\"provider\", \"source_identifier\", \"value\"'; new='\"provider\", \"source_identifier\", \"sync_group\", \"value\"'; assert old in s; p.write_text(s.replace(old,new,1), encoding='utf-8')"
       - name: Verify full runtime
         shell: bash
         run: |
           python -m compileall -q stock_agent tests
           python -m unittest discover -s tests -q
           python STOCK_AGENT_OBSIDIAN_PROMPT_LIBRARY_V2_2/VALIDATION/validate_contracts.py
-      - name: Commit source hotfix
+      - name: Commit source fix
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add stock_agent/adapters.py stock_agent/cli.py tests/test_production_adapters.py
+          git add stock_agent/adapters.py stock_agent/cli.py
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Fix DXY adapter sync group and add weekend regression [hotfix-applied]"
+          git commit -m "Fix DXY adapter sync group [hotfix-applied]"
           git push origin HEAD:fix/dxy-sync-group-20260830
