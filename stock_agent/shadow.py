@@ -418,6 +418,17 @@ class DailyShadowRunner:
             return existing
         rows = self._stage_rows(hunt_run_id)
         subjects = sorted({str(row["subject_id"]) for row in rows if row.get("subject_id")})
+        proposed_stage_by_subject: dict[str, str] = {}
+        for row in rows:
+            if str(row.get("stage") or "") != "STOCK_DISCOVERY" or row.get("status") != "SUCCEEDED":
+                continue
+            discovery_value = self._decode(row.get("result_json") or "{}")
+            if not isinstance(discovery_value, dict):
+                continue
+            for candidate in discovery_value.get("candidates") or []:
+                if not isinstance(candidate, dict) or not candidate.get("security_id") or not candidate.get("proposed_stage"):
+                    continue
+                proposed_stage_by_subject[str(candidate["security_id"])] = str(candidate["proposed_stage"])
         execution_action: dict[str, dict[str, Any]] = {}
         if execution_run_id:
             for row in self.store.connection.execute("SELECT * FROM final_actions WHERE run_id=?", (execution_run_id,)).fetchall():
@@ -514,7 +525,7 @@ class DailyShadowRunner:
                 "sector": None,
                 "sector_rank": None,
                 "discovery_rank": None,
-                "stage": (stage_values.get("STAGE_GATE") or {}).get("decision") if isinstance(stage_values.get("STAGE_GATE"), dict) else None,
+                "stage": proposed_stage_by_subject.get(subject),
                 "fundamental_change_status": (stage_values.get("CAP_FUNDAMENTAL_CHANGE") or {}).get("status") if isinstance(stage_values.get("CAP_FUNDAMENTAL_CHANGE"), dict) else None,
                 "fundamental_change_score": None,
                 "catalyst_type": None,
