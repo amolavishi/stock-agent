@@ -1,0 +1,30 @@
+{
+  "source_archive": "STOCK_SCANNING_PROMPTS_V8_A_GRADE_PIPELINE(4).zip",
+  "source_file_count": 24,
+  "files": [
+    {"file":"prompts/v8/00A_A급_발굴_파이프라인_오케스트레이터_V8.md","sha256":"be6ee2978b063d01517fdf8a722b8c921ecc4c0d37fd9e0bb359a46458973fd2","bytes":5947},
+    {"file":"prompts/v8/01_기관_보고서_기반_탑다운_레짐_리서치_V8.md","sha256":"eaf6910c446051620869749250011635b19112b98ad1fef8f1dcd16bbf3582b2","bytes":2834},
+    {"file":"prompts/v8/02_비AI_비반도체_광역_블라인드_Discovery_V8.md","sha256":"e06984b98687218bd691e4ac5b274610ea58a954e3f6da76610b2721ba3cc317","bytes":14012},
+    {"file":"prompts/v8/03_최근_IPO_Busted_IPO_재평가_Discovery_V8.md","sha256":"c2974f5ee3bbed13e112cd7a49053b714b63c8492da1fca6b369a9b67dbe5a0d","bytes":13828},
+    {"file":"prompts/v8/04_턴어라운드_실적주_Discovery_V8.md","sha256":"1a1927802fe33b2c90bdd51803770ac7c152bf52dc46b9178d937aa06a58e121","bytes":13583},
+    {"file":"prompts/v8/05_정책_이벤트_국방_원전_우라늄_핵심광물_에너지_안보_Discovery_V8.md","sha256":"383bce853fe0505bfa1f8480b78c8a14aacdaae3552277580b17557edd599026","bytes":13660},
+    {"file":"prompts/v8/06_우주_방산_ISR_항공우주_부품_Discovery_V8.md","sha256":"f1a49ce245d115ec6a3f8758eb8e38ce0cc17ad2a9e3bfe79a459a747cabfdbb","bytes":13472},
+    {"file":"prompts/v8/07_덜_알려진_수익성_개선_소형주_Discovery_V8.md","sha256":"ff76c4cafae2e6d204c019c2f59bbe90bc37b4713b4476a5c7feb8b0f434476e","bytes":13364},
+    {"file":"prompts/v8/08_공모_블록딜_Secondary_소화_후_회복주_Discovery_V8.md","sha256":"a1c713679274209b99b7c1e165a2cb2b350d25fd002b70038da1b1aedf9408c4","bytes":13458},
+    {"file":"prompts/v8/09_내부자_매수_자사주_방어형_턴어라운드_Discovery_V8.md","sha256":"a7cbbb941afe54cbbd16aeef103ebe4537126197b182ac09dd1dfa921fb2b956","bytes":13472},
+    {"file":"prompts/v8/10_부채_리파이낸싱_파산위험_제거형_Discovery_V8.md","sha256":"8c42424b1357578be028e9ec14e412e339ece2255bae572768d1d2da113b6898","bytes":13408},
+    {"file":"prompts/v8/11_실적_후_추정치_상향_지연반응주_Discovery_V8.md","sha256":"91781d893a4ac5f65e6d23f0296dc14067c736311bf7082928896d26aa47a418","bytes":13572},
+    {"file":"prompts/v8/12_고객집중_해소_두_번째_대형고객_확보주_Discovery_V8.md","sha256":"5301b0971d19e57236f69cfefcae5d25122df3b425da4625d29e5e1711a9d502","bytes":13465},
+    {"file":"prompts/v8/13_핀테크_헬스케어_비반도체_소프트웨어_로테이션_Discovery_V8.md","sha256":"8aad11ea0e9e09578400538c7ca18b3349cea6337411c0f2acdc48dde95fc910","bytes":13464},
+    {"file":"prompts/v8/14_AI_병목_확장_예외_후보_Discovery_V8.md","sha256":"1f1c6077be350289166adffc794f10045c2c74bf004175e1bd814ce0352609e6","bytes":13713},
+    {"file":"prompts/v8/15_SEC_오버행_희석_리스크_Full_Forensic_V8.md","sha256":"cd4e0500288566df7370bdb884615f1b5e38ec9d2f6b3f9976d4588a560ed0cd","bytes":2806},
+    {"file":"prompts/v8/16_약점_UNKNOWN_전용_적대적_심층검증_V8.md","sha256":"5c02de8cfbd2d90134ad82bef6065631f0449c9353c2be65bdc799ce72cac9c5","bytes":6430},
+    {"file":"prompts/v8/17_최종_인증_전_Evidence_Packet_Score_Firewall_V8.md","sha256":"bf9de36ca9034b369cf30391f4b109e527e613d761d79c71d06f7d37187b5cb3","bytes":2639},
+    {"file":"prompts/v8/18_A급_최종_인증_심사_V8.md","sha256":"26fddaa0b0ddec166427d89a50ad0f272d06ee6d43a6b91995f45fefaa039528","bytes":6578},
+    {"file":"prompts/v8/19_인증후_포트폴리오_경쟁_자본배분_실행판정_V8.md","sha256":"56abc643b8e06a6f0e70d50c3fc7b1af68232dc1d102ec892749b685808565f3","bytes":4023},
+    {"file":"prompts/v8/20_최종_후처리_실행버튼_Pure_Validator_V8.md","sha256":"707c41085041feb69bcd8fb45917ca654ad3577cae48590f0b922445f2d13927","bytes":2711},
+    {"file":"prompts/v8/CHANGELOG_AND_OLD_TO_NEW_MAP.md","sha256":"33bd7d9a60757cfd2aefbd760364f8477cfa3c44fb376842bccf4b902076201c","bytes":958},
+    {"file":"prompts/v8/README_V8_PIPELINE.md","sha256":"78296f4f098d5dfeb8f46a06099a442a3eff3eb9a2dcbe5ab8e34440b62d2f34","bytes":3495},
+    {"file":"prompts/v8/RUN_ALL_V8_MASTER_PROMPT.md","sha256":"e3b4d6d8b211f3bea07349ecb2f4609dee1d6668937a831f634b60f592e2caea","bytes":1840}
+  ]
+}

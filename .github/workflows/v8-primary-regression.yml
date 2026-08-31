@@ -1,0 +1,32 @@
+name: v8-primary-regression
+
+on:
+  pull_request:
+    paths:
+      - 'stock_agent/v8_primary.py'
+      - 'stock_agent/__main__.py'
+      - 'tests/test_v8_primary.py'
+      - 'STOCK_AGENT_OBSIDIAN_PROMPT_LIBRARY_V2_2/WORKFLOW/stock_scout.md'
+      - 'docs/v8_canonical/**'
+      - '.github/workflows/v8-primary-regression.yml'
+  workflow_dispatch:
+
+jobs:
+  v8-primary:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile V8 PRIMARY policy
+        run: python -m py_compile stock_agent/v8_primary.py tests/test_v8_primary.py
+      - name: Run V8 PRIMARY regression
+        run: python -m unittest tests.test_v8_primary -v
