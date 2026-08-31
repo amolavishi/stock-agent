@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'stock_agent/hunt_pipeline_v16.py'
+      - 'stock_agent/catalyst_extractor_v16.py'
       - 'stock_agent/__main__.py'
       - 'tests/test_hunt_pipeline_v16.py'
       - 'docs/v8_canonical/HUNT_PIPELINE_V16_DESIGN.md'
@@ -26,6 +27,6 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
       - name: Compile V1.6 production and regression tests
-        run: python -m py_compile stock_agent/hunt_pipeline_v16.py tests/test_hunt_pipeline_v16.py
+        run: python -m py_compile stock_agent/hunt_pipeline_v16.py stock_agent/catalyst_extractor_v16.py tests/test_hunt_pipeline_v16.py
       - name: Run V8 HUNT V1.6 regression
         run: python -m unittest tests.test_hunt_pipeline_v16 -v
