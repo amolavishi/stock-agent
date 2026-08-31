@@ -5,6 +5,7 @@ from pathlib import Path
 
 from stock_agent.daily_with_pre_a import (
     DailyPreAChainError,
+    _legacy_default_is_sentinel,
     _option_value,
     _prepare_primary_args,
     _repair_legacy_shadow_schema,
@@ -47,6 +48,11 @@ class DailyWithPreATests(unittest.TestCase):
         with self.assertRaises(DailyPreAChainError):
             _select_changed_report({}, {})
 
+    def test_legacy_default_parser_accepts_parenthesized_sqlite_constant(self):
+        self.assertTrue(_legacy_default_is_sentinel("('unstarted')"))
+        self.assertTrue(_legacy_default_is_sentinel('("UNSTARTED")'))
+        self.assertFalse(_legacy_default_is_sentinel("'real-run-id'"))
+
     def test_legacy_unstarted_shadow_defaults_are_normalized_for_existing_and_future_rows(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             database = Path(temp_dir) / "legacy-shadow.db"
@@ -81,6 +87,41 @@ class DailyWithPreATests(unittest.TestCase):
                     "SELECT hunt_run_id,execution_run_id FROM shadow_runs WHERE shadow_run_id='RUN-NEW'"
                 ).fetchone()
                 self.assertEqual(new_row, ("", ""))
+            finally:
+                connection.close()
+
+    def test_persisted_sentinel_is_repaired_even_when_nullable_schema_has_no_legacy_default(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database = Path(temp_dir) / "persisted-sentinel.db"
+            connection = sqlite3.connect(database)
+            try:
+                connection.execute(
+                    """
+                    CREATE TABLE shadow_runs (
+                        shadow_run_id TEXT PRIMARY KEY,
+                        hunt_run_id TEXT,
+                        execution_run_id TEXT
+                    )
+                    """
+                )
+                connection.execute(
+                    "INSERT INTO shadow_runs(shadow_run_id,hunt_run_id,execution_run_id) VALUES('RUN-BAD','unstarted','not_started')"
+                )
+                connection.commit()
+            finally:
+                connection.close()
+
+            self.assertTrue(_repair_legacy_shadow_schema(database))
+            connection = sqlite3.connect(database)
+            try:
+                row = connection.execute(
+                    "SELECT hunt_run_id,execution_run_id FROM shadow_runs WHERE shadow_run_id='RUN-BAD'"
+                ).fetchone()
+                self.assertEqual(row, (None, None))
+                trigger = connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='trigger' AND name='shadow_runs_legacy_sentinel_normalizer'"
+                ).fetchone()
+                self.assertIsNone(trigger)
             finally:
                 connection.close()
 
