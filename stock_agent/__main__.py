@@ -19,8 +19,10 @@ install_v8_primary_policy()
 # V1.6 changes research sequencing, not certification authority: initial
 # catalyst insufficiency becomes evidence debt, Deep Research/Full SEC collect
 # evidence, and the unchanged strict CatalystGate is rerun post-research.
-from .hunt_pipeline_v16 import install_hunt_pipeline_v16  # noqa: E402
-install_hunt_pipeline_v16()
+from . import hunt_pipeline_v16 as hunt_pipeline_v16_module  # noqa: E402
+from .catalyst_extractor_v16 import install_v16_extractor  # noqa: E402
+install_v16_extractor(hunt_pipeline_v16_module)
+hunt_pipeline_v16_module.install_hunt_pipeline_v16()
 
 # Import CLI only after every runtime/provider/shadow policy is installed.
 from .cli import main  # noqa: E402
