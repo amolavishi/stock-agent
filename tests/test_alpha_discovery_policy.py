@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import os
 import unittest
-from unittest.mock import patch
 
 from stock_agent.alpha_bootstrap import (
     ALPHA_DISCOVERY_VERSION,
@@ -123,9 +121,13 @@ class AlphaDiscoveryPolicyTests(unittest.TestCase):
         self.assertLessEqual(payload["probe_count"], 30)
         self.assertGreaterEqual(payload["probe_count"], 29)
         anomalous = next(row for row in payload["securities"] if row["security_id"] == "T047")
+        # The base one-slot liquidity probe can legitimately take the single
+        # strongest quote anomaly before the alpha quota layer starts.  What
+        # matters is that the anomaly receives exact historical ADV and the
+        # remaining budget is not an alphabetic contiguous rotation.
         self.assertEqual(anomalous["liquidity_status"], "FULL_CANDLE")
         self.assertGreater(anomalous["average_dollar_volume"], 10_000_000)
-        self.assertIsNotNone(anomalous["quote_turnover_proxy"])
+        self.assertIn("T047", toss.candle_calls)
         unprobed = next(row for row in payload["securities"] if row["liquidity_status"] == "QUOTE_SINGLE_DAY_ESTIMATE")
         self.assertIn("approximate_dollar_volume", unprobed)
         self.assertNotIn("average_dollar_volume", unprobed)
