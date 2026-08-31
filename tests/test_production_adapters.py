@@ -70,8 +70,6 @@ def raw_rows(capital_complete: bool = True):
 
 
 
-
-
 def _complete_market_context_fixture():
     stamp = utc_now()
     symbols = ["SPY", "QQQ", "IWM", "SOXX", "VIX", "US10Y", "DXY", "WTI", "BTC", "ETH"]
@@ -146,7 +144,7 @@ class ProductionAdapterTests(unittest.TestCase):
                 payload = {"result": [{"closePrice": next(row["price"] for row in rows if row["security_id"] == ticker), "volume": 1_000_000}, {"closePrice": next(row["price"] for row in rows if row["security_id"] == ticker) + 1, "volume": 1_100_000}]}
                 return RawArtifact("candle-" + ticker, "toss-test", "CANDLES", ticker, stamp, payload, canonical_hash(payload), stamp, stamp)
         provider = CompositeLiveMarketContextProvider(Toss(), screener=Screener())
-        artifact = provider.fetch_universe({"broad": True, "min_price": 3, "min_market_cap": 500_000_000, "min_average_dollar_volume": 10_000_000, "liquidity_full_probe_limit": 2})
+        artifact = provider.fetch_universe({"broad": True, "min_price": 3, "min_market_cap": 500_000_000, "min_average_dollar_volume": 10_000_000, "liquidity_full_probe_limit": 2, "liquidity_rotation_key": "2026-08-28"})
         self.assertEqual(artifact.payload["probe_strategy"], "BROAD_QUOTE_PRIORITY_PLUS_DAILY_ROTATION")
         self.assertEqual(artifact.payload["quote_scan_count"], 3)
         mid = next(row for row in artifact.payload["securities"] if row["security_id"] == "MID")
