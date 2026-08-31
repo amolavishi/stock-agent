@@ -27,6 +27,13 @@ from .adapters import (ConfiguredJsonMarketDataProvider, ConfiguredResearchEvide
                        YahooFinanceNewsEvidenceProvider, CompositeResearchEvidenceProvider,
                        TossMarketDataProvider, TossPortfolioProvider,
                        UnavailableResearchEvidenceProvider)
+from .shadow_pointer_guard import install_shadow_pointer_guard as _install_shadow_pointer_guard
+
+# Historical local Shadow databases may still emit non-empty placeholders such
+# as ``unstarted`` from old table definitions. Install the compatibility guard
+# at the authoritative store boundary for every Stock Agent entry point, not
+# only the PRE-A wrapper.
+_install_shadow_pointer_guard()
 
 __all__ = [
     "ActionRecommendation",
