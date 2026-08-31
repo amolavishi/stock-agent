@@ -4,7 +4,9 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
+import stock_agent.hunt_pipeline_v16 as hunt_pipeline_v16_module
 from stock_agent.catalyst import CatalystGate
+from stock_agent.catalyst_extractor_v16 import install_v16_extractor
 from stock_agent.hunt_pipeline_v16 import (
     HUNT_PIPELINE_VERSION,
     V16MultiSourceResearchProvider,
@@ -14,6 +16,9 @@ from stock_agent.hunt_pipeline_v16 import (
     evidence_plan_for_lane,
 )
 from stock_agent.models import EffectiveRuleSet, GateDecision, RawArtifact, canonical_hash
+
+# Production __main__ installs the same augmentation before CLI construction.
+install_v16_extractor(hunt_pipeline_v16_module)
 
 
 class _Response:
@@ -101,9 +106,7 @@ class HuntPipelineV16Tests(unittest.TestCase):
         )
         self.assertEqual(strict.decision, GateDecision.INSUFFICIENT_EVIDENCE)
         admission = _ResearchAdmissionReceipt(strict)
-        # The temporary in-memory decision only opens research admission.
         self.assertEqual(admission.decision, GateDecision.PASS)
-        # Persisted/as_dict authority continues to expose the real strict gate.
         self.assertEqual(admission.as_dict()["decision"], "INSUFFICIENT_EVIDENCE")
         self.assertFalse(admission.as_dict()["final_authority"])
 
