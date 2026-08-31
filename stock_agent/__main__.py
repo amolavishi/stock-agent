@@ -24,6 +24,13 @@ from .catalyst_extractor_v16 import install_v16_extractor  # noqa: E402
 install_v16_extractor(hunt_pipeline_v16_module)
 hunt_pipeline_v16_module.install_hunt_pipeline_v16()
 
+# RUN-011 proved the Evidence Store and the model working context must be
+# separate. V1.7 bounds the wire projection, removes duplicate runtime input,
+# persists Evidence Debt before capability reasoning, improves safe 4xx
+# diagnostics, and forbids pipeline failures from rendering as clean NO_TRADE.
+from .hunt_resilience_v17 import install_hunt_resilience_v17  # noqa: E402
+install_hunt_resilience_v17()
+
 # Import CLI only after every runtime/provider/shadow policy is installed.
 from .cli import main  # noqa: E402
 
