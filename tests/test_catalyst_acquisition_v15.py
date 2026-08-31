@@ -46,13 +46,9 @@ class CatalystAcquisitionV15Tests(unittest.TestCase):
             "source_class": "MAJOR_MEDIA",
             "source_url": "https://finance.yahoo.com/news/xyz-update",
             "source_observed_at": "2026-08-31T14:00:00Z",
-            "title": "XYZ announces a new contract",
-            "content": "The company announced a new contract. Far outside the event discussion, an analyst has a $250 target.",
+            "title": "XYZ announces a contract award",
+            "content": "The company announced a contract award. " + ("background " * 120) + "An analyst has a $250 target.",
         }
-        # The extractor binds numbers to the event-local window. This short
-        # example is intentionally still inside the window, so use a very long
-        # separator to prove a distant valuation number cannot grant a pass.
-        source["content"] = "The company announced a new contract. " + ("background " * 120) + "An analyst has a $250 target."
         self.assertEqual(extract_grounded_catalysts(source), [])
 
     def test_yahoo_scans_past_first_generic_item_for_grounded_catalyst(self):
@@ -65,9 +61,9 @@ class CatalystAcquisitionV15Tests(unittest.TestCase):
             <pubDate>Mon, 31 Aug 2026 13:00:00 GMT</pubDate>
           </item>
           <item>
-            <title>XYZ awarded a $250 million contract</title>
+            <title>XYZ contract award valued at $250 million</title>
             <link>https://finance.yahoo.com/news/xyz-contract-award</link>
-            <description>XYZ was awarded a contract worth $250 million on August 31, 2026 for a multi-year program.</description>
+            <description>XYZ announced a contract award valued at $250 million on August 31, 2026 for a multi-year program.</description>
             <pubDate>Mon, 31 Aug 2026 12:00:00 GMT</pubDate>
           </item>
         </channel></rss>"""
@@ -93,12 +89,12 @@ class CatalystAcquisitionV15Tests(unittest.TestCase):
         )
         self.assertEqual(receipt.decision.value, "PASS")
 
-    def test_unquantified_headline_does_not_create_catalyst(self):
+    def test_unquantified_event_does_not_create_catalyst(self):
         source = {
             "source_class": "COMPANY_IR",
             "source_url": "https://investor.xyz.com/news/new-contract",
             "source_observed_at": "2026-08-31T14:00:00Z",
-            "title": "XYZ awarded a strategic contract",
+            "title": "XYZ announces a strategic contract award",
             "content": "The customer and financial terms were not disclosed.",
         }
         self.assertEqual(extract_grounded_catalysts(source), [])
