@@ -47,27 +47,35 @@ def _option_value(argv: list[str], name: str, default: str) -> str:
 def _legacy_default_is_sentinel(value: object) -> bool:
     if value is None:
         return False
-    text = str(value).strip().strip("'\"").casefold()
+    text = str(value).strip().casefold()
+    # SQLite may expose a constant default as 'unstarted', ('unstarted'),
+    # or with double quotes depending on the historical table DDL.  Normalize
+    # only wrapping syntax; do not treat arbitrary default expressions as a
+    # legacy sentinel.
+    while len(text) >= 2 and text.startswith("(") and text.endswith(")"):
+        text = text[1:-1].strip()
+    text = text.strip("'\"").strip()
     return text in _LEGACY_SENTINELS
 
 
 def _repair_legacy_shadow_schema(database: Path) -> bool:
-    """Neutralize obsolete ``unstarted`` Shadow pointer defaults.
+    """Neutralize obsolete Shadow run-pointer sentinels in an existing DB.
 
-    Older local ``shadow_v1.db`` files may have been created with
-    ``hunt_run_id``/``execution_run_id`` defaults such as ``'unstarted'``.
-    Current PRIMARY code treats any non-empty value as a real ``runs.run_id``;
-    therefore a newly reserved Shadow run can skip HUNT and later fail with
-    ``KeyError('unstarted')``.
+    Historical ``shadow_v1.db`` files can contain ``hunt_run_id`` or
+    ``execution_run_id`` values such as ``'unstarted'``.  Some legacy tables
+    also retain that value as a column default.  Current PRIMARY code treats
+    any non-empty pointer as a real ``runs.run_id``; therefore either condition
+    can skip HUNT and later fail with ``KeyError('unstarted')``.
 
-    The current repository schema uses NULL.  For an already-existing legacy
-    database we do not rebuild the table.  Instead, only when PRAGMA confirms
-    one of those obsolete defaults, we normalize existing placeholder values
-    and install an AFTER INSERT compatibility trigger so future rows created by
-    the legacy table definition are immediately converted to a false-y value
-    before ``reserve_shadow_run`` reads them back.
+    Repair is intentionally narrow:
+    - persisted sentinel values are normalized even when the current column
+      default is already NULL;
+    - a compatibility trigger is installed only when PRAGMA confirms that a
+      legacy sentinel is still the column default, so future INSERTs cannot
+      recreate the invalid pointer;
+    - unrelated run ids and current nullable schemas are untouched.
 
-    Returns True only when a legacy schema was detected and repaired.
+    Returns True only when a sentinel value/default was detected and repaired.
     """
     database = database.expanduser()
     if not database.exists() or not database.is_file():
@@ -90,7 +98,22 @@ def _repair_legacy_shadow_schema(database: Path) -> bool:
             for name in ("hunt_run_id", "execution_run_id")
             if columns.get(name) is not None
         }
-        if not relevant or not any(_legacy_default_is_sentinel(info["default"]) for info in relevant.values()):
+        if not relevant:
+            return False
+
+        placeholders = ",".join("?" for _ in _LEGACY_SENTINELS)
+        sentinel_params = tuple(sorted(_LEGACY_SENTINELS))
+        default_is_legacy = any(_legacy_default_is_sentinel(info["default"]) for info in relevant.values())
+        persisted_is_legacy = False
+        for name in relevant:
+            row = connection.execute(
+                f"SELECT 1 FROM shadow_runs WHERE lower(trim(COALESCE({name}, ''))) IN ({placeholders}) LIMIT 1",
+                sentinel_params,
+            ).fetchone()
+            if row is not None:
+                persisted_is_legacy = True
+                break
+        if not default_is_legacy and not persisted_is_legacy:
             return False
 
         replacements = {
@@ -99,42 +122,40 @@ def _repair_legacy_shadow_schema(database: Path) -> bool:
         }
         with connection:
             for name, replacement in replacements.items():
-                placeholders = ",".join("?" for _ in _LEGACY_SENTINELS)
                 connection.execute(
-                    f"UPDATE shadow_runs SET {name}=? WHERE lower(trim({name})) IN ({placeholders})",
-                    (replacement, *sorted(_LEGACY_SENTINELS)),
+                    f"UPDATE shadow_runs SET {name}=? WHERE lower(trim(COALESCE({name}, ''))) IN ({placeholders})",
+                    (replacement, *sentinel_params),
                 )
 
-            # The old column default remains part of the local table DDL, so a
-            # one-time UPDATE alone is insufficient.  The trigger converts
-            # future legacy defaults immediately after each INSERT.  It is
-            # created only for confirmed legacy schemas and can coexist with
-            # the current nullable schema without touching strategy state.
-            hunt_replacement = "''" if replacements.get("hunt_run_id") == "" else "NULL"
-            execution_replacement = "''" if replacements.get("execution_run_id") == "" else "NULL"
-            sentinels_sql = ",".join("'" + item.replace("'", "''") + "'" for item in sorted(_LEGACY_SENTINELS))
-            connection.execute("DROP TRIGGER IF EXISTS shadow_runs_legacy_sentinel_normalizer")
-            connection.execute(
-                f"""
-                CREATE TRIGGER shadow_runs_legacy_sentinel_normalizer
-                AFTER INSERT ON shadow_runs
-                FOR EACH ROW
-                WHEN lower(trim(COALESCE(NEW.hunt_run_id, ''))) IN ({sentinels_sql})
-                  OR lower(trim(COALESCE(NEW.execution_run_id, ''))) IN ({sentinels_sql})
-                BEGIN
-                    UPDATE shadow_runs
-                    SET hunt_run_id = CASE
-                            WHEN lower(trim(COALESCE(NEW.hunt_run_id, ''))) IN ({sentinels_sql}) THEN {hunt_replacement}
-                            ELSE NEW.hunt_run_id
-                        END,
-                        execution_run_id = CASE
-                            WHEN lower(trim(COALESCE(NEW.execution_run_id, ''))) IN ({sentinels_sql}) THEN {execution_replacement}
-                            ELSE NEW.execution_run_id
-                        END
-                    WHERE shadow_run_id = NEW.shadow_run_id;
-                END
-                """
-            )
+            if default_is_legacy:
+                # The old column default remains part of the local table DDL,
+                # so a one-time UPDATE alone is insufficient.  This trigger is
+                # installed only for a confirmed legacy default.
+                hunt_replacement = "''" if replacements.get("hunt_run_id") == "" else "NULL"
+                execution_replacement = "''" if replacements.get("execution_run_id") == "" else "NULL"
+                sentinels_sql = ",".join("'" + item.replace("'", "''") + "'" for item in sorted(_LEGACY_SENTINELS))
+                connection.execute("DROP TRIGGER IF EXISTS shadow_runs_legacy_sentinel_normalizer")
+                connection.execute(
+                    f"""
+                    CREATE TRIGGER shadow_runs_legacy_sentinel_normalizer
+                    AFTER INSERT ON shadow_runs
+                    FOR EACH ROW
+                    WHEN lower(trim(COALESCE(NEW.hunt_run_id, ''))) IN ({sentinels_sql})
+                      OR lower(trim(COALESCE(NEW.execution_run_id, ''))) IN ({sentinels_sql})
+                    BEGIN
+                        UPDATE shadow_runs
+                        SET hunt_run_id = CASE
+                                WHEN lower(trim(COALESCE(NEW.hunt_run_id, ''))) IN ({sentinels_sql}) THEN {hunt_replacement}
+                                ELSE NEW.hunt_run_id
+                            END,
+                            execution_run_id = CASE
+                                WHEN lower(trim(COALESCE(NEW.execution_run_id, ''))) IN ({sentinels_sql}) THEN {execution_replacement}
+                                ELSE NEW.execution_run_id
+                            END
+                        WHERE shadow_run_id = NEW.shadow_run_id;
+                    END
+                    """
+                )
         return True
     finally:
         connection.close()
