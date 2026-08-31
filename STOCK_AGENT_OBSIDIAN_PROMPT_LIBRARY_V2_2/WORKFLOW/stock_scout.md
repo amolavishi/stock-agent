@@ -1,6 +1,6 @@
 ---
 prompt_id: workflow.stock_scout
-version: 2.3.0-v8-primary
+version: 2.3.0
 schema_version: prompt-meta-2.2
 layer: WORKFLOW
 category: role
