@@ -6,6 +6,7 @@ auth.json
 **/auth.json
 work/
 shadow_runs/
+pre_a_reports/
 __pycache__/
 **/__pycache__/
 *.py[cod]
