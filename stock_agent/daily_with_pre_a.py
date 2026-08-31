@@ -14,6 +14,7 @@ wrapper exit code so the operator sees that the secondary report is missing.
 from __future__ import annotations
 
 import argparse
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,9 @@ from typing import Iterable
 
 class DailyPreAChainError(RuntimeError):
     """Fail-closed wrapper error."""
+
+
+_LEGACY_SENTINELS = {"unstarted", "not_started", "not-started"}
 
 
 def _option_value(argv: list[str], name: str, default: str) -> str:
@@ -38,6 +42,102 @@ def _option_value(argv: list[str], name: str, default: str) -> str:
                 raise DailyPreAChainError(f"{name} requires a value")
             return argv[index + 1]
     return default
+
+
+def _legacy_default_is_sentinel(value: object) -> bool:
+    if value is None:
+        return False
+    text = str(value).strip().strip("'\"").casefold()
+    return text in _LEGACY_SENTINELS
+
+
+def _repair_legacy_shadow_schema(database: Path) -> bool:
+    """Neutralize obsolete ``unstarted`` Shadow pointer defaults.
+
+    Older local ``shadow_v1.db`` files may have been created with
+    ``hunt_run_id``/``execution_run_id`` defaults such as ``'unstarted'``.
+    Current PRIMARY code treats any non-empty value as a real ``runs.run_id``;
+    therefore a newly reserved Shadow run can skip HUNT and later fail with
+    ``KeyError('unstarted')``.
+
+    The current repository schema uses NULL.  For an already-existing legacy
+    database we do not rebuild the table.  Instead, only when PRAGMA confirms
+    one of those obsolete defaults, we normalize existing placeholder values
+    and install an AFTER INSERT compatibility trigger so future rows created by
+    the legacy table definition are immediately converted to a false-y value
+    before ``reserve_shadow_run`` reads them back.
+
+    Returns True only when a legacy schema was detected and repaired.
+    """
+    database = database.expanduser()
+    if not database.exists() or not database.is_file():
+        return False
+
+    connection = sqlite3.connect(str(database))
+    try:
+        table = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='shadow_runs'"
+        ).fetchone()
+        if table is None:
+            return False
+
+        columns = {
+            str(row[1]): {"notnull": bool(row[3]), "default": row[4]}
+            for row in connection.execute("PRAGMA table_info(shadow_runs)").fetchall()
+        }
+        relevant = {
+            name: columns.get(name)
+            for name in ("hunt_run_id", "execution_run_id")
+            if columns.get(name) is not None
+        }
+        if not relevant or not any(_legacy_default_is_sentinel(info["default"]) for info in relevant.values()):
+            return False
+
+        replacements = {
+            name: "" if bool(info["notnull"]) else None
+            for name, info in relevant.items()
+        }
+        with connection:
+            for name, replacement in replacements.items():
+                placeholders = ",".join("?" for _ in _LEGACY_SENTINELS)
+                connection.execute(
+                    f"UPDATE shadow_runs SET {name}=? WHERE lower(trim({name})) IN ({placeholders})",
+                    (replacement, *sorted(_LEGACY_SENTINELS)),
+                )
+
+            # The old column default remains part of the local table DDL, so a
+            # one-time UPDATE alone is insufficient.  The trigger converts
+            # future legacy defaults immediately after each INSERT.  It is
+            # created only for confirmed legacy schemas and can coexist with
+            # the current nullable schema without touching strategy state.
+            hunt_replacement = "''" if replacements.get("hunt_run_id") == "" else "NULL"
+            execution_replacement = "''" if replacements.get("execution_run_id") == "" else "NULL"
+            sentinels_sql = ",".join("'" + item.replace("'", "''") + "'" for item in sorted(_LEGACY_SENTINELS))
+            connection.execute("DROP TRIGGER IF EXISTS shadow_runs_legacy_sentinel_normalizer")
+            connection.execute(
+                f"""
+                CREATE TRIGGER shadow_runs_legacy_sentinel_normalizer
+                AFTER INSERT ON shadow_runs
+                FOR EACH ROW
+                WHEN lower(trim(COALESCE(NEW.hunt_run_id, ''))) IN ({sentinels_sql})
+                  OR lower(trim(COALESCE(NEW.execution_run_id, ''))) IN ({sentinels_sql})
+                BEGIN
+                    UPDATE shadow_runs
+                    SET hunt_run_id = CASE
+                            WHEN lower(trim(COALESCE(NEW.hunt_run_id, ''))) IN ({sentinels_sql}) THEN {hunt_replacement}
+                            ELSE NEW.hunt_run_id
+                        END,
+                        execution_run_id = CASE
+                            WHEN lower(trim(COALESCE(NEW.execution_run_id, ''))) IN ({sentinels_sql}) THEN {execution_replacement}
+                            ELSE NEW.execution_run_id
+                        END
+                    WHERE shadow_run_id = NEW.shadow_run_id;
+                END
+                """
+            )
+        return True
+    finally:
+        connection.close()
 
 
 def _snapshot_reports(root: Path) -> dict[Path, int]:
@@ -89,8 +189,17 @@ def main() -> int:
     try:
         primary_args = _prepare_primary_args(passthrough)
         shadow_output = Path(_option_value(primary_args, "--shadow-output", "shadow_runs"))
+        database = Path(_option_value(primary_args, "--database", "stock_agent.db"))
     except DailyPreAChainError as exc:
         parser.error(str(exc))
+
+    try:
+        repaired_legacy_schema = _repair_legacy_shadow_schema(database)
+    except (OSError, sqlite3.DatabaseError) as exc:
+        print(f"PRE-A CHAIN ABORTED: failed to inspect legacy Shadow DB compatibility: {exc}", file=sys.stderr)
+        return 5
+    if repaired_legacy_schema:
+        print(f"LEGACY SHADOW DB REPAIRED: normalized obsolete run-id sentinels in {database}")
 
     before = _snapshot_reports(shadow_output)
     primary_cmd = [sys.executable, "-m", "stock_agent", *primary_args]

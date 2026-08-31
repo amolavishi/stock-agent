@@ -1,3 +1,5 @@
+import sqlite3
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -5,6 +7,7 @@ from stock_agent.daily_with_pre_a import (
     DailyPreAChainError,
     _option_value,
     _prepare_primary_args,
+    _repair_legacy_shadow_schema,
     _select_changed_report,
 )
 
@@ -43,6 +46,71 @@ class DailyWithPreATests(unittest.TestCase):
             _select_changed_report({}, {a: 1, b: 1})
         with self.assertRaises(DailyPreAChainError):
             _select_changed_report({}, {})
+
+    def test_legacy_unstarted_shadow_defaults_are_normalized_for_existing_and_future_rows(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database = Path(temp_dir) / "legacy-shadow.db"
+            connection = sqlite3.connect(database)
+            try:
+                connection.execute(
+                    """
+                    CREATE TABLE shadow_runs (
+                        shadow_run_id TEXT PRIMARY KEY,
+                        hunt_run_id TEXT NOT NULL DEFAULT 'unstarted',
+                        execution_run_id TEXT NOT NULL DEFAULT 'unstarted'
+                    )
+                    """
+                )
+                connection.execute("INSERT INTO shadow_runs(shadow_run_id) VALUES('RUN-OLD')")
+                connection.commit()
+            finally:
+                connection.close()
+
+            self.assertTrue(_repair_legacy_shadow_schema(database))
+
+            connection = sqlite3.connect(database)
+            try:
+                old_row = connection.execute(
+                    "SELECT hunt_run_id,execution_run_id FROM shadow_runs WHERE shadow_run_id='RUN-OLD'"
+                ).fetchone()
+                self.assertEqual(old_row, ("", ""))
+
+                connection.execute("INSERT INTO shadow_runs(shadow_run_id) VALUES('RUN-NEW')")
+                connection.commit()
+                new_row = connection.execute(
+                    "SELECT hunt_run_id,execution_run_id FROM shadow_runs WHERE shadow_run_id='RUN-NEW'"
+                ).fetchone()
+                self.assertEqual(new_row, ("", ""))
+            finally:
+                connection.close()
+
+    def test_current_nullable_shadow_schema_needs_no_compatibility_trigger(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database = Path(temp_dir) / "current-shadow.db"
+            connection = sqlite3.connect(database)
+            try:
+                connection.execute(
+                    """
+                    CREATE TABLE shadow_runs (
+                        shadow_run_id TEXT PRIMARY KEY,
+                        hunt_run_id TEXT,
+                        execution_run_id TEXT
+                    )
+                    """
+                )
+                connection.commit()
+            finally:
+                connection.close()
+
+            self.assertFalse(_repair_legacy_shadow_schema(database))
+            connection = sqlite3.connect(database)
+            try:
+                trigger = connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='trigger' AND name='shadow_runs_legacy_sentinel_normalizer'"
+                ).fetchone()
+                self.assertIsNone(trigger)
+            finally:
+                connection.close()
 
 
 if __name__ == "__main__":
