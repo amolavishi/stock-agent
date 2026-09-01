@@ -115,7 +115,7 @@ class V8MainFailureInjectionT1T16(unittest.TestCase):
         self.assertFalse(exhausted)
         self.assertEqual(details["raw_unique_ticker_coverage"], 150)
 
-    def test_t6_scanner02_has_no_two-name_hard_cap(self):
+    def test_t6_scanner02_has_no_two_name_hard_cap(self):
         candidates = [self.candidate(sid=f"S{i}") for i in range(3)]
         merged = {}
         for item in candidates:
@@ -172,9 +172,6 @@ class V8MainFailureInjectionT1T16(unittest.TestCase):
         structural = self.candidate("TOX", action="EXCLUDE", failure_class="STRUCTURAL_HARD_FAIL")
         secondary = self.candidate("TOX", action="DEEP_DIVE_SECONDARY", failure_class="DISCOVERY_INSUFFICIENT")
         merged = _merge_candidate(structural, secondary)
-        # Routing priority alone may retain Secondary, but the authoritative
-        # contract validator must still reject that routing because one scanner
-        # found a structural fatality. This guards against hiding the fatality.
         result = self.scanner_result("10", merged)
         merged["strategy_evidence"] = [
             {"dimension": dim, "status": "VERIFIED", "summary": dim, "evidence_ids": [f"E-{dim}"]}
