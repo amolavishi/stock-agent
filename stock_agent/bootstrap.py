@@ -68,6 +68,12 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
+    # Provider health is a transport probe only.  Do not make PRIMARY recreate
+    # a full MarketAnalysisResult merely to test Luna connectivity; canonical
+    # manifest hashes belong to research outputs, not health semantics.
+    from .shadow_health_v19 import install_shadow_health_v19
+    install_shadow_health_v19()
+
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
 
@@ -78,6 +84,7 @@ def production_composition() -> dict[str, Any]:
     """Return a deterministic description of the actual production stack."""
     install_production_stack()
     from . import runtime
+    from . import shadow
     cls = runtime.ProductionStockAgent
     return {
         "runtime_module": cls.__module__,
@@ -90,4 +97,5 @@ def production_composition() -> dict[str, Any]:
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
+        "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
     }
