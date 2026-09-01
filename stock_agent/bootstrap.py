@@ -70,6 +70,11 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
+    # Materialize bundle-internal sources as individual evidence receipts and
+    # make Step16 evidence independence a Python-validated origin contract.
+    from .v8_evidence_origin_v19 import install_v8_evidence_origin_v19
+    install_v8_evidence_origin_v19()
+
     # Prepare scanner-specific schema/output contracts before source-backed
     # prompts are registered. This also repairs the malformed 63-char Scanner
     # 08 source hash that made COMPLETE impossible in the previous coach.
@@ -130,6 +135,7 @@ def production_composition() -> dict[str, Any]:
     install_production_stack()
     from . import adapters, runtime, shadow
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
+    from .v8_evidence_origin_v19 import V8_EVIDENCE_ORIGIN_VERSION
     from .v8_grade_quota_firewall import V8_GRADE_QUOTA_FIREWALL_VERSION
     from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION, V8_MAIN_FORENSIC_AUDIT_SHA256
     from .v8_main_discovery_integrity import V8_MAIN_DISCOVERY_INTEGRITY_VERSION, SCANNER_OUTPUT_CONTRACT_VERSION
@@ -158,6 +164,7 @@ def production_composition() -> dict[str, Any]:
         "v8_policy_version": V8_NEXT_POLICY_VERSION,
         "v8_ruleset_hash": V8_NEXT_POLICY_HASH,
         "v8_grade_quota_firewall_version": V8_GRADE_QUOTA_FIREWALL_VERSION,
+        "v8_evidence_origin_version": getattr(cls, "v8_evidence_origin_version", V8_EVIDENCE_ORIGIN_VERSION),
         "v8_next_successor_version": getattr(cls, "v8_next_successor_version", None),
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
