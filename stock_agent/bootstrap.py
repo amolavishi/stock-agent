@@ -31,6 +31,8 @@ def install_production_stack() -> None:
 
     from .v8_primary import install_v8_primary_policy
     install_v8_primary_policy()
+    from .v8_grade_quota_firewall import install_v8_grade_quota_firewall
+    install_v8_grade_quota_firewall()
 
     from .discovery_recall_firewall_v15 import install_discovery_recall_firewall_v15
     install_discovery_recall_firewall_v15()
@@ -128,6 +130,7 @@ def production_composition() -> dict[str, Any]:
     install_production_stack()
     from . import adapters, runtime, shadow
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
+    from .v8_grade_quota_firewall import V8_GRADE_QUOTA_FIREWALL_VERSION
     from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION, V8_MAIN_FORENSIC_AUDIT_SHA256
     from .v8_main_discovery_integrity import V8_MAIN_DISCOVERY_INTEGRITY_VERSION, SCANNER_OUTPUT_CONTRACT_VERSION
     from .v8_main_discovery_post_v11 import V8_MAIN_DISCOVERY_POST_VERSION
@@ -154,6 +157,7 @@ def production_composition() -> dict[str, Any]:
         "v8_primary_version": getattr(cls, "v8_primary_version", None),
         "v8_policy_version": V8_NEXT_POLICY_VERSION,
         "v8_ruleset_hash": V8_NEXT_POLICY_HASH,
+        "v8_grade_quota_firewall_version": V8_GRADE_QUOTA_FIREWALL_VERSION,
         "v8_next_successor_version": getattr(cls, "v8_next_successor_version", None),
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
