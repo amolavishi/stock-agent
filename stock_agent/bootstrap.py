@@ -24,9 +24,6 @@ def install_production_stack() -> None:
     install_alpha_discovery_policy()
     install_alpha_coverage_v14()
 
-    # The forensic Discovery Recall layer keeps the existing alpha/coverage
-    # providers but raises the broad live historical-ADV probe ceiling and
-    # preserves scanner-routing fields before CLI provider instances exist.
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_provider
     install_discovery_recall_lite_provider()
 
@@ -36,7 +33,6 @@ def install_production_stack() -> None:
     from .v8_primary import install_v8_primary_policy
     install_v8_primary_policy()
 
-    # Discovery routing metadata must never anchor blind audit or Step18.
     from .discovery_recall_firewall_v15 import install_discovery_recall_firewall_v15
     install_discovery_recall_firewall_v15()
 
@@ -48,10 +44,6 @@ def install_production_stack() -> None:
     from .hunt_resilience_v17 import install_hunt_resilience_v17
     install_hunt_resilience_v17()
 
-    # Preserve the complete production Final Allocation writer immediately
-    # before V1.8 adds its integrity guard.  V1.8.2 uses this exact writer to
-    # replace an over-broad run-level failure veto with a subject-scoped veto
-    # without bypassing any pre-existing qualification/lineage/risk checks.
     from . import store as store_module
     if not hasattr(store_module, "_pre_v18_commit_final_allocation"):
         store_module._pre_v18_commit_final_allocation = store_module.SQLiteStore.commit_final_allocation
@@ -63,52 +55,34 @@ def install_production_stack() -> None:
     from .hunt_integrity_v182 import install_hunt_integrity_v182
     install_hunt_integrity_v182()
 
-    # Capture the pre-successor HUNT terminal state.  The later V8 NEXT breadth
-    # policy may add coverage telemetry, but it must not erase a provider or
-    # pipeline root cause that happened before breadth was measurable.
     from .v8_next_terminal_lineage import install_pre_successor_terminal_capture
     install_pre_successor_terminal_capture()
 
-    # V8 NEXT is the active successor investment-policy contract.  It is
-    # deliberately installed after the V1.8 integrity layers so it can
-    # supersede the legacy Step-18 source pin and add the 00A breadth floor
-    # without weakening any earlier failure/lineage guard.
     from .v8_next_successor import install_v8_next_successor
     install_v8_next_successor()
 
-    # Tighten the Python grade engine before wiring Step15->20 into the live
-    # candidate loop.  The model remains analysis-only; Python owns grade,
-    # arithmetic, lineage, caps and final qualification.
     from .v8_next_certification_v11 import install_v8_next_certification_v11
     install_v8_next_certification_v11()
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # Execute V8 02-14 as explicit scanner receipts, preserve Secondary and
-    # near-miss queues, run the rejection sentinel, and own the search-stop
-    # audit.  This layer is deliberately downstream of V8 certification wiring
-    # but cannot write Grade or execution authority.
+    # Forensic Recall: all 02-14 scanner receipts, Secondary/near-miss queues,
+    # rejection sentinel and marginal-yield/search-debt state are generated
+    # before a no-candidate search may be declared complete.
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_runtime
     install_discovery_recall_lite_runtime()
+    from .discovery_recall_stop_bridge_v15 import install_discovery_recall_stop_bridge_v15
+    install_discovery_recall_stop_bridge_v15()
 
-    # Restore any captured upstream terminal failure after V8 NEXT has recorded
-    # its coverage telemetry.  A coverage guard is not an error classifier.
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
 
-    # Provider health is a transport probe only.  Do not make PRIMARY recreate
-    # a full MarketAnalysisResult merely to test Luna connectivity; canonical
-    # manifest hashes belong to research outputs, not health semantics.
     from .shadow_health_v19 import install_shadow_health_v19
     install_shadow_health_v19()
 
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
 
-    # The authoritative HUNT may finish as NOT_EVALUABLE even when the Shadow
-    # process itself did not raise.  Install the conclusion/status adapter last
-    # so no earlier compatibility layer can relabel that state as clean
-    # SUCCEEDED/NO_TRADE.
     from .shadow_non_evaluable_guard import install_shadow_non_evaluable_guard
     install_shadow_non_evaluable_guard()
 
@@ -121,6 +95,7 @@ def production_composition() -> dict[str, Any]:
     from . import runtime
     from . import shadow
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
+    from .discovery_recall_stop_bridge_v15 import DISCOVERY_RECALL_STOP_BRIDGE_VERSION
     cls = runtime.ProductionStockAgent
     return {
         "runtime_module": cls.__module__,
@@ -135,6 +110,7 @@ def production_composition() -> dict[str, Any]:
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
         "discovery_recall_lite_version": getattr(cls, "discovery_recall_lite_version", None),
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
+        "discovery_recall_stop_bridge_version": DISCOVERY_RECALL_STOP_BRIDGE_VERSION,
         "discovery_recall_forensic_audit_sha256": getattr(cls, "discovery_recall_forensic_audit_sha256", None),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
         "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
