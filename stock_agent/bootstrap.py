@@ -24,6 +24,12 @@ def install_production_stack() -> None:
     install_alpha_discovery_policy()
     install_alpha_coverage_v14()
 
+    # The forensic Discovery Recall layer keeps the existing alpha/coverage
+    # providers but raises the broad live historical-ADV probe ceiling and
+    # preserves scanner-routing fields before CLI provider instances exist.
+    from .discovery_recall_lite_v15 import install_discovery_recall_lite_provider
+    install_discovery_recall_lite_provider()
+
     from .catalyst_acquisition_v15 import install_catalyst_evidence_acquisition_v15
     install_catalyst_evidence_acquisition_v15()
 
@@ -74,6 +80,13 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
+    # Execute V8 02-14 as explicit scanner receipts, preserve Secondary and
+    # near-miss queues, run the rejection sentinel, and own the search-stop
+    # audit.  This layer is deliberately downstream of V8 certification wiring
+    # but cannot write Grade or execution authority.
+    from .discovery_recall_lite_v15 import install_discovery_recall_lite_runtime
+    install_discovery_recall_lite_runtime()
+
     # Restore any captured upstream terminal failure after V8 NEXT has recorded
     # its coverage telemetry.  A coverage guard is not an error classifier.
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
@@ -115,6 +128,8 @@ def production_composition() -> dict[str, Any]:
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
+        "discovery_recall_lite_version": getattr(cls, "discovery_recall_lite_version", None),
+        "discovery_recall_forensic_audit_sha256": getattr(cls, "discovery_recall_forensic_audit_sha256", None),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
         "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
