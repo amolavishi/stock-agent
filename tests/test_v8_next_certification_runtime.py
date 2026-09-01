@@ -174,8 +174,6 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
             "research_result": {"material_claims": [{"summary": "verified claim", "evidence_ids": ["E1"]}]},
             "failure_paths": [{"category": "FUNDAMENTAL"}, {"category": "CAPITAL_STRUCTURE"}, {"category": "PRICING_EXPECTATION"}],
         }
-        # The runtime A-path must use an actual Python-materialized source
-        # origin. A naked synthetic E1 is intentionally insufficient for A/A-.
         artifact = SimpleNamespace(
             artifact_id="R-ART-1",
             provider="fixture-research",
@@ -218,7 +216,8 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
                 audit = robust_atomic_audit()
                 mapping = origin._ORIGIN_CONTEXT.get()
                 source_eids = [eid for eid in evidence_ids if eid in mapping]
-                self.assertTrue(source_eids, "fixture must materialize at least one Python evidence origin")
+                if not source_eids:
+                    raise AssertionError("fixture must materialize at least one Python evidence origin")
                 eid = source_eids[0]
                 for claim in audit["atomic_claims"]:
                     claim["evidence_ids"] = [eid]
