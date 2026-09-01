@@ -53,6 +53,12 @@ def install_production_stack() -> None:
     from .hunt_integrity_v182 import install_hunt_integrity_v182
     install_hunt_integrity_v182()
 
+    # Capture the pre-successor HUNT terminal state.  The later V8 NEXT breadth
+    # policy may add coverage telemetry, but it must not erase a provider or
+    # pipeline root cause that happened before breadth was measurable.
+    from .v8_next_terminal_lineage import install_pre_successor_terminal_capture
+    install_pre_successor_terminal_capture()
+
     # V8 NEXT is the active successor investment-policy contract.  It is
     # deliberately installed after the V1.8 integrity layers so it can
     # supersede the legacy Step-18 source pin and add the 00A breadth floor
@@ -67,6 +73,11 @@ def install_production_stack() -> None:
     install_v8_next_certification_v11()
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
+
+    # Restore any captured upstream terminal failure after V8 NEXT has recorded
+    # its coverage telemetry.  A coverage guard is not an error classifier.
+    from .v8_next_terminal_lineage import install_post_successor_terminal_restore
+    install_post_successor_terminal_restore()
 
     # Provider health is a transport probe only.  Do not make PRIMARY recreate
     # a full MarketAnalysisResult merely to test Luna connectivity; canonical
@@ -104,6 +115,8 @@ def production_composition() -> dict[str, Any]:
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
+        "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
+        "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
         "shadow_non_evaluable_guard_version": getattr(shadow.DailyShadowRunner, "shadow_non_evaluable_guard_version", None),
     }
