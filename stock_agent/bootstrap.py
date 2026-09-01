@@ -16,16 +16,19 @@ def install_production_stack() -> None:
     install_alpha_discovery_policy()
     install_alpha_coverage_v14()
 
+    # Breadth/data acquisition only.  This provider patch may widen the public
+    # universe/ADV probe, but it has ZERO authority to discover or route a name.
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_provider
     install_discovery_recall_lite_provider()
-    from .discovery_recall_contract_v151 import install_discovery_recall_contract_v151
-    install_discovery_recall_contract_v151()
 
     from .catalyst_acquisition_v15 import install_catalyst_evidence_acquisition_v15
     install_catalyst_evidence_acquisition_v15()
 
     from .v8_primary import install_v8_primary_policy
     install_v8_primary_policy()
+
+    # Discovery metadata may guide research routing but can never enter the
+    # blind certification packet or become Research Grade authority.
     from .discovery_recall_firewall_v15 import install_discovery_recall_firewall_v15
     install_discovery_recall_firewall_v15()
 
@@ -58,23 +61,12 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # Discovery Recall is research-routing authority only. The 02-14 receipts,
-    # Secondary queue, rejection sentinel and search-stop audit are enforced
-    # before a no-candidate outcome can be considered evaluable.
-    from .discovery_recall_lite_v15 import install_discovery_recall_lite_runtime
-    install_discovery_recall_lite_runtime()
-
-    # Exact TEST 1-10 forensic invariants. This patches only Discovery routing:
-    # UNKNOWN remains nonfatal; a verified discounted-VWAP convert remains a
-    # structural fatality; explicit no-1-8W-event cases remain horizon mismatch;
-    # structural failures are audit-ledgered but cannot consume research.
-    from .discovery_recall_failure_guard_v16 import install_discovery_recall_failure_guard_v16
-    install_discovery_recall_failure_guard_v16()
-
-    from .discovery_recall_stop_bridge_v15 import install_discovery_recall_stop_bridge_v15
-    install_discovery_recall_stop_bridge_v15()
-    from .discovery_recall_contract_v151 import install_discovery_recall_ledger_v151
-    install_discovery_recall_ledger_v151()
+    # MAIN remains the sole final Discovery engine.  This layer does not use
+    # Python scanner heuristics.  It forces actual model-executed V8 02..14
+    # passes and feeds them back to workflow.stock_scout, which remains the one
+    # DiscoveryCandidateSetV2 output owner.
+    from .v8_main_discovery_coach import install_v8_main_discovery_coach
+    install_v8_main_discovery_coach()
 
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
@@ -91,13 +83,13 @@ def install_production_stack() -> None:
 
 def production_composition() -> dict[str, Any]:
     install_production_stack()
+    from . import adapters
     from . import runtime
     from . import shadow
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
-    from .discovery_recall_stop_bridge_v15 import DISCOVERY_RECALL_STOP_BRIDGE_VERSION
-    from .discovery_recall_contract_v151 import DISCOVERY_RECALL_CONTRACT_VERSION, DISCOVERY_RECALL_LEDGER_VERSION
-    from .discovery_recall_failure_guard_v16 import DISCOVERY_RECALL_FAILURE_GUARD_VERSION
+    from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION, V8_MAIN_FORENSIC_AUDIT_SHA256
     cls = runtime.ProductionStockAgent
+    market_cls = adapters.CompositeLiveMarketContextProvider
     return {
         "runtime_module": cls.__module__,
         "runtime_class": cls.__name__,
@@ -109,13 +101,13 @@ def production_composition() -> dict[str, Any]:
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
-        "discovery_recall_lite_version": getattr(cls, "discovery_recall_lite_version", None),
-        "discovery_recall_contract_version": DISCOVERY_RECALL_CONTRACT_VERSION,
-        "discovery_recall_ledger_version": DISCOVERY_RECALL_LEDGER_VERSION,
+        "v8_main_discovery_coach_version": getattr(cls, "v8_main_discovery_coach_version", V8_MAIN_DISCOVERY_COACH_VERSION),
+        "v8_main_forensic_audit_sha256": getattr(cls, "v8_main_forensic_audit_sha256", V8_MAIN_FORENSIC_AUDIT_SHA256),
+        "main_is_sole_discovery_owner": True,
+        "python_scanner_routing_authority": False,
+        "discovery_recall_lite_runtime_installed": any("DiscoveryRecallLiteProductionStockAgent" in f"{item.__module__}.{item.__name__}" for item in cls.__mro__),
+        "discovery_breadth_provider_version": getattr(market_cls, "discovery_recall_lite_version", None),
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
-        "discovery_recall_failure_guard_version": DISCOVERY_RECALL_FAILURE_GUARD_VERSION,
-        "discovery_recall_stop_bridge_version": DISCOVERY_RECALL_STOP_BRIDGE_VERSION,
-        "discovery_recall_forensic_audit_sha256": getattr(cls, "discovery_recall_forensic_audit_sha256", None),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
         "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
