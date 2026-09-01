@@ -29,10 +29,15 @@ class MarketDiscoveryAdmissionTests(unittest.TestCase):
 
     def test_partial_noncore_context_can_admit_discovery_without_forging_canonical_pass(self):
         state = {}
-        proxy = _MarketContextDiscoveryAdmissionGate(MarketContextGate(), lambda admitted, reason: state.update(admitted=admitted, reason=reason))
+        strict = MarketContextGate()
+        canonical = strict.evaluate(self.context(), EffectiveRuleSet(), evaluation_time=datetime(2026, 9, 1, 21, 0, tzinfo=timezone.utc))
+        proxy = _MarketContextDiscoveryAdmissionGate(strict, lambda admitted, reason: state.update(admitted=admitted, reason=reason))
         receipt = proxy.evaluate(self.context(), EffectiveRuleSet(), evaluation_time=datetime(2026, 9, 1, 21, 0, tzinfo=timezone.utc))
         self.assertEqual(receipt.decision, GateDecision.PASS)
         self.assertEqual(receipt.as_dict()["decision"], GateDecision.INSUFFICIENT_EVIDENCE.value)
+        self.assertEqual(receipt.receipt_hash, canonical.receipt_hash)
+        self.assertEqual(receipt.core_input_complete, canonical.core_input_complete)
+        self.assertFalse(receipt.core_input_complete)
         self.assertTrue(state["admitted"])
         self.assertEqual(state["reason"], "PARTIAL_CONTEXT_CORE_DISCOVERY_VALID")
 
@@ -47,10 +52,13 @@ class MarketDiscoveryAdmissionTests(unittest.TestCase):
 
     def test_partial_sector_context_does_not_kill_bottom_up_after_market_core_admission(self):
         state = {}
-        proxy = _SectorDiscoveryAdmissionGate(SectorGate(), lambda: True, lambda admitted, reason: state.update(admitted=admitted, reason=reason))
+        strict = SectorGate()
+        canonical = strict.evaluate({"eligible": False}, EffectiveRuleSet())
+        proxy = _SectorDiscoveryAdmissionGate(strict, lambda: True, lambda admitted, reason: state.update(admitted=admitted, reason=reason))
         receipt = proxy.evaluate({"eligible": False}, EffectiveRuleSet())
         self.assertEqual(receipt.decision, GateDecision.PASS)
         self.assertEqual(receipt.as_dict()["decision"], GateDecision.INSUFFICIENT_EVIDENCE.value)
+        self.assertEqual(receipt.receipt_hash, canonical.receipt_hash)
         self.assertTrue(state["admitted"])
 
     def test_market_execution_gate_remains_strict(self):
