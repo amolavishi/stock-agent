@@ -164,6 +164,7 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
 
     def test_actual_runtime_override_persists_step15_through_step20(self):
         from stock_agent.production import ProductionStockAgent, production_composition
+        from stock_agent import v8_evidence_origin_v19 as origin
 
         config = StockAgentConfig(canonical_prompt_library_root(), Path(":memory:"), strict_inputs=True)
         agent = ProductionStockAgent(config, provider=FakeProvider())
@@ -173,7 +174,25 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
             "research_result": {"material_claims": [{"summary": "verified claim", "evidence_ids": ["E1"]}]},
             "failure_paths": [{"category": "FUNDAMENTAL"}, {"category": "CAPITAL_STRUCTURE"}, {"category": "PRICING_EXPECTATION"}],
         }
-        artifact = SimpleNamespace(payload={"content": "research", "evidence_items": []})
+        # The runtime A-path must use an actual Python-materialized source
+        # origin. A naked synthetic E1 is intentionally insufficient for A/A-.
+        artifact = SimpleNamespace(
+            artifact_id="R-ART-1",
+            provider="fixture-research",
+            subject_id="XYZ",
+            source_observed_at="2026-09-01T00:00:00Z",
+            observed_at="2026-09-01T00:00:00Z",
+            payload={
+                "content": "research",
+                "evidence_items": [{
+                    "source_class": "SEC",
+                    "source_url": "https://www.sec.gov/Archives/fixture",
+                    "source_observed_at": "2026-09-01T00:00:00Z",
+                    "title": "issuer filing",
+                    "content": "independent source-backed material fact",
+                }],
+            },
+        )
 
         runtime_cls = agent.__class__
         runtime_layer = next(cls for cls in runtime_cls.__mro__ if cls.__name__ == "V8NextRuntimeProductionStockAgent")
@@ -196,7 +215,16 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
                     "evidence_ids": ["E1"], "grade_authority": False,
                 }
             if prompt_id == cert.PROMPT_STEP16:
-                return robust_atomic_audit()
+                audit = robust_atomic_audit()
+                mapping = origin._ORIGIN_CONTEXT.get()
+                source_eids = [eid for eid in evidence_ids if eid in mapping]
+                self.assertTrue(source_eids, "fixture must materialize at least one Python evidence origin")
+                eid = source_eids[0]
+                for claim in audit["atomic_claims"]:
+                    claim["evidence_ids"] = [eid]
+                    claim["independent_origin_ids"] = [mapping[eid]]
+                audit["value_realization_bridge_1_8w"]["evidence_ids"] = [eid]
+                return audit
             if prompt_id == cert.PROMPT_STEP17_5:
                 return robust_assumption_audit()
             if prompt_id == cert.PROMPT_STEP18:
@@ -221,6 +249,7 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
         certification = json.loads(agent.store.get_stage_result(run.run_id, cert.STEP18_STAGE, "XYZ")["result_json"])
         validator = json.loads(agent.store.get_stage_result(run.run_id, cert.STEP20_STAGE, "XYZ")["result_json"])
         self.assertEqual(certification["research_grade"], "A")
+        self.assertEqual(certification.get("active_grade_caps"), [])
         self.assertEqual(validator["route"], "PASS")
         composition = production_composition()
         self.assertEqual(composition["v8_next_runtime_version"], "V8_NEXT_CERTIFICATION_RUNTIME_V1.0")
