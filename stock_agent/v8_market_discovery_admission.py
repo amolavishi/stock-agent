@@ -2,12 +2,12 @@
 
 Investment Rules v2.0 explicitly separate Market Context from Market Execution:
 non-core PARTIAL context may continue Discovery, while missing/conflicted core
-market data must block aggressive execution.  Legacy MAIN used the strict full
+market data must block aggressive execution. Legacy MAIN used the strict full
 MarketContextGate as a pre-discovery kill switch.
 
-This layer keeps the canonical strict receipt unchanged for audit.  It only
+This layer keeps the canonical strict receipt unchanged for audit. It only
 changes the in-memory research-admission decision when a conservative broad
-market core is fresh/valid.  MarketExecutionGate is untouched.
+market core is fresh/valid. MarketExecutionGate is untouched.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from . import gates as gates_module
 from . import runtime as runtime_module
 from .models import GateDecision
 
-V8_MARKET_DISCOVERY_ADMISSION_VERSION = "V8_MARKET_DISCOVERY_ADMISSION_V1.0"
+V8_MARKET_DISCOVERY_ADMISSION_VERSION = "V8_MARKET_DISCOVERY_ADMISSION_V1.1"
 _CORE_DISCOVERY_ASSETS = ("SPY", "QQQ", "IWM", "VIX")
 _INSTALLED = False
 
@@ -52,6 +52,14 @@ def _core_discovery_context_complete(context: dict[str, Any], rules: Any, evalua
 
 
 class _DiscoveryAdmissionReceipt:
+    """Admission view over an immutable canonical GateReceipt.
+
+    Only ``decision`` is widened for research admission. Every other receipt
+    field (receipt_hash, core_input_complete, input_hash, etc.) delegates to
+    the canonical strict receipt so persistence/audit code cannot observe a
+    fabricated PASS receipt.
+    """
+
     def __init__(self, canonical: Any, admitted: bool) -> None:
         self.canonical = canonical
         self.admitted = bool(admitted)
@@ -60,8 +68,11 @@ class _DiscoveryAdmissionReceipt:
     def decision(self):
         return GateDecision.PASS if self.admitted else self.canonical.decision
 
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.canonical, name)
+
     def as_dict(self):
-        # Do not forge the canonical gate decision.  Models and persisted
+        # Do not forge the canonical gate decision. Models and persisted
         # receipts see the original strict receipt; admission is observability
         # metadata recorded separately by the agent.
         return self.canonical.as_dict()
