@@ -38,6 +38,8 @@ V8_SOURCE_ARCHIVE = "STOCK_SCANNING_PROMPTS_V8_A_GRADE_PIPELINE(4).zip"
 V8_SOURCE_README_SHA256 = "78296f4f098d5dfeb8f46a06099a442a3eff3eb9a2dcbe5ab8e34440b62d2f34"
 TARGET_UNIQUE_TICKERS = 150
 TARGET_DEEP_VERIFY = (15, 30)
+# Retained only as a legacy constant for compatibility with historical tests
+# and reports. It is forbidden from active Discovery/certification packets.
 TARGET_VERIFIED_A_MINUS_OR_BETTER = 5
 
 # Exact 02~14 lane identities from the authoritative V8 source manifest.
@@ -57,10 +59,30 @@ V8_DISCOVERY_LANES: dict[str, str] = {
     "14": "AI_BOTTLENECK_EXPANSION_EXCEPTION",
 }
 
+# These keys are intrinsically non-authoritative Discovery/routing metadata.
+# They are scrubbed by v8_blind_packet even when optional bootstrap patches
+# have not run.  This makes Step16/17/17.5/18 blindness independent of import
+# order and prevents quota/trajectory anchoring from reappearing in tests,
+# notebooks, library imports, or future entry points.
+_DISCOVERY_ONLY_KEYS = {
+    "research_value", "signal_strength", "scanner_id", "scanner_name",
+    "scanner_priority", "scanner_receipt", "secondary_status",
+    "secondary_queue", "near_miss", "near_miss_status",
+    "rejection_sentinel", "sentinel_history", "discovery_disposition",
+    "recommended_discovery_action", "verification_path", "recheck_trigger",
+    "expected_resolution", "expiry", "secondary_is_pre_a",
+    "research_value_is_research_grade", "fatal_fail",
+    "research_route_allowed", "why_not_deep_dive", "queue_status",
+}
+_GRADE_QUOTA_KEYS = {
+    "target_verified_a_minus_or_better", "verified_a_minus_or_better_count",
+    "verified_a_count", "verified_a_minus_count", "candidate_shortage",
+    "grade_quota", "grade_target", "required_a_count", "remaining_a_needed",
+}
 _DISCOVERY_SCORE_KEYS = {
     "discovery_priority_score", "discovery_score", "discovery_rank",
     "primary_rank", "primary_score", "rank",
-}
+} | _DISCOVERY_ONLY_KEYS | _GRADE_QUOTA_KEYS
 _GRADE_KEYS = {
     "research_grade", "primary_grade", "final_grade", "certification",
     "certification_score",
@@ -85,7 +107,7 @@ def _contains_key(value: Any, keys: set[str]) -> bool:
 
 
 def v8_blind_packet(value: Any) -> Any:
-    """Remove discovery anchoring, prior grades and execution authority."""
+    """Remove Discovery anchoring, grade quota, prior grades and execution authority."""
     if isinstance(value, Mapping):
         return {
             str(key): v8_blind_packet(item)
@@ -192,7 +214,7 @@ class V8CheapSECProviderProxy:
 
 
 def build_v8_discovery_contract(candidate_count: int) -> dict[str, Any]:
-    """Deterministic 00A/02~14 contract metadata, never a grade."""
+    """Deterministic 00A/02~14 contract metadata, never a grade or grade quota."""
     count = max(0, int(candidate_count))
     packet = {
         "run_mode": "HUNT_ONLY_RECALL_FIRST",
@@ -205,7 +227,10 @@ def build_v8_discovery_contract(candidate_count: int) -> dict[str, Any]:
         "target_unique_tickers": TARGET_UNIQUE_TICKERS,
         "target_deep_verify_min": TARGET_DEEP_VERIFY[0],
         "target_deep_verify_max": TARGET_DEEP_VERIFY[1],
-        "target_verified_a_minus_or_better": TARGET_VERIFIED_A_MINUS_OR_BETTER,
+        "grade_quota_forbidden": True,
+        "a_count_is_output_not_target": True,
+        "candidate_shortage_may_only_expand_search": True,
+        "candidate_shortage_may_never_relax_certification": True,
         "grade_relaxation_allowed": False,
         "discovery_candidate_count": count,
         "lanes": dict(V8_DISCOVERY_LANES),
@@ -217,6 +242,8 @@ def build_v8_discovery_contract(candidate_count: int) -> dict[str, Any]:
         "blind_verification_required": True,
         "score_reset_at_certification": True,
     }
+    if _GRADE_QUOTA_KEYS.intersection(packet):
+        raise ValueError("V8 grade quota leaked into Discovery contract")
     assert_pre18_grade_firewall(packet)
     return packet
 
@@ -296,8 +323,11 @@ def install_v8_primary_policy() -> type:
             debt_count = sum(bool(items) for items in debt_map.values())
 
             self.store.record_funnel(run_id, "V8_CANONICAL_PRIMARY", 1, build_v8_discovery_contract(discovered))
+            # Legacy lane telemetry is intentionally labelled as coverage only;
+            # actual SCANNER_EXECUTED receipts are owned by v8_main_* integrity.
             self.store.record_funnel(run_id, "V8_LANE_02_BROAD_BLIND", discovered, {
-                "semantics": "mandatory broad discovery coverage; not a Research Grade",
+                "semantics": "coverage metadata only; LANE_TOUCHED != SCANNER_EXECUTED",
+                "scanner_executed": False,
                 "other_lanes": V8_DISCOVERY_LANES,
             })
             self.store.record_funnel(run_id, "V8_FATAL_VETO_REJECT", prescreen["REJECT"], {"decisions": prescreen})
@@ -307,7 +337,7 @@ def install_v8_primary_policy() -> type:
             })
             self.store.record_funnel(run_id, "V8_RESEARCH_QUEUE", research_queue, {"decisions": prescreen})
             self.store.record_funnel(run_id, "V8_GRADE_FIREWALL", 1, {
-                "step18_grade_writer": "NOT_YET_SEPARATE_PRIMARY_STAGE",
+                "step18_grade_writer": "V8_NEXT_STEP18_CANONICAL",
                 "pre18_grade_allowed": False,
                 "blind_adversarial": True,
                 "threshold_relaxation_allowed": False,
