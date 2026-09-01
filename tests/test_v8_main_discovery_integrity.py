@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import unittest
 
+from jsonschema import ValidationError, validate
+
 from stock_agent import v8_main_discovery_coach as coach
 from stock_agent.v8_main_discovery_integrity import (
     SCANNER_OUTPUT_CONTRACT_VERSION,
@@ -12,6 +14,11 @@ from stock_agent.v8_main_discovery_integrity import (
     _two_low_yield_rounds,
     prepare_v8_main_discovery_integrity,
 )
+from stock_agent.v8_main_discovery_post_v11 import (
+    _system_rounds,
+    _two_complete_low_yield_system_rounds,
+)
+from stock_agent.v8_main_scanner_contract_v12 import scanner_schema_v12
 
 
 class FunnelStore:
@@ -58,6 +65,15 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
         self.assertFalse(complete)
         self.assertTrue(any(item.startswith("STRATEGY_DIMENSIONS:") for item in failures))
 
+    def test_v12_schema_itself_rejects_generic_scanner_05_contract(self):
+        result = self._result("05")
+        result["strategy_contract"]["dimensions_evaluated"] = ["generic_signal"]
+        with self.assertRaises(ValidationError):
+            validate(result, scanner_schema_v12())
+
+    def test_v12_schema_accepts_complete_scanner_specific_contract_without_candidates(self):
+        validate(self._result("05"), scanner_schema_v12())
+
     def test_retained_candidate_requires_each_scanner_specific_dimension(self):
         result = self._result("12")
         result["candidates"] = [{
@@ -84,6 +100,8 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
         complete, failures = _contract_complete("12", result, 75)
         self.assertFalse(complete)
         self.assertTrue(any(item.startswith("CANDIDATE_DIMENSIONS:XYZ") for item in failures))
+        with self.assertRaises(ValidationError):
+            validate(result, scanner_schema_v12())
 
     def test_t3_structural_hard_fail_must_route_to_exclude(self):
         result = self._result("10")
@@ -114,6 +132,59 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
             {"new_signal": 0, "new_secondary": 0, "new_independent_evidence": 0},
             {"new_signal": 0, "new_secondary": 0, "new_independent_evidence": 0},
         ]))
+
+    def test_system_round_unique_breadth_is_not_multiplied_by_13_scanners(self):
+        rounds = []
+        for scanner_id in SCANNER_REQUIRED_DIMENSIONS:
+            rounds.append({
+                "round_id": f"{scanner_id}-R001",
+                "scanner_id": scanner_id,
+                "new_unique_tickers": 75,
+                "new_signal": 0,
+                "new_secondary": 0,
+                "new_high_research_value": 0,
+                "new_independent_evidence": 0,
+                "new_deep_dive_now": 0,
+            })
+        system = _system_rounds(rounds)
+        self.assertEqual(len(system), 1)
+        self.assertEqual(system[0]["new_unique_tickers"], 75)
+        self.assertEqual(system[0]["cumulative_unique_tickers"], 75)
+        self.assertTrue(system[0]["scanner_family_complete"])
+
+    def test_low_yield_system_round_requires_all_13_scanners_in_both_rounds(self):
+        rounds = []
+        for sequence in (1, 2):
+            for scanner_id in SCANNER_REQUIRED_DIMENSIONS:
+                rounds.append({
+                    "round_id": f"{scanner_id}-R{sequence:03d}",
+                    "scanner_id": scanner_id,
+                    "new_unique_tickers": 75,
+                    "new_signal": 0,
+                    "new_secondary": 0,
+                    "new_high_research_value": 0,
+                    "new_independent_evidence": 0,
+                    "new_deep_dive_now": 0,
+                })
+        self.assertTrue(_two_complete_low_yield_system_rounds(rounds))
+        rounds.pop()
+        self.assertFalse(_two_complete_low_yield_system_rounds(rounds))
+
+    def test_any_secondary_in_last_system_round_blocks_low_yield_stop(self):
+        rounds = []
+        for sequence in (1, 2):
+            for scanner_id in SCANNER_REQUIRED_DIMENSIONS:
+                rounds.append({
+                    "round_id": f"{scanner_id}-R{sequence:03d}",
+                    "scanner_id": scanner_id,
+                    "new_unique_tickers": 75,
+                    "new_signal": 0,
+                    "new_secondary": 1 if sequence == 2 and scanner_id == "14" else 0,
+                    "new_high_research_value": 0,
+                    "new_independent_evidence": 0,
+                    "new_deep_dive_now": 0,
+                })
+        self.assertFalse(_two_complete_low_yield_system_rounds(rounds))
 
     def test_t5_raw_150_is_not_source_exhaustion_when_names_remain_unprobed(self):
         store = FunnelStore([
