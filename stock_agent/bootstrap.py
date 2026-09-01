@@ -68,30 +68,33 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # Prepare scanner-specific schema/output contracts before the source-backed
-    # prompts are registered.  This also repairs the malformed 63-char Scanner
+    # Prepare scanner-specific schema/output contracts before source-backed
+    # prompts are registered. This also repairs the malformed 63-char Scanner
     # 08 source hash that made COMPLETE impossible in the previous coach.
     from .v8_main_discovery_integrity import (
         prepare_v8_main_discovery_integrity,
         install_pre_coach_discovery_integrity,
-        install_post_coach_discovery_integrity,
     )
     prepare_v8_main_discovery_integrity()
+    from .v8_main_scanner_contract_v12 import prepare_v8_main_scanner_contract_v12
+    prepare_v8_main_scanner_contract_v12()
 
     # Exact-source V8 MAIN scanners. Missing/mismatched source bytes are
     # non-evaluable input failures, never reconstructed/paraphrased substitutes.
     from .v8_main_source_fidelity import install_v8_main_source_fidelity
     install_v8_main_source_fidelity()
 
-    # The pre-coach executor is deliberately the coach's parent.  Therefore
+    # The pre-coach executor is deliberately the coach's parent. Therefore
     # every 02..14 super() call is split into auditable model-executed rounds.
     install_pre_coach_discovery_integrity()
     from .v8_main_discovery_coach import install_v8_main_discovery_coach
     install_v8_main_discovery_coach()
-    # The post-coach layer persists Secondary/Near-Miss state and owns the
-    # forensic search-stop validator. workflow.stock_scout still owns the final
-    # DiscoveryCandidateSetV2; this layer cannot create Research Grade.
-    install_post_coach_discovery_integrity()
+
+    # System-wide post validator aggregates the same round sequence across all
+    # 13 scanners. It persists Secondary/Near-Miss state and owns search-stop
+    # semantics; it does not generate candidates or grades.
+    from .v8_main_discovery_post_v11 import install_v8_main_discovery_post_v11
+    install_v8_main_discovery_post_v11()
 
     from .v8_main_source_gate import install_v8_main_source_gate
     install_v8_main_source_gate()
@@ -127,6 +130,8 @@ def production_composition() -> dict[str, Any]:
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
     from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION, V8_MAIN_FORENSIC_AUDIT_SHA256
     from .v8_main_discovery_integrity import V8_MAIN_DISCOVERY_INTEGRITY_VERSION, SCANNER_OUTPUT_CONTRACT_VERSION
+    from .v8_main_discovery_post_v11 import V8_MAIN_DISCOVERY_POST_VERSION
+    from .v8_main_scanner_contract_v12 import V8_MAIN_SCANNER_CONTRACT_VERSION
     from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, source_bundle_status
     from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
@@ -155,6 +160,8 @@ def production_composition() -> dict[str, Any]:
         "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
         "v8_main_discovery_coach_version": getattr(cls, "v8_main_discovery_coach_version", V8_MAIN_DISCOVERY_COACH_VERSION),
         "v8_main_discovery_integrity_version": V8_MAIN_DISCOVERY_INTEGRITY_VERSION,
+        "v8_main_discovery_post_version": V8_MAIN_DISCOVERY_POST_VERSION,
+        "v8_main_scanner_contract_version": V8_MAIN_SCANNER_CONTRACT_VERSION,
         "v8_main_scanner_output_contract_version": SCANNER_OUTPUT_CONTRACT_VERSION,
         "v8_main_forensic_audit_sha256": getattr(cls, "v8_main_forensic_audit_sha256", V8_MAIN_FORENSIC_AUDIT_SHA256),
         "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
