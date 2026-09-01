@@ -176,7 +176,8 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
         artifact = SimpleNamespace(payload={"content": "research", "evidence_items": []})
 
         runtime_cls = agent.__class__
-        parent = runtime_cls.__mro__[1]
+        runtime_layer = next(cls for cls in runtime_cls.__mro__ if cls.__name__ == "V8NextRuntimeProductionStockAgent")
+        parent = runtime_layer.__mro__[1]
         original_parent = parent._persist_hunt_reverse_valuation
         original_model_stage = agent._run_next_model_stage
 
