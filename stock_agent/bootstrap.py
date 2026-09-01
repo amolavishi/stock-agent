@@ -53,6 +53,13 @@ def install_production_stack() -> None:
     from .hunt_integrity_v182 import install_hunt_integrity_v182
     install_hunt_integrity_v182()
 
+    # V8 NEXT is the active successor investment-policy contract.  It is
+    # deliberately installed after the V1.8 integrity layers so it can
+    # supersede the legacy Step-18 source pin and add the 00A breadth floor
+    # without weakening any earlier failure/lineage guard.
+    from .v8_next_successor import install_v8_next_successor
+    install_v8_next_successor()
+
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
 
@@ -71,4 +78,7 @@ def production_composition() -> dict[str, Any]:
         "integrity_version": getattr(cls, "HUNT_INTEGRITY_VERSION", None),
         "integrity_patch_version": getattr(cls, "HUNT_INTEGRITY_PATCH_VERSION", None),
         "allocation_guard_version": getattr(cls, "ALLOCATION_GUARD_VERSION", None),
+        "v8_next_successor_version": getattr(cls, "v8_next_successor_version", None),
+        "v8_policy_version": getattr(cls, "v8_primary_version", None),
+        "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
     }
