@@ -77,6 +77,13 @@ def install_production_stack() -> None:
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
 
+    # The authoritative HUNT may finish as NOT_EVALUABLE even when the Shadow
+    # process itself did not raise.  Install the conclusion/status adapter last
+    # so no earlier compatibility layer can relabel that state as clean
+    # SUCCEEDED/NO_TRADE.
+    from .shadow_non_evaluable_guard import install_shadow_non_evaluable_guard
+    install_shadow_non_evaluable_guard()
+
     _INSTALLED = True
 
 
@@ -98,4 +105,5 @@ def production_composition() -> dict[str, Any]:
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
+        "shadow_non_evaluable_guard_version": getattr(shadow.DailyShadowRunner, "shadow_non_evaluable_guard_version", None),
     }
