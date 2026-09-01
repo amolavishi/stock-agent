@@ -5,25 +5,30 @@ import unittest
 from stock_agent.hunt_pipeline_v16 import _classify_stage, _starvation_state
 
 
+def _entry(payload: dict, *, status: str = "SUCCEEDED") -> dict:
+    """Match the exact latest-stage envelope consumed by V1.6 telemetry."""
+    return {"status": status, "payload": payload}
+
+
 class HuntStageFailureSemanticsV18Tests(unittest.TestCase):
     def test_deep_research_success_then_post_research_catalyst_failure_is_reject_not_pass(self):
-        self.assertEqual(_classify_stage("DEEP_RESEARCH", {"research_status": "COMPLETE"}), "PASS")
-        self.assertEqual(_classify_stage("FULL_SEC_FORENSIC", {"status": "COMPLETE"}), "PASS")
+        self.assertEqual(_classify_stage("DEEP_RESEARCH", _entry({"research_status": "COMPLETE"})), "PASS")
+        self.assertEqual(_classify_stage("FULL_SEC_FORENSIC", _entry({"status": "COMPLETE"})), "PASS")
         self.assertEqual(
             _classify_stage(
                 "CATALYST_GATE",
-                {
+                _entry({
                     "decision": "REJECT",
                     "evaluation_phase": "POST_DEEP_RESEARCH_AND_FULL_SEC",
                     "evaluation_status": "SOURCE_EXHAUSTED",
-                },
+                }),
             ),
             "FAIL",
         )
 
     def test_deep_research_success_then_full_sec_failure_is_pipeline_starvation_not_clean_no_trade(self):
-        self.assertEqual(_classify_stage("DEEP_RESEARCH", {"research_status": "COMPLETE"}), "PASS")
-        self.assertEqual(_classify_stage("FULL_SEC_FORENSIC", {"status": "INCOMPLETE"}), "FAIL")
+        self.assertEqual(_classify_stage("DEEP_RESEARCH", _entry({"research_status": "COMPLETE"})), "PASS")
+        self.assertEqual(_classify_stage("FULL_SEC_FORENSIC", _entry({"status": "INCOMPLETE"})), "FAIL")
         self.assertEqual(
             _starvation_state({
                 "CAPITAL_PRESCREEN_PASS": 1,
@@ -35,9 +40,9 @@ class HuntStageFailureSemanticsV18Tests(unittest.TestCase):
         )
 
     def test_full_sec_success_then_adversarial_audit_failure_is_explicit_investment_rejection(self):
-        self.assertEqual(_classify_stage("FULL_SEC_FORENSIC", {"status": "COMPLETE"}), "PASS")
+        self.assertEqual(_classify_stage("FULL_SEC_FORENSIC", _entry({"status": "COMPLETE"})), "PASS")
         self.assertEqual(
-            _classify_stage("ADVERSARIAL_AUDIT", {"audit_recommendation": "DOES_NOT_SUPPORT"}),
+            _classify_stage("ADVERSARIAL_AUDIT", _entry({"audit_recommendation": "DOES_NOT_SUPPORT"})),
             "FAIL",
         )
         # Audit was actually entered; this is not a queue-starvation incident.
@@ -49,6 +54,12 @@ class HuntStageFailureSemanticsV18Tests(unittest.TestCase):
                 "ADVERSARIAL_AUDIT": 1,
             }),
             (0, None),
+        )
+
+    def test_failed_workitem_status_cannot_be_misclassified_as_pass(self):
+        self.assertEqual(
+            _classify_stage("DEEP_RESEARCH", _entry({"research_status": "COMPLETE"}, status="FAILED")),
+            "FAIL",
         )
 
     def test_mixed_source_outage_is_not_equivalent_to_investment_reject(self):
