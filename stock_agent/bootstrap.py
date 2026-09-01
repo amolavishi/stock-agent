@@ -60,6 +60,14 @@ def install_production_stack() -> None:
     from .v8_next_successor import install_v8_next_successor
     install_v8_next_successor()
 
+    # Tighten the Python grade engine before wiring Step15->20 into the live
+    # candidate loop.  The model remains analysis-only; Python owns grade,
+    # arithmetic, lineage, caps and final qualification.
+    from .v8_next_certification_v11 import install_v8_next_certification_v11
+    install_v8_next_certification_v11()
+    from .v8_next_runtime import install_v8_next_runtime
+    install_v8_next_runtime()
+
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
 
@@ -79,6 +87,7 @@ def production_composition() -> dict[str, Any]:
         "integrity_patch_version": getattr(cls, "HUNT_INTEGRITY_PATCH_VERSION", None),
         "allocation_guard_version": getattr(cls, "ALLOCATION_GUARD_VERSION", None),
         "v8_next_successor_version": getattr(cls, "v8_next_successor_version", None),
+        "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
     }
