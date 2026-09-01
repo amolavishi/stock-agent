@@ -29,10 +29,9 @@ from .adapters import (ConfiguredJsonMarketDataProvider, ConfiguredResearchEvide
                        UnavailableResearchEvidenceProvider)
 from .shadow_pointer_guard import install_shadow_pointer_guard as _install_shadow_pointer_guard
 
-# Historical local Shadow databases may still emit non-empty placeholders such
-# as ``unstarted`` from old table definitions. Install the compatibility guard
-# at the authoritative store boundary for every Stock Agent entry point, not
-# only the PRE-A wrapper.
+# Package import remains side-effect-light for unit/library users.  The
+# authoritative composed runtime lives in stock_agent.production and the
+# module entry point; both use stock_agent.bootstrap explicitly.
 _install_shadow_pointer_guard()
 
 __all__ = [
