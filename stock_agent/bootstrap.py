@@ -16,7 +16,7 @@ def install_production_stack() -> None:
     install_alpha_discovery_policy()
     install_alpha_coverage_v14()
 
-    # Breadth/data acquisition only.  This provider patch may widen the public
+    # Breadth/data acquisition only. This provider patch may widen the public
     # universe/ADV probe, but it has ZERO authority to discover or route a name.
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_provider
     install_discovery_recall_lite_provider()
@@ -61,8 +61,8 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # MAIN remains the sole final Discovery engine.  This layer does not use
-    # Python scanner heuristics.  It forces actual model-executed V8 02..14
+    # MAIN remains the sole final Discovery engine. This layer does not use
+    # Python scanner heuristics. It forces actual model-executed V8 02..14
     # passes and feeds them back to workflow.stock_scout, which remains the one
     # DiscoveryCandidateSetV2 output owner.
     from .v8_main_discovery_coach import install_v8_main_discovery_coach
@@ -86,14 +86,16 @@ def production_composition() -> dict[str, Any]:
     from . import adapters
     from . import runtime
     from . import shadow
+    from .discovery_recall_failure_guard_v16 import DISCOVERY_RECALL_FAILURE_GUARD_VERSION
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
     from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION, V8_MAIN_FORENSIC_AUDIT_SHA256
     cls = runtime.ProductionStockAgent
     market_cls = adapters.CompositeLiveMarketContextProvider
+    mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
     return {
         "runtime_module": cls.__module__,
         "runtime_class": cls.__name__,
-        "mro": [f"{item.__module__}.{item.__name__}" for item in cls.__mro__],
+        "mro": mro,
         "integrity_version": getattr(cls, "HUNT_INTEGRITY_VERSION", None),
         "integrity_patch_version": getattr(cls, "HUNT_INTEGRITY_PATCH_VERSION", None),
         "allocation_guard_version": getattr(cls, "ALLOCATION_GUARD_VERSION", None),
@@ -105,9 +107,13 @@ def production_composition() -> dict[str, Any]:
         "v8_main_forensic_audit_sha256": getattr(cls, "v8_main_forensic_audit_sha256", V8_MAIN_FORENSIC_AUDIT_SHA256),
         "main_is_sole_discovery_owner": True,
         "python_scanner_routing_authority": False,
-        "discovery_recall_lite_runtime_installed": any("DiscoveryRecallLiteProductionStockAgent" in f"{item.__module__}.{item.__name__}" for item in cls.__mro__),
+        "discovery_recall_lite_runtime_installed": any("DiscoveryRecallLiteProductionStockAgent" in item for item in mro),
         "discovery_breadth_provider_version": getattr(market_cls, "discovery_recall_lite_version", None),
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
+        # Kept only so old failure-injection fixtures remain reproducible. The
+        # production MRO MUST NOT install this Python routing authority.
+        "discovery_recall_failure_guard_version": DISCOVERY_RECALL_FAILURE_GUARD_VERSION,
+        "discovery_recall_failure_guard_runtime_installed": any("DiscoveryRecallFailureGuardProductionStockAgent" in item for item in mro),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
         "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
