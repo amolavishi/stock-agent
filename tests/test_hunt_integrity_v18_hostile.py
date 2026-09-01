@@ -15,6 +15,7 @@ from stock_agent.hunt_integrity_v18 import (
     _v18_excerpt,
     _v18_project_value,
 )
+from stock_agent.v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -202,7 +203,10 @@ print(json.dumps({"text": text}))
         module_comp = json.loads(module_run.stdout.strip().splitlines()[-1])
         direct_comp = json.loads(direct_run.stdout.strip().splitlines()[-1])
         self.assertEqual(module_comp, direct_comp)
-        self.assertIn("V181ProductionStockAgent", module_comp["runtime_class"])
+        self.assertEqual(module_comp["runtime_class"], "V8NextProductionStockAgent")
+        self.assertEqual(module_comp["v8_policy_version"], V8_NEXT_POLICY_VERSION)
+        self.assertEqual(module_comp["v8_ruleset_hash"], V8_NEXT_POLICY_HASH)
+        self.assertIn("V181ProductionStockAgent", " ".join(module_comp["mro"]))
 
 
 if __name__ == "__main__":
