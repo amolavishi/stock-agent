@@ -36,6 +36,10 @@ def install_production_stack() -> None:
     from .v8_primary import install_v8_primary_policy
     install_v8_primary_policy()
 
+    # Discovery routing metadata must never anchor blind audit or Step18.
+    from .discovery_recall_firewall_v15 import install_discovery_recall_firewall_v15
+    install_discovery_recall_firewall_v15()
+
     from . import hunt_pipeline_v16 as hunt_pipeline_v16_module
     from .catalyst_extractor_v16 import install_v16_extractor
     install_v16_extractor(hunt_pipeline_v16_module)
@@ -116,6 +120,7 @@ def production_composition() -> dict[str, Any]:
     install_production_stack()
     from . import runtime
     from . import shadow
+    from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
     cls = runtime.ProductionStockAgent
     return {
         "runtime_module": cls.__module__,
@@ -129,6 +134,7 @@ def production_composition() -> dict[str, Any]:
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
         "discovery_recall_lite_version": getattr(cls, "discovery_recall_lite_version", None),
+        "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
         "discovery_recall_forensic_audit_sha256": getattr(cls, "discovery_recall_forensic_audit_sha256", None),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
         "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
