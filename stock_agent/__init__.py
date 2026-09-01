@@ -1,9 +1,14 @@
-"""Stock Agent v1.1 production runtime.
+"""Stock Agent production package.
 
-The package deliberately keeps authority in Python. Prompt execution is an
-adapter boundary; no LLM response can write gates, workflow state, sizing, or
-the final allocation.
+Python remains authoritative for workflow, gates, risk arithmetic and final
+allocation.  Importing the package installs the same explicit production
+composition used by ``python -m stock_agent`` so entry-point order cannot
+silently select a weaker runtime.
 """
+
+from .bootstrap import install_production_stack as _install_production_stack
+
+_install_production_stack()
 
 from .models import (
     ActionRecommendation,
@@ -27,13 +32,6 @@ from .adapters import (ConfiguredJsonMarketDataProvider, ConfiguredResearchEvide
                        YahooFinanceNewsEvidenceProvider, CompositeResearchEvidenceProvider,
                        TossMarketDataProvider, TossPortfolioProvider,
                        UnavailableResearchEvidenceProvider)
-from .shadow_pointer_guard import install_shadow_pointer_guard as _install_shadow_pointer_guard
-
-# Historical local Shadow databases may still emit non-empty placeholders such
-# as ``unstarted`` from old table definitions. Install the compatibility guard
-# at the authoritative store boundary for every Stock Agent entry point, not
-# only the PRE-A wrapper.
-_install_shadow_pointer_guard()
 
 __all__ = [
     "ActionRecommendation",
