@@ -107,11 +107,12 @@ def production_composition() -> dict[str, Any]:
     install_production_stack()
     from . import adapters, runtime, shadow
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
-    from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION
+    from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION, V8_MAIN_FORENSIC_AUDIT_SHA256
     from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, source_bundle_status
     from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
     from .v8_market_discovery_admission import V8_MARKET_DISCOVERY_ADMISSION_VERSION
+    from .v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
 
     cls = runtime.ProductionStockAgent
     mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
@@ -123,11 +124,18 @@ def production_composition() -> dict[str, Any]:
         "python_scanner_routing_authority": False,
         "discovery_recall_lite_runtime_installed": any("DiscoveryRecallLiteProductionStockAgent" in item for item in mro),
         "discovery_breadth_provider_version": getattr(adapters.CompositeLiveMarketContextProvider, "discovery_recall_lite_version", None),
+        "integrity_version": getattr(cls, "HUNT_INTEGRITY_VERSION", None),
+        "integrity_patch_version": getattr(cls, "HUNT_INTEGRITY_PATCH_VERSION", None),
+        "allocation_guard_version": getattr(cls, "ALLOCATION_GUARD_VERSION", None),
         "v8_primary_version": getattr(cls, "v8_primary_version", None),
-        "hunt_integrity_version": getattr(cls, "HUNT_INTEGRITY_VERSION", getattr(cls, "hunt_integrity_version", None)),
+        "v8_policy_version": V8_NEXT_POLICY_VERSION,
+        "v8_ruleset_hash": V8_NEXT_POLICY_HASH,
         "v8_next_successor_version": getattr(cls, "v8_next_successor_version", None),
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
+        "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
+        "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
         "v8_main_discovery_coach_version": getattr(cls, "v8_main_discovery_coach_version", V8_MAIN_DISCOVERY_COACH_VERSION),
+        "v8_main_forensic_audit_sha256": getattr(cls, "v8_main_forensic_audit_sha256", V8_MAIN_FORENSIC_AUDIT_SHA256),
         "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
         "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
         "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
