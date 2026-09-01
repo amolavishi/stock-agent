@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from . import v8_primary
 
-DISCOVERY_RECALL_FIREWALL_VERSION = "V8_DISCOVERY_RECALL_FIREWALL_V1.6"
+DISCOVERY_RECALL_FIREWALL_VERSION = "V8_DISCOVERY_RECALL_FIREWALL_V1.5"
 DISCOVERY_ONLY_KEYS = {
     "research_value",
     "signal_strength",
