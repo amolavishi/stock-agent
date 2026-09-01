@@ -1,10 +1,10 @@
 """Bridge legacy V8 NEXT breadth guard to the forensic Discovery stop audit.
 
-The old successor guard used one aggregate 150-name coverage number.  It may
+The old successor guard used one aggregate 150-name coverage number. It may
 record telemetry, but after Discovery Recall V1.5 it no longer owns the final
-search-stop decision.  A no-candidate outcome is evaluable only when the
-scanner receipts, rejection sentinel, Secondary debt and marginal-yield audit
-say search may stop.
+search-stop decision. A no-candidate outcome is evaluable only when the
+scanner receipts, rejection sentinel, Secondary/Near-Miss debt and
+marginal-yield audit say search may stop.
 """
 from __future__ import annotations
 
@@ -41,6 +41,30 @@ def _write_terminal(store: Any, run_id: str, outcome: str) -> None:
         db.execute("UPDATE runs SET status=?, outcome=? WHERE run_id=?", ("FAILED" if failed else "SUCCEEDED", outcome, run_id))
 
 
+def _high_value_near_miss_count(agent: Any, run_id: str) -> int:
+    """Count unresolved high-information candidates outside full research.
+
+    Near-Miss is not Grade/PRE-A authority, but it is search debt. A zero
+    deep-dive result cannot establish exhaustion while an information-rich
+    nonfatal candidate remains parked here.
+    """
+    state = getattr(agent, "_discovery_recall_state", {}).get(run_id)
+    if not isinstance(state, dict):
+        return 0
+    count = 0
+    for item in state.get("near_miss") or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("research_value") or "").upper() != "HIGH":
+            continue
+        if bool(item.get("fatal_fail")) or item.get("research_route_allowed") is False:
+            # Structural/Thesis hard fails are retained for audit only and are
+            # not open research debt under forensic TEST 10.
+            continue
+        count += 1
+    return count
+
+
 def install_discovery_recall_stop_bridge_v15() -> type:
     global _INSTALLED
     current = runtime_module.ProductionStockAgent
@@ -63,12 +87,28 @@ def install_discovery_recall_stop_bridge_v15() -> type:
             if current_outcome not in {"NO_QUALIFIED_CANDIDATE", "NOT_EVALUABLE_DISCOVERY_COVERAGE"}:
                 return outcome
 
+            high_near = _high_value_near_miss_count(self, run_id)
+            if high_near > 0:
+                terminal = "NOT_EVALUABLE_SEARCH_DEBT_OPEN"
+                reason = (
+                    "forensic Discovery search-stop forbidden while HIGH research-value Near-Miss debt remains; "
+                    f"open_high_near_miss={high_near}; deep-dive yield alone cannot prove exhaustion"
+                )
+                self.store.record_funnel(run_id, "DISCOVERY_SEARCH_STOP_NEAR_MISS_GUARD", high_near, {
+                    "search_stop_allowed": False,
+                    "open_high_research_value_near_miss": high_near,
+                    "deep_dive_yield_zero_alone_proves_exhaustion": False,
+                    "grade_authority": False,
+                })
+                _write_terminal(self.store, run_id, terminal)
+                return replace(outcome, outcome=terminal, blocked_reason=reason)
+
             if stop.get("search_stop_allowed") is not True:
                 terminal = "NOT_EVALUABLE_SEARCH_DEBT_OPEN"
                 reason = (
                     "forensic Discovery search-stop conditions are not satisfied; "
                     f"reason={stop.get('reason')}; open_high_secondary={stop.get('open_high_research_value_secondary')}; "
-                    f"adv_not_evaluated={stop.get('adv_not_evaluated')}"
+                    f"open_high_near_miss={high_near}; adv_not_evaluated={stop.get('adv_not_evaluated')}"
                 )
                 _write_terminal(self.store, run_id, terminal)
                 return replace(outcome, outcome=terminal, blocked_reason=reason)
