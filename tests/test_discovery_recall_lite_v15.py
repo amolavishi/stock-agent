@@ -21,6 +21,7 @@ from stock_agent.discovery_recall_lite_v15 import (
     _sentinel_sample,
     _sentinel_schema,
 )
+from stock_agent.discovery_recall_stop_bridge_v15 import DISCOVERY_RECALL_STOP_BRIDGE_VERSION
 from stock_agent import v8_primary
 
 
@@ -137,6 +138,7 @@ class DiscoveryRecallLiteV15Tests(unittest.TestCase):
         self.assertGreaterEqual(DEFAULT_ADV_PROBE_TARGET, 1000)
         self.assertEqual(FORENSIC_AUDIT_SHA256, "47494df8fd0464c3fb63c6f2a5facd7dd6296616bec635b6faebe15e4ddab616")
         self.assertEqual(DISCOVERY_RECALL_FIREWALL_VERSION, "V8_DISCOVERY_RECALL_FIREWALL_V1.5")
+        self.assertEqual(DISCOVERY_RECALL_STOP_BRIDGE_VERSION, "V8_DISCOVERY_RECALL_STOP_BRIDGE_V1.5")
 
     def test_production_composition_installs_recall_runtime_in_subprocess(self):
         code = "import json; from stock_agent.bootstrap import production_composition; print(json.dumps(production_composition(), sort_keys=True))"
@@ -144,8 +146,11 @@ class DiscoveryRecallLiteV15Tests(unittest.TestCase):
         value = json.loads(completed.stdout.strip().splitlines()[-1])
         self.assertEqual(value["discovery_recall_lite_version"], "V8_DISCOVERY_RECALL_LITE_V1.5")
         self.assertEqual(value["discovery_recall_firewall_version"], "V8_DISCOVERY_RECALL_FIREWALL_V1.5")
+        self.assertEqual(value["discovery_recall_stop_bridge_version"], "V8_DISCOVERY_RECALL_STOP_BRIDGE_V1.5")
         self.assertEqual(value["discovery_recall_forensic_audit_sha256"], FORENSIC_AUDIT_SHA256)
-        self.assertIn("DiscoveryRecallLiteProductionStockAgent", value["mro"][-15:][0] if False else " ".join(value["mro"]))
+        mro = " ".join(value["mro"])
+        self.assertIn("DiscoveryRecallLiteProductionStockAgent", mro)
+        self.assertIn("DiscoveryRecallStopBridgeProductionStockAgent", mro)
 
 
 if __name__ == "__main__":
