@@ -23,6 +23,34 @@ from .models import RunMode, RunOutcome
 HUNT_INTEGRITY_PATCH_VERSION = "V8_HUNT_INTEGRITY_V1.8.1"
 
 
+def _stratified_source_indices(values: list[Any], limit: int) -> list[int]:
+    """Select authority/adverse leaders plus deterministic whole-list anchors."""
+    count = len(values)
+    if count <= limit:
+        return list(range(count))
+    selected: set[int] = set()
+    anchor_count = min(limit, 9)
+    if anchor_count == 1:
+        selected.add(0)
+    else:
+        for slot in range(anchor_count):
+            selected.add(round((count - 1) * slot / (anchor_count - 1)))
+    ranked = sorted(
+        range(count),
+        key=lambda index: (-v18._source_score(values[index]) if isinstance(values[index], dict) else 0, index),
+    )
+    for index in ranked:
+        if len(selected) >= limit:
+            break
+        selected.add(index)
+    if len(selected) < limit:
+        for index in range(count):
+            selected.add(index)
+            if len(selected) >= limit:
+                break
+    return sorted(selected)[:limit]
+
+
 def install_hunt_integrity_v181() -> None:
     if getattr(runtime_module, "_hunt_integrity_v181_installed", False):
         return
@@ -30,6 +58,11 @@ def install_hunt_integrity_v181() -> None:
     v18_production = runtime_module.ProductionStockAgent
     pre_v18_production = v18_production.__mro__[1]
     current_risk_assess = gates_module.RiskEngine.assess
+
+    # The V1.8 projection function resolves this name at call time, so replacing
+    # it here upgrades every capability-specific source list without another
+    # copy of the projection code.
+    v18._select_source_indices = _stratified_source_indices
 
     class V181ProductionStockAgent(v18_production):
         HUNT_INTEGRITY_PATCH_VERSION = HUNT_INTEGRITY_PATCH_VERSION
