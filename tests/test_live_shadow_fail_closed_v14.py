@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,6 +10,9 @@ from pathlib import Path
 from stock_agent.daily_with_pre_a import _primary_is_pre_a_evaluable, _snapshot_reports
 from stock_agent.shadow_non_evaluable_guard import classify_hunt_conclusion
 from stock_agent.v8_next_terminal_lineage import _is_upstream_failure
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class LiveShadowFailClosedV14Tests(unittest.TestCase):
@@ -59,25 +64,40 @@ class LiveShadowFailClosedV14Tests(unittest.TestCase):
         self.assertFalse(_is_upstream_failure("NO_QUALIFIED_CANDIDATE"))
 
     def test_composed_report_never_renders_no_trade_for_non_evaluable(self):
-        import stock_agent.production  # noqa: F401
-        from stock_agent import shadow
+        # Production composition mutates runtime/store/shadow class methods by
+        # design.  Probe it in a subprocess so this test cannot poison later
+        # legacy/base-runtime tests in unittest discovery.
+        script = r'''
+import json
+import stock_agent.production
+from stock_agent import shadow
 
-        log = {
-            "started_at": "2026-09-01T00:00:00Z",
-            "run_id": "RUN-X",
-            "shadow_version": "SHADOW_V1.3",
-            "code_git_sha": "x",
-            "git_diff_hash": "x",
-            "source_tree_hash": "x",
-            "git_dirty": False,
-            "strategy_cohort_hash": "x",
-            "providers": {},
-            "market_context": {"analysis": {}},
-            "universe": {"raw": 0},
-            "investment_conclusion": "NOT_EVALUABLE_DISCOVERY_COVERAGE",
-            "investment_conclusion_is_clean_no_trade": False,
-        }
-        text = shadow.DailyShadowRunner._report(log, [])
+log = {
+    "started_at": "2026-09-01T00:00:00Z",
+    "run_id": "RUN-X",
+    "shadow_version": "SHADOW_V1.3",
+    "code_git_sha": "x",
+    "git_diff_hash": "x",
+    "source_tree_hash": "x",
+    "git_dirty": False,
+    "strategy_cohort_hash": "x",
+    "providers": {},
+    "market_context": {"analysis": {}},
+    "universe": {"raw": 0},
+    "investment_conclusion": "NOT_EVALUABLE_DISCOVERY_COVERAGE",
+    "investment_conclusion_is_clean_no_trade": False,
+}
+text = shadow.DailyShadowRunner._report(log, [])
+print(json.dumps({"text": text}))
+'''
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        text = json.loads(completed.stdout.strip().splitlines()[-1])["text"]
         self.assertIn("NOT_EVALUABLE_DISCOVERY_COVERAGE", text)
         self.assertNotIn("- NO_TRADE", text)
 
