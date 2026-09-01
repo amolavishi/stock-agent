@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +12,9 @@ from unittest import mock
 
 from stock_agent import v8_main_source_fidelity as fidelity
 from stock_agent.providers import ProviderRequestError
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class MainV8SourceFidelityTests(unittest.TestCase):
@@ -93,8 +98,16 @@ class MainV8SourceFidelityTests(unittest.TestCase):
             fidelity._scanner_provider_call(object(), {"prompt_id": "v8_main.discovery_02", "messages": [], "runtime_input": {}})
 
     def test_production_composition_has_no_lite_runtime(self):
-        from stock_agent.bootstrap import production_composition
-        value = production_composition()
+        # Production composition mutates module-level class bindings by design.
+        # Probe it in a child process so this test cannot contaminate unrelated
+        # legacy/base-runtime tests in unittest discovery order.
+        code = (
+            "import json; "
+            "from stock_agent.production import production_composition; "
+            "print(json.dumps(production_composition(), sort_keys=True))"
+        )
+        out = subprocess.check_output([sys.executable, "-c", code], cwd=ROOT, text=True)
+        value = json.loads(out.strip().splitlines()[-1])
         self.assertTrue(value["main_is_sole_discovery_owner"])
         self.assertFalse(value["python_scanner_routing_authority"])
         self.assertFalse(value["discovery_recall_lite_runtime_installed"])
