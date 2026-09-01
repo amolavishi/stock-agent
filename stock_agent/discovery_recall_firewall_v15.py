@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from . import v8_primary
 
-DISCOVERY_RECALL_FIREWALL_VERSION = "V8_DISCOVERY_RECALL_FIREWALL_V1.5"
+DISCOVERY_RECALL_FIREWALL_VERSION = "V8_DISCOVERY_RECALL_FIREWALL_V1.6"
 DISCOVERY_ONLY_KEYS = {
     "research_value",
     "signal_strength",
@@ -27,6 +27,10 @@ DISCOVERY_ONLY_KEYS = {
     "recommended_discovery_action",
     "verification_path",
     "recheck_trigger",
+    "fatal_fail",
+    "research_route_allowed",
+    "why_not_deep_dive",
+    "queue_status",
 }
 _INSTALLED = False
 
