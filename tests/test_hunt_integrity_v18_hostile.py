@@ -203,11 +203,16 @@ print(json.dumps({"text": text}))
         module_comp = json.loads(module_run.stdout.strip().splitlines()[-1])
         direct_comp = json.loads(direct_run.stdout.strip().splitlines()[-1])
         self.assertEqual(module_comp, direct_comp)
-        self.assertEqual(module_comp["runtime_class"], "V8NextRuntimeProductionStockAgent")
+        self.assertEqual(module_comp["runtime_class"], "V8NextTerminalRestoreProductionStockAgent")
         self.assertEqual(module_comp["v8_policy_version"], V8_NEXT_POLICY_VERSION)
         self.assertEqual(module_comp["v8_ruleset_hash"], V8_NEXT_POLICY_HASH)
         self.assertEqual(module_comp["v8_next_runtime_version"], "V8_NEXT_CERTIFICATION_RUNTIME_V1.0")
-        self.assertIn("V181ProductionStockAgent", " ".join(module_comp["mro"]))
+        self.assertEqual(module_comp["v8_next_terminal_capture_version"], "V8_NEXT_TERMINAL_LINEAGE_V1.0")
+        self.assertEqual(module_comp["v8_next_terminal_restore_version"], "V8_NEXT_TERMINAL_LINEAGE_V1.0")
+        self.assertEqual(module_comp["shadow_non_evaluable_guard_version"], "SHADOW_V1.4_NON_EVALUABLE_GUARD")
+        mro = " ".join(module_comp["mro"])
+        self.assertIn("V8NextTerminalCaptureProductionStockAgent", mro)
+        self.assertIn("V181ProductionStockAgent", mro)
 
 
 if __name__ == "__main__":
