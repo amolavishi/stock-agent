@@ -1,14 +1,9 @@
-"""Stock Agent production package.
+"""Stock Agent v1.1 production runtime.
 
-Python remains authoritative for workflow, gates, risk arithmetic and final
-allocation.  Importing the package installs the same explicit production
-composition used by ``python -m stock_agent`` so entry-point order cannot
-silently select a weaker runtime.
+The package deliberately keeps authority in Python. Prompt execution is an
+adapter boundary; no LLM response can write gates, workflow state, sizing, or
+the final allocation.
 """
-
-from .bootstrap import install_production_stack as _install_production_stack
-
-_install_production_stack()
 
 from .models import (
     ActionRecommendation,
@@ -32,6 +27,12 @@ from .adapters import (ConfiguredJsonMarketDataProvider, ConfiguredResearchEvide
                        YahooFinanceNewsEvidenceProvider, CompositeResearchEvidenceProvider,
                        TossMarketDataProvider, TossPortfolioProvider,
                        UnavailableResearchEvidenceProvider)
+from .shadow_pointer_guard import install_shadow_pointer_guard as _install_shadow_pointer_guard
+
+# Package import remains side-effect-light for unit/library users.  The
+# authoritative composed runtime lives in stock_agent.production and the
+# module entry point; both use stock_agent.bootstrap explicitly.
+_install_shadow_pointer_guard()
 
 __all__ = [
     "ActionRecommendation",
