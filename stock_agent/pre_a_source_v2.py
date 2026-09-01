@@ -78,7 +78,7 @@ def _readonly_connection(database: Path) -> sqlite3.Connection:
 
 
 def _certification_grade(value: dict[str, Any] | None) -> str | None:
-    """Accept frozen legacy receipts and the active V8 NEXT successor receipt."""
+    """Accept frozen legacy receipts and fully validated V8 NEXT receipts."""
     if not isinstance(value, dict):
         return None
     if value.get("discovery_score_used") not in {False, "NO", "FALSE"}:
@@ -86,21 +86,19 @@ def _certification_grade(value: dict[str, Any] | None) -> str | None:
     source = str(value.get("source_sha256") or "")
     authority = value.get("grade_authority")
     if source == V8_NEXT_POLICY_HASH:
-        if str(value.get("policy_version") or "") != V8_NEXT_POLICY_VERSION:
+        # Reuse the same fail-closed validator as PRIMARY qualification. PRE-A
+        # must never implement a weaker shadow copy of Step18 semantics.
+        from .v8_next_successor import validate_v8_next_certification
+        grade, failures = validate_v8_next_certification(value)
+        if failures:
             return None
-        if authority != "V8_NEXT_STEP18_CANONICAL":
-            return None
-        if value.get("pre_a_metadata_used") not in {False, "NO", "FALSE"}:
-            return None
-        if value.get("candidate_shortage_influenced_grade") not in {False, "NO", "FALSE"}:
-            return None
-    elif source == LEGACY_STEP18_SOURCE_SHA256:
+        return grade if grade in {"A", "A-", "B+", "B"} else None
+    if source == LEGACY_STEP18_SOURCE_SHA256:
         if authority not in {True, "V8_STEP18_CANONICAL"}:
             return None
-    else:
-        return None
-    grade = str(value.get("research_grade") or value.get("grade") or "").upper()
-    return grade if grade in {"A", "A-", "B+", "B"} else None
+        grade = str(value.get("research_grade") or value.get("grade") or "").upper()
+        return grade if grade in {"A", "A-", "B+", "B"} else None
+    return None
 
 
 def build_pre_a_source_bundle(database: Path, shadow_run_id: str) -> dict[str, Any]:
