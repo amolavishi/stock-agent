@@ -58,11 +58,19 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # Discovery Recall is research-routing authority only.  The 02-14 receipts,
+    # Discovery Recall is research-routing authority only. The 02-14 receipts,
     # Secondary queue, rejection sentinel and search-stop audit are enforced
     # before a no-candidate outcome can be considered evaluable.
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_runtime
     install_discovery_recall_lite_runtime()
+
+    # Exact TEST 1-10 forensic invariants. This patches only Discovery routing:
+    # UNKNOWN remains nonfatal; a verified discounted-VWAP convert remains a
+    # structural fatality; explicit no-1-8W-event cases remain horizon mismatch;
+    # structural failures are audit-ledgered but cannot consume research.
+    from .discovery_recall_failure_guard_v16 import install_discovery_recall_failure_guard_v16
+    install_discovery_recall_failure_guard_v16()
+
     from .discovery_recall_stop_bridge_v15 import install_discovery_recall_stop_bridge_v15
     install_discovery_recall_stop_bridge_v15()
     from .discovery_recall_contract_v151 import install_discovery_recall_ledger_v151
@@ -88,6 +96,7 @@ def production_composition() -> dict[str, Any]:
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
     from .discovery_recall_stop_bridge_v15 import DISCOVERY_RECALL_STOP_BRIDGE_VERSION
     from .discovery_recall_contract_v151 import DISCOVERY_RECALL_CONTRACT_VERSION, DISCOVERY_RECALL_LEDGER_VERSION
+    from .discovery_recall_failure_guard_v16 import DISCOVERY_RECALL_FAILURE_GUARD_VERSION
     cls = runtime.ProductionStockAgent
     return {
         "runtime_module": cls.__module__,
@@ -104,6 +113,7 @@ def production_composition() -> dict[str, Any]:
         "discovery_recall_contract_version": DISCOVERY_RECALL_CONTRACT_VERSION,
         "discovery_recall_ledger_version": DISCOVERY_RECALL_LEDGER_VERSION,
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
+        "discovery_recall_failure_guard_version": DISCOVERY_RECALL_FAILURE_GUARD_VERSION,
         "discovery_recall_stop_bridge_version": DISCOVERY_RECALL_STOP_BRIDGE_VERSION,
         "discovery_recall_forensic_audit_sha256": getattr(cls, "discovery_recall_forensic_audit_sha256", None),
         "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
