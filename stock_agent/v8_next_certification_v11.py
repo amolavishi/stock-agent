@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import v8_next_certification as cert
+from .models import canonical_hash
 
 PATCH_VERSION = "V8_NEXT_CERTIFICATION_ENGINE_V1.1"
 _INSTALLED = False
@@ -81,6 +82,10 @@ def install_v8_next_certification_v11() -> None:
         if str(result.get("research_grade")) == "EXCLUDE":
             grade = "EXCLUDE"
 
+        # Bind the receipt to the exact canonical Step17 packet rather than
+        # trusting any model/provider supplied packet-hash field.
+        packet_body = {key: value for key, value in packet.items() if key != "packet_hash"}
+        result["certification_packet"] = {"packet_hash": canonical_hash(packet_body)}
         result["research_grade"] = grade
         result["active_grade_caps"] = sorted(set(str(item) for item in caps))
         result["python_grade_engine"] = PATCH_VERSION
