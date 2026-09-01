@@ -1,11 +1,14 @@
-"""Canonical production composition for every Stock Agent entry point.
+"""Canonical production composition for Stock Agent production entry points.
 
-The repository still contains legacy install_* layers, but composition now has
-one explicit, idempotent owner.  Both package import and ``python -m
-stock_agent`` call this function so import order cannot silently select a
-weaker runtime class.
+Legacy install_* layers remain during migration, but composition now has one
+explicit, idempotent owner.  ``python -m stock_agent`` and
+``stock_agent.production`` both call this function.  Ordinary package/submodule
+imports remain side-effect-light so unit/library behavior cannot be silently
+changed by import order.
 """
 from __future__ import annotations
+
+from typing import Any
 
 
 _INSTALLED = False
@@ -37,8 +40,24 @@ def install_production_stack() -> None:
 
     from .hunt_integrity_v18 import install_hunt_integrity_v18
     install_hunt_integrity_v18()
+    from .hunt_integrity_v181 import install_hunt_integrity_v181
+    install_hunt_integrity_v181()
 
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
 
     _INSTALLED = True
+
+
+def production_composition() -> dict[str, Any]:
+    """Return a deterministic description of the actual production stack."""
+    install_production_stack()
+    from . import runtime
+    cls = runtime.ProductionStockAgent
+    return {
+        "runtime_module": cls.__module__,
+        "runtime_class": cls.__name__,
+        "mro": [f"{item.__module__}.{item.__name__}" for item in cls.__mro__],
+        "integrity_version": getattr(cls, "HUNT_INTEGRITY_VERSION", None),
+        "integrity_patch_version": getattr(cls, "HUNT_INTEGRITY_PATCH_VERSION", None),
+    }
