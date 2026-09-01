@@ -29,7 +29,7 @@ jobs:
       - name: Compile integrity paths
         run: python -m compileall -q stock_agent tests
       - name: Run V1.8 hostile integrity regressions
-        run: python -m unittest -q tests.test_hunt_integrity_v18_hostile tests.test_pre_a_sidecar tests.test_pre_a_source_v2 tests.test_false_negative_audit
+        run: python -m unittest -q tests.test_hunt_integrity_v18_hostile tests.test_hunt_stage_failure_semantics_v18 tests.test_pre_a_sidecar tests.test_pre_a_source_v2 tests.test_false_negative_audit
       - name: Verify prompt contracts remain immutable
         run: python STOCK_AGENT_OBSIDIAN_PROMPT_LIBRARY_V2_2/VALIDATION/validate_contracts.py
       - name: Verify tests did not mutate tracked files
