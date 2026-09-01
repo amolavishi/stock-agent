@@ -19,6 +19,8 @@ Authority invariants:
 from __future__ import annotations
 
 import json
+import math
+import re
 from typing import Any
 
 from . import hunt_integrity_v18 as v18
@@ -42,6 +44,37 @@ _REQUIRED_A_GATES = (
     "dilution_adjusted_economics",
     "probability_provenance",
 )
+_REQUIRED_LEGACY_A_GATES = (
+    "wake_up_1_8w",
+    "independent_economic_improvement_axes",
+    "numeric_expectation_gap",
+    "why_now",
+    "why_not_priced",
+    "market_wakeup_mechanism",
+    "extreme_bull_not_priced",
+    "base_upside_economic",
+    "bull_upside_additional_evidence",
+    "target_not_reverse_engineered",
+    "two_independent_valuation_methods",
+    "scenario_probabilities_sum_100",
+    "pw_ev_positive_meaningful",
+    "execution_rr_not_arbitrary",
+    "structural_asymmetry_separate",
+    "full_sec_complete_non_toxic",
+    "not_stage_3",
+    "liquidity_pass",
+    "market_data_fresh",
+    "failure_scenarios_three_plus",
+)
+_SCORE_MAX = {
+    "catalyst_strength": 25.0,
+    "time_immediacy": 15.0,
+    "numeric_evidence": 15.0,
+    "supply_demand": 10.0,
+    "price_stage_fit": 15.0,
+    "strategic_fit": 15.0,
+    "expected_value": 10.0,
+}
 _FORBIDDEN_CERT_KEYS = {
     "discovery_rank", "discovery_score", "discovery_priority_score",
     "previous_grade", "previous_target", "previous_probability", "previous_pw_ev",
@@ -60,7 +93,13 @@ def _contains_forbidden(value: Any) -> bool:
 
 
 def validate_v8_next_certification(payload: dict[str, Any] | None) -> tuple[str | None, list[str]]:
-    """Validate a Step-18 receipt against the V8 NEXT successor contract."""
+    """Validate a Step-18 receipt against the V8 NEXT successor contract.
+
+    A surface grade is never sufficient.  This validator independently checks
+    the Python-owned certification status, arithmetic, lineage, gate matrix,
+    cap semantics and contamination fences so a NOT_CERTIFIABLE receipt can
+    never masquerade as A/A- merely because a score/grade field survived.
+    """
     if not isinstance(payload, dict):
         return None, ["CERTIFICATION_MISSING"]
     failures: list[str] = []
@@ -68,12 +107,14 @@ def validate_v8_next_certification(payload: dict[str, Any] | None) -> tuple[str 
         failures.append("V8_NEXT_POLICY_HASH")
     if str(payload.get("policy_version") or "") != V8_NEXT_POLICY_VERSION:
         failures.append("V8_NEXT_POLICY_VERSION")
-    if payload.get("grade_authority") not in {True, "V8_NEXT_STEP18_CANONICAL"}:
+    if payload.get("grade_authority") != "V8_NEXT_STEP18_CANONICAL":
         failures.append("STEP18_GRADE_AUTHORITY")
     if payload.get("discovery_score_used") not in {False, "NO", "FALSE"}:
         failures.append("DISCOVERY_SCORE_CONTAMINATION")
     if payload.get("pre_a_metadata_used") not in {False, "NO", "FALSE"}:
         failures.append("PRE_A_CONTAMINATION")
+    if payload.get("candidate_shortage_influenced_grade") not in {False, "NO", "FALSE"}:
+        failures.append("GRADE_QUOTA_INFLUENCE")
     if payload.get("score_reset_from_zero") is not True:
         failures.append("SCORE_NOT_RESET")
     if _contains_forbidden(payload.get("certification_packet") or {}):
@@ -87,18 +128,74 @@ def validate_v8_next_certification(payload: dict[str, Any] | None) -> tuple[str 
     if grade != "A" and not (isinstance(why_not, list) and any(str(x).strip() for x in why_not)):
         failures.append("WHY_NOT_ONE_GRADE_HIGHER_MISSING")
 
+    status_expected = {
+        "A": "A_CERTIFIED",
+        "A-": "A_MINUS_CERTIFIED",
+        "B+": "B_PLUS_ONLY",
+        "B": "B_ONLY",
+        "EXCLUDE": "EXCLUDE",
+    }.get(grade)
+    if status_expected and str(payload.get("certification_status") or "") != status_expected:
+        failures.append("CERTIFICATION_STATUS_GRADE_MISMATCH")
+    if str(payload.get("certification_status") or "") == "NOT_CERTIFIABLE":
+        failures.append("CERTIFICATION_NOT_CERTIFIABLE")
+
+    lineage_failures = payload.get("lineage_failures")
+    if not isinstance(lineage_failures, list):
+        failures.append("LINEAGE_VALIDATION_MISSING")
+    elif lineage_failures:
+        failures.append("EVIDENCE_LINEAGE_FAILURE")
+    evidence_ids = payload.get("evidence_ids")
+    if grade in {"A", "A-"} and (not isinstance(evidence_ids, list) or not any(str(item).strip() for item in evidence_ids)):
+        failures.append("A_GRADE_EVIDENCE_LINEAGE_EMPTY")
+
+    engine = str(payload.get("python_grade_engine") or "")
+    if not engine.startswith("V8_NEXT_CERTIFICATION_ENGINE_"):
+        failures.append("PYTHON_GRADE_ENGINE_MISSING")
+
     score = payload.get("normalized_score")
-    if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= float(score) <= 100:
+    if not isinstance(score, (int, float)) or isinstance(score, bool) or not math.isfinite(float(score)) or not 0 <= float(score) <= 100:
         failures.append("NORMALIZED_SCORE_INVALID")
         score_value = -1.0
     else:
         score_value = float(score)
-    minimum = {"A": 85.0, "A-": 80.0, "B+": 72.0}.get(grade)
+    raw_score = payload.get("raw_score")
+    components = payload.get("score_components")
+    if not isinstance(components, dict) or set(components) != set(_SCORE_MAX):
+        failures.append("SCORE_COMPONENTS_INVALID")
+    else:
+        calculated_raw = 0.0
+        for key, maximum in _SCORE_MAX.items():
+            value = components.get(key)
+            if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(float(value)) or not 0 <= float(value) <= maximum:
+                failures.append(f"SCORE_COMPONENT_{key.upper()}_INVALID")
+                continue
+            calculated_raw += float(value)
+        if not isinstance(raw_score, (int, float)) or isinstance(raw_score, bool) or not math.isclose(float(raw_score), calculated_raw, abs_tol=1e-5):
+            failures.append("RAW_SCORE_ARITHMETIC")
+        calculated_normalized = calculated_raw / 105.0 * 100.0
+        if score_value >= 0 and not math.isclose(score_value, calculated_normalized, abs_tol=1e-5):
+            failures.append("NORMALIZED_SCORE_ARITHMETIC")
+
+    minimum = {"A": 85.0, "A-": 80.0, "B+": 72.0, "B": 65.0}.get(grade)
     if minimum is not None and score_value < minimum:
         failures.append("GRADE_EXCEEDS_SCORE")
+    if grade == "EXCLUDE" and score_value >= 65.0:
+        # EXCLUDE above the numeric threshold is allowed only when a hard
+        # exclusion/cap is explicitly present below.
+        caps_for_exclude = payload.get("active_grade_caps") or []
+        if not isinstance(caps_for_exclude, list) or not caps_for_exclude:
+            failures.append("EXCLUDE_WITHOUT_HARD_FAIL")
+
+    critical_unknowns = payload.get("critical_unknowns")
+    critical_count = payload.get("critical_unknown_count")
+    if not isinstance(critical_unknowns, list) or not isinstance(critical_count, int) or isinstance(critical_count, bool):
+        failures.append("CRITICAL_UNKNOWN_LEDGER_INVALID")
+    elif critical_count != len(critical_unknowns):
+        failures.append("CRITICAL_UNKNOWN_COUNT_MISMATCH")
 
     if grade in {"A", "A-"}:
-        if int(payload.get("critical_unknown_count", -1)) != 0:
+        if critical_count != 0:
             failures.append("CRITICAL_UNKNOWN_PRESENT")
         if payload.get("step17_5_complete") is not True:
             failures.append("STEP17_5_INCOMPLETE")
@@ -109,11 +206,32 @@ def validate_v8_next_certification(payload: dict[str, Any] | None) -> tuple[str 
             for gate in _REQUIRED_A_GATES:
                 if str(gates.get(gate) or "").upper() != "PASS":
                     failures.append(f"NEXT_GATE_{gate.upper()}")
+        legacy_gates = payload.get("legacy_hard_gate_statuses")
+        if not isinstance(legacy_gates, dict):
+            failures.append("LEGACY_HARD_GATES_MISSING")
+        else:
+            for gate in _REQUIRED_LEGACY_A_GATES:
+                if str(legacy_gates.get(gate) or "").upper() != "PASS":
+                    failures.append(f"LEGACY_GATE_{gate.upper()}")
         active_caps = payload.get("active_grade_caps") or []
-        if isinstance(active_caps, list) and active_caps:
-            failures.append("ACTIVE_GRADE_CAP")
-        if payload.get("candidate_shortage_influenced_grade") not in {False, "NO", "FALSE"}:
-            failures.append("GRADE_QUOTA_INFLUENCE")
+        if not isinstance(active_caps, list):
+            failures.append("ACTIVE_GRADE_CAP_LEDGER_INVALID")
+        else:
+            allowed_a_minus_caps = {"INDEPENDENT_AXES_3_MAX_A_MINUS"} if grade == "A-" else set()
+            disallowed_caps = {str(item) for item in active_caps} - allowed_a_minus_caps
+            if disallowed_caps:
+                failures.append("ACTIVE_GRADE_CAP")
+        if grade == "A-" and score_value >= 85.0:
+            caps = {str(item) for item in (payload.get("active_grade_caps") or [])}
+            if "INDEPENDENT_AXES_3_MAX_A_MINUS" not in caps:
+                failures.append("A_MINUS_HIGH_SCORE_WITHOUT_CAP")
+        if grade == "A" and score_value < 85.0:
+            failures.append("A_SCORE_THRESHOLD")
+
+    packet = payload.get("certification_packet")
+    packet_hash = packet.get("packet_hash") if isinstance(packet, dict) else None
+    if not isinstance(packet_hash, str) or not re.fullmatch(r"[a-f0-9]{64}", packet_hash):
+        failures.append("CERTIFICATION_PACKET_HASH_INVALID")
 
     return (grade or None), sorted(set(failures))
 
