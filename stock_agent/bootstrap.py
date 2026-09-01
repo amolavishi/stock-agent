@@ -38,10 +38,20 @@ def install_production_stack() -> None:
     from .hunt_resilience_v17 import install_hunt_resilience_v17
     install_hunt_resilience_v17()
 
+    # Preserve the complete production Final Allocation writer immediately
+    # before V1.8 adds its integrity guard.  V1.8.2 uses this exact writer to
+    # replace an over-broad run-level failure veto with a subject-scoped veto
+    # without bypassing any pre-existing qualification/lineage/risk checks.
+    from . import store as store_module
+    if not hasattr(store_module, "_pre_v18_commit_final_allocation"):
+        store_module._pre_v18_commit_final_allocation = store_module.SQLiteStore.commit_final_allocation
+
     from .hunt_integrity_v18 import install_hunt_integrity_v18
     install_hunt_integrity_v18()
     from .hunt_integrity_v181 import install_hunt_integrity_v181
     install_hunt_integrity_v181()
+    from .hunt_integrity_v182 import install_hunt_integrity_v182
+    install_hunt_integrity_v182()
 
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
@@ -60,4 +70,5 @@ def production_composition() -> dict[str, Any]:
         "mro": [f"{item.__module__}.{item.__name__}" for item in cls.__mro__],
         "integrity_version": getattr(cls, "HUNT_INTEGRITY_VERSION", None),
         "integrity_patch_version": getattr(cls, "HUNT_INTEGRITY_PATCH_VERSION", None),
+        "allocation_guard_version": getattr(cls, "ALLOCATION_GUARD_VERSION", None),
     }
