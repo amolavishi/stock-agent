@@ -1,8 +1,8 @@
 """Canonical production composition for Stock Agent MAIN.
 
-Every production entry point must install this stack exactly once.  Discovery
+Every production entry point must install this stack exactly once. Discovery
 MAIN remains the sole discovery owner; no Python heuristic scanner runtime is
-installed.  The only code imported from Discovery Recall Lite is its live
+installed. The only code imported from Discovery Recall Lite is its live
 breadth/provider adapter.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ def install_production_stack() -> None:
     install_alpha_discovery_policy()
     install_alpha_coverage_v14()
 
-    # Provider/breadth only.  Never install install_discovery_recall_lite_runtime().
+    # Provider/breadth only. Never install install_discovery_recall_lite_runtime().
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_provider
     install_discovery_recall_lite_provider()
 
@@ -45,7 +45,7 @@ def install_production_stack() -> None:
 
     # Independently reproduced MAIN integrity defects: candidate isolation,
     # adverse/late evidence selection, canonical preservation and allocation
-    # isolation.  These layers add no new grade authority.
+    # isolation. These layers add no new grade authority.
     from . import store as store_module
     if not hasattr(store_module, "_pre_v18_commit_final_allocation"):
         store_module._pre_v18_commit_final_allocation = store_module.SQLiteStore.commit_final_allocation
@@ -60,7 +60,7 @@ def install_production_stack() -> None:
     from .v8_next_terminal_lineage import install_pre_successor_terminal_capture
     install_pre_successor_terminal_capture()
 
-    # Actual Step15/16/17/17.5/18/20 authority chain.  Step18 is the only
+    # Actual Step15/16/17/17.5/18/20 authority chain. Step18 is the only
     # Research Grade writer; Step20 validates and cannot create a grade.
     from .v8_next_successor import install_v8_next_successor
     install_v8_next_successor()
@@ -69,13 +69,16 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # Patch the scanner framework BEFORE it is installed so exact source bytes,
-    # not paraphrased strategy goals, become the model system prompt.  Missing
-    # source input remains fail-closed and non-evaluable.
+    # Patch scanner registration before MAIN coach installation so exact source
+    # bytes, not paraphrased strategy goals, become the model system prompt.
     from .v8_main_source_fidelity import install_v8_main_source_fidelity
     install_v8_main_source_fidelity()
     from .v8_main_discovery_coach import install_v8_main_discovery_coach
     install_v8_main_discovery_coach()
+    # Provider-independent gate: even Fake/Recorded providers cannot claim a
+    # scanner execution when canonical V8 source bytes are missing/mismatched.
+    from .v8_main_source_gate import install_v8_main_source_gate
+    install_v8_main_source_gate()
 
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
@@ -96,6 +99,7 @@ def production_composition() -> dict[str, Any]:
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
     from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION
     from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, source_bundle_status
+    from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
 
     cls = runtime.ProductionStockAgent
     mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
@@ -113,6 +117,7 @@ def production_composition() -> dict[str, Any]:
         "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
         "v8_main_discovery_coach_version": getattr(cls, "v8_main_discovery_coach_version", V8_MAIN_DISCOVERY_COACH_VERSION),
         "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
+        "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
         "v8_source_bundle": source_bundle_status(),
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
