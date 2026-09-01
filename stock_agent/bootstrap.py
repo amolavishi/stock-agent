@@ -56,7 +56,6 @@ def install_production_stack() -> None:
     install_hunt_integrity_v181()
     install_hunt_integrity_v182()
 
-    # Preserve upstream failure lineage before the successor wrapper sees it.
     from .v8_next_terminal_lineage import install_pre_successor_terminal_capture
     install_pre_successor_terminal_capture()
 
@@ -69,16 +68,21 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # Patch scanner registration before MAIN coach installation so exact source
-    # bytes, not paraphrased strategy goals, become the model system prompt.
+    # Exact-source V8 MAIN scanners. The source bridge patches prompt
+    # registration before MAIN coach installation. Missing/mismatched sources
+    # are non-evaluable input failures, never paraphrased substitutes.
     from .v8_main_source_fidelity import install_v8_main_source_fidelity
     install_v8_main_source_fidelity()
     from .v8_main_discovery_coach import install_v8_main_discovery_coach
     install_v8_main_discovery_coach()
-    # Provider-independent gate: even Fake/Recorded providers cannot claim a
-    # scanner execution when canonical V8 source bytes are missing/mismatched.
     from .v8_main_source_gate import install_v8_main_source_gate
     install_v8_main_source_gate()
+
+    # Preserve strong Discovery names whose technical snapshot is unresolved.
+    # This does not waive Stage/Execution gates; it creates explicit evidence
+    # debt and forbids a false clean NO_TRADE/search-stop conclusion.
+    from .v8_main_recall_conservation import install_v8_main_recall_conservation
+    install_v8_main_recall_conservation()
 
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
@@ -100,6 +104,7 @@ def production_composition() -> dict[str, Any]:
     from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION
     from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, source_bundle_status
     from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
+    from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
 
     cls = runtime.ProductionStockAgent
     mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
@@ -118,6 +123,7 @@ def production_composition() -> dict[str, Any]:
         "v8_main_discovery_coach_version": getattr(cls, "v8_main_discovery_coach_version", V8_MAIN_DISCOVERY_COACH_VERSION),
         "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
         "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
+        "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
         "v8_source_bundle": source_bundle_status(),
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
