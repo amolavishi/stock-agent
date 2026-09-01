@@ -1,7 +1,7 @@
 """System-wide post-Discovery validator for V8 MAIN.
 
-Installed around the existing MAIN coach after the round executor.  It owns no
-candidate-generation logic and no Research Grade authority.  It persists
+Installed around the existing MAIN coach after the round executor. It owns no
+candidate-generation logic and no Research Grade authority. It persists
 Secondary/Near-Miss state and validates whether Discovery may cleanly stop.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Any
 
 from . import runtime as runtime_module
 from . import v8_main_discovery_coach as coach
-from .models import RunMode, RunOutcome
+from .models import RunMode, RunOutcome, utc_now
 from .v8_main_discovery_integrity import (
     SCANNER_REQUIRED_DIMENSIONS,
     V8_MAIN_DISCOVERY_INTEGRITY_VERSION,
@@ -48,8 +48,8 @@ def _system_rounds(rounds: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "new_deep_dive_now": 0,
         })
         row["scanner_ids"].add(str(item.get("scanner_id") or ""))
-        # new_unique_tickers is the union breadth for a system round, not the
-        # sum across 13 scanners evaluating the same chunk.
+        # The same universe chunk is evaluated by all 13 scanners. Breadth is
+        # therefore the maximum per-scanner unique count, never the sum.
         row["new_unique_tickers"] = max(int(row["new_unique_tickers"]), int(item.get("new_unique_tickers") or 0))
         for key in ("new_signal", "new_secondary", "new_high_research_value", "new_independent_evidence", "new_deep_dive_now"):
             row[key] += int(item.get(key) or 0)
@@ -131,13 +131,13 @@ def install_v8_main_discovery_post_v11() -> type:
                 if sid in structural or sid in thesis_fail or final_action == "EXCLUDE":
                     self.store.connection.execute(
                         "UPDATE discovery_secondary_queue SET status='CLOSED_REJECT',updated_at=? WHERE security_id=? AND status='OPEN'",
-                        (coach.utc_now() if hasattr(coach, "utc_now") else __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(), sid),
+                        (utc_now(), sid),
                     )
                     continue
                 if final_action == "DEEP_DIVE_NOW":
                     self.store.connection.execute(
                         "UPDATE discovery_secondary_queue SET status='RESOLVED_TO_DEEP_DIVE',updated_at=? WHERE security_id=? AND status='OPEN'",
-                        (__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(), sid),
+                        (utc_now(), sid),
                     )
                     continue
                 if final_action == "DEEP_DIVE_SECONDARY" or (item.get("research_value") == "HIGH" and final_action in {"WATCH_STAGE0", "WATCH_RESET"}):
