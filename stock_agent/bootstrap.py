@@ -1,15 +1,7 @@
-"""Canonical production composition for Stock Agent production entry points.
-
-Legacy install_* layers remain during migration, but composition now has one
-explicit, idempotent owner.  ``python -m stock_agent`` and
-``stock_agent.production`` both call this function.  Ordinary package/submodule
-imports remain side-effect-light so unit/library behavior cannot be silently
-changed by import order.
-"""
+"""Canonical production composition for Stock Agent production entry points."""
 from __future__ import annotations
 
 from typing import Any
-
 
 _INSTALLED = False
 
@@ -26,13 +18,14 @@ def install_production_stack() -> None:
 
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_provider
     install_discovery_recall_lite_provider()
+    from .discovery_recall_contract_v151 import install_discovery_recall_contract_v151
+    install_discovery_recall_contract_v151()
 
     from .catalyst_acquisition_v15 import install_catalyst_evidence_acquisition_v15
     install_catalyst_evidence_acquisition_v15()
 
     from .v8_primary import install_v8_primary_policy
     install_v8_primary_policy()
-
     from .discovery_recall_firewall_v15 import install_discovery_recall_firewall_v15
     install_discovery_recall_firewall_v15()
 
@@ -57,7 +50,6 @@ def install_production_stack() -> None:
 
     from .v8_next_terminal_lineage import install_pre_successor_terminal_capture
     install_pre_successor_terminal_capture()
-
     from .v8_next_successor import install_v8_next_successor
     install_v8_next_successor()
 
@@ -66,23 +58,23 @@ def install_production_stack() -> None:
     from .v8_next_runtime import install_v8_next_runtime
     install_v8_next_runtime()
 
-    # Forensic Recall: all 02-14 scanner receipts, Secondary/near-miss queues,
-    # rejection sentinel and marginal-yield/search-debt state are generated
-    # before a no-candidate search may be declared complete.
+    # Discovery Recall is research-routing authority only.  The 02-14 receipts,
+    # Secondary queue, rejection sentinel and search-stop audit are enforced
+    # before a no-candidate outcome can be considered evaluable.
     from .discovery_recall_lite_v15 import install_discovery_recall_lite_runtime
     install_discovery_recall_lite_runtime()
     from .discovery_recall_stop_bridge_v15 import install_discovery_recall_stop_bridge_v15
     install_discovery_recall_stop_bridge_v15()
+    from .discovery_recall_contract_v151 import install_discovery_recall_ledger_v151
+    install_discovery_recall_ledger_v151()
 
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
 
     from .shadow_health_v19 import install_shadow_health_v19
     install_shadow_health_v19()
-
     from .shadow_pointer_guard import install_shadow_pointer_guard
     install_shadow_pointer_guard()
-
     from .shadow_non_evaluable_guard import install_shadow_non_evaluable_guard
     install_shadow_non_evaluable_guard()
 
@@ -90,12 +82,12 @@ def install_production_stack() -> None:
 
 
 def production_composition() -> dict[str, Any]:
-    """Return a deterministic description of the actual production stack."""
     install_production_stack()
     from . import runtime
     from . import shadow
     from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
     from .discovery_recall_stop_bridge_v15 import DISCOVERY_RECALL_STOP_BRIDGE_VERSION
+    from .discovery_recall_contract_v151 import DISCOVERY_RECALL_CONTRACT_VERSION, DISCOVERY_RECALL_LEDGER_VERSION
     cls = runtime.ProductionStockAgent
     return {
         "runtime_module": cls.__module__,
@@ -109,6 +101,8 @@ def production_composition() -> dict[str, Any]:
         "v8_policy_version": getattr(cls, "v8_primary_version", None),
         "v8_ruleset_hash": getattr(cls, "v8_ruleset_hash", None),
         "discovery_recall_lite_version": getattr(cls, "discovery_recall_lite_version", None),
+        "discovery_recall_contract_version": DISCOVERY_RECALL_CONTRACT_VERSION,
+        "discovery_recall_ledger_version": DISCOVERY_RECALL_LEDGER_VERSION,
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
         "discovery_recall_stop_bridge_version": DISCOVERY_RECALL_STOP_BRIDGE_VERSION,
         "discovery_recall_forensic_audit_sha256": getattr(cls, "discovery_recall_forensic_audit_sha256", None),
