@@ -8,6 +8,7 @@ sidecar output to the human artifact; its wording is not PRE-A evidence.
 from __future__ import annotations
 
 import argparse
+import json
 import sqlite3
 import subprocess
 import sys
@@ -130,11 +131,14 @@ def _repair_legacy_shadow_schema(database: Path) -> bool:
 
 
 def _snapshot_reports(root: Path) -> dict[Path, int]:
-    """Return DAILY_REPORT mtimes without reading or mutating report contents."""
+    """Return DAILY_REPORT mtimes from the canonical date/run directory tree."""
     if not root.exists():
         return {}
     snapshot: dict[Path, int] = {}
-    for path in root.glob("*/DAILY_REPORT.md"):
+    # Canonical Shadow paths are <root>/<YYYY-MM-DD>/<RUN-ID>/DAILY_REPORT.md.
+    # The previous one-level glob could never see a successfully written report
+    # and therefore emitted `observed 0` after every PRIMARY run.
+    for path in root.glob("*/*/DAILY_REPORT.md"):
         try:
             snapshot[path.resolve()] = path.stat().st_mtime_ns
         except OSError:
@@ -150,6 +154,31 @@ def _select_changed_report(before: dict[Path, int], after: dict[Path, int]) -> P
             f"observed {len(changed)}"
         )
     return changed[0]
+
+
+def _primary_is_pre_a_evaluable(source_report: Path) -> tuple[bool, str]:
+    """PRE-A may observe only a completed, evaluable PRIMARY HUNT."""
+    run_log = source_report.parent / "RUN_LOG.json"
+    if not run_log.is_file():
+        return False, "PRIMARY RUN_LOG.json is missing"
+    try:
+        payload = json.loads(run_log.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return False, "PRIMARY RUN_LOG.json is malformed"
+    if not isinstance(payload, dict):
+        return False, "PRIMARY RUN_LOG.json is not an object"
+    status = str(payload.get("status") or "UNKNOWN")
+    conclusion = str(payload.get("investment_conclusion") or "UNKNOWN")
+    hunt_contract = payload.get("hunt_contract") if isinstance(payload.get("hunt_contract"), dict) else {}
+    hunt_status = str(hunt_contract.get("status") or "UNKNOWN")
+    hunt_result = str(hunt_contract.get("result") or "UNKNOWN")
+    if status != "SUCCEEDED":
+        return False, f"PRIMARY Shadow status is {status}"
+    if conclusion.startswith("NOT_EVALUABLE_") or hunt_result.startswith("NOT_EVALUABLE_"):
+        return False, f"PRIMARY HUNT is non-evaluable: {hunt_result or conclusion}"
+    if hunt_status == "FAILED" or hunt_result.startswith("BLOCKED"):
+        return False, f"PRIMARY HUNT did not complete evaluably: {hunt_result}"
+    return True, "EVALUABLE"
 
 
 def _prepare_primary_args(argv: Iterable[str]) -> list[str]:
@@ -199,6 +228,13 @@ def main() -> int:
     except DailyPreAChainError as exc:
         print(f"PRE-A SKIPPED: {exc}", file=sys.stderr)
         return 3
+
+    evaluable, reason = _primary_is_pre_a_evaluable(source_report)
+    if not evaluable:
+        # This is a valid fail-closed skip, not a PRE-A process failure.  PRIMARY
+        # remains the authoritative artifact and must be diagnosed/re-run first.
+        print(f"PRE-A SKIPPED: {reason}", file=sys.stderr)
+        return 0
 
     shadow_run_id = source_report.parent.name
     output_path = known.pre_a_output_root / shadow_run_id / "PRE_A_REPORT.md"
