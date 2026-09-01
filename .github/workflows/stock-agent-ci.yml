@@ -6,6 +6,7 @@ on:
     branches:
       - repair/authoritative-live-hunt-p0-p1-20260820
       - repair/chatgpt-adversarial-hardening-20260820
+      - "audit/**"
   pull_request:
     branches:
       - main
