@@ -1,37 +1,9 @@
-from .alpha_bootstrap import install_alpha_discovery_policy
-from .alpha_coverage_v14 import install_alpha_coverage_v14
+"""Canonical ``python -m stock_agent`` entry point."""
 
-# Install the proven live-data recall/freshness layers first.
-install_alpha_discovery_policy()
-install_alpha_coverage_v14()
+from .bootstrap import install_production_stack
 
-# RUN-009 exposed a new bottleneck after V8 cheap-SEC recall was fixed:
-# prescreen survivors reached CatalystGate, but the one-page research adapter
-# left nearly every candidate NOT_EVALUATED_CATALYST_EVIDENCE. Install the
-# V8-style source acquisition layer before CLI constructs providers.
-from .catalyst_acquisition_v15 import install_catalyst_evidence_acquisition_v15  # noqa: E402
-install_catalyst_evidence_acquisition_v15()
+install_production_stack()
 
-# V8 remains the canonical investment/research contract.
-from .v8_primary import install_v8_primary_policy  # noqa: E402
-install_v8_primary_policy()
-
-# V1.6 changes research sequencing, not certification authority: initial
-# catalyst insufficiency becomes evidence debt, Deep Research/Full SEC collect
-# evidence, and the unchanged strict CatalystGate is rerun post-research.
-from . import hunt_pipeline_v16 as hunt_pipeline_v16_module  # noqa: E402
-from .catalyst_extractor_v16 import install_v16_extractor  # noqa: E402
-install_v16_extractor(hunt_pipeline_v16_module)
-hunt_pipeline_v16_module.install_hunt_pipeline_v16()
-
-# RUN-011 proved the Evidence Store and the model working context must be
-# separate. V1.7 bounds the wire projection, removes duplicate runtime input,
-# persists Evidence Debt before capability reasoning, improves safe 4xx
-# diagnostics, and forbids pipeline failures from rendering as clean NO_TRADE.
-from .hunt_resilience_v17 import install_hunt_resilience_v17  # noqa: E402
-install_hunt_resilience_v17()
-
-# Import CLI only after every runtime/provider/shadow policy is installed.
 from .cli import main  # noqa: E402
 
 raise SystemExit(main())
