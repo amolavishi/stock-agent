@@ -84,6 +84,12 @@ def install_production_stack() -> None:
     from .v8_main_recall_conservation import install_v8_main_recall_conservation
     install_v8_main_recall_conservation()
 
+    # Investment Rules v2.0: partial Market Context may continue Discovery,
+    # while Market Execution remains strict. The proxy preserves canonical
+    # insufficient-evidence receipts and only changes research admission.
+    from .v8_market_discovery_admission import install_v8_market_discovery_admission
+    install_v8_market_discovery_admission()
+
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
 
@@ -105,6 +111,7 @@ def production_composition() -> dict[str, Any]:
     from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, source_bundle_status
     from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
+    from .v8_market_discovery_admission import V8_MARKET_DISCOVERY_ADMISSION_VERSION
 
     cls = runtime.ProductionStockAgent
     mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
@@ -124,6 +131,7 @@ def production_composition() -> dict[str, Any]:
         "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
         "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
         "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
+        "v8_market_discovery_admission_version": getattr(cls, "v8_market_discovery_admission_version", V8_MARKET_DISCOVERY_ADMISSION_VERSION),
         "v8_source_bundle": source_bundle_status(),
         "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
