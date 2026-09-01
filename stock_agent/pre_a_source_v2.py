@@ -16,7 +16,11 @@ from .models import canonical_hash
 
 
 PRE_A_SOURCE_VERSION = "PRE_A_STRUCTURED_SOURCE_V2"
-STEP18_SOURCE_SHA256 = "26fddaa0b0ddec166427d89a50ad0f272d06ee6d43a6b91995f45fefaa039528"
+LEGACY_STEP18_SOURCE_SHA256 = "26fddaa0b0ddec166427d89a50ad0f272d06ee6d43a6b91995f45fefaa039528"
+V8_NEXT_POLICY_HASH = "15587aaee03dd137ded09c951350ce26a222f73a02230ee5a68aab4c224fbc4b"
+V8_NEXT_POLICY_VERSION = "V8_NEXT_PRE_A_2026-09-01_R1"
+# Compatibility alias retained for old tests/readers. New runs use V8 NEXT.
+STEP18_SOURCE_SHA256 = LEGACY_STEP18_SOURCE_SHA256
 
 _INCLUDED_STAGES = (
     "STAGE_GATE",
@@ -30,7 +34,12 @@ _INCLUDED_STAGES = (
     "FULL_SEC_FORENSIC",
     "STANDARD_AUDIT",
     "ADVERSARIAL_AUDIT",
+    "V8_CAPITAL_STRUCTURE_BRIDGE",
+    "V8_ATOMIC_CLAIM_AUDIT",
+    "V8_CANONICAL_PACKET",
+    "V8_CRITICAL_ASSUMPTION_AUDIT",
     "V8_CERTIFICATION",
+    "V8_RESEARCH_VALIDATOR",
     "CANDIDATE_CONSERVATION",
     "EVIDENCE_DEBT",
     "SOURCE_EXHAUSTED",
@@ -69,13 +78,26 @@ def _readonly_connection(database: Path) -> sqlite3.Connection:
 
 
 def _certification_grade(value: dict[str, Any] | None) -> str | None:
+    """Accept frozen legacy receipts and the active V8 NEXT successor receipt."""
     if not isinstance(value, dict):
         return None
-    if str(value.get("source_sha256") or "") != STEP18_SOURCE_SHA256:
-        return None
-    if value.get("grade_authority") not in {True, "V8_STEP18_CANONICAL"}:
-        return None
     if value.get("discovery_score_used") not in {False, "NO", "FALSE"}:
+        return None
+    source = str(value.get("source_sha256") or "")
+    authority = value.get("grade_authority")
+    if source == V8_NEXT_POLICY_HASH:
+        if str(value.get("policy_version") or "") != V8_NEXT_POLICY_VERSION:
+            return None
+        if authority != "V8_NEXT_STEP18_CANONICAL":
+            return None
+        if value.get("pre_a_metadata_used") not in {False, "NO", "FALSE"}:
+            return None
+        if value.get("candidate_shortage_influenced_grade") not in {False, "NO", "FALSE"}:
+            return None
+    elif source == LEGACY_STEP18_SOURCE_SHA256:
+        if authority not in {True, "V8_STEP18_CANONICAL"}:
+            return None
+    else:
         return None
     grade = str(value.get("research_grade") or value.get("grade") or "").upper()
     return grade if grade in {"A", "A-", "B+", "B"} else None
@@ -143,12 +165,12 @@ def build_pre_a_source_bundle(database: Path, shadow_run_id: str) -> dict[str, A
             decision = decision_entry.get("value") if isinstance(decision_entry.get("value"), dict) else {}
             stages = stage_map.get(ticker) or {}
             cert_entry = stages.get("V8_CERTIFICATION") or {}
-            cert = cert_entry.get("result") if isinstance(cert_entry.get("result"), dict) else None
+            certification = cert_entry.get("result") if isinstance(cert_entry.get("result"), dict) else None
 
             decision_grade = str(decision.get("grade") or "").upper()
             if decision_grade not in _ALLOWED_GRADES:
                 decision_grade = ""
-            cert_grade = _certification_grade(cert)
+            cert_grade = _certification_grade(certification)
             source_grade = decision_grade or cert_grade or "UNKNOWN"
             # If both exist they must agree.  PRE-A must never reconcile a
             # disagreement by guessing which grade is newer/correct.
