@@ -11,6 +11,7 @@ import json
 from typing import Any
 
 from . import runtime as runtime_module
+from . import v8_main_discovery_coach as coach
 from . import v8_main_discovery_integrity as integrity
 from . import v8_pre_live_integrity_v20 as v20
 
@@ -157,6 +158,7 @@ def install_v8_pre_live_integrity_v204() -> type:
     integrity._contract_complete = contract_complete_v204  # type: ignore[assignment]
     v20._contract_complete_v20 = contract_complete_v204  # type: ignore[assignment]
     v20._sentinel_sample_v20 = sentinel_sample_v204  # type: ignore[assignment]
+    coach._sentinel_sample = sentinel_sample_v204  # type: ignore[assignment]
 
     class V8PreLiveSentinelProductionStockAgent(current):  # type: ignore[misc,valid-type]
         v8_pre_live_sentinel_patch_version = V8_PRE_LIVE_SENTINEL_PATCH_VERSION
