@@ -1,0 +1,91 @@
+name: main-v8-adversarial-regression
+
+on:
+  push:
+    branches:
+      - 'audit/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  hostile-v8-main:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile MAIN V8 hardening
+        run: python -m compileall -q stock_agent tests
+      - name: Run MAIN V8 source, recall, failure and certification hostile tests
+        run: >-
+          python -m unittest -q
+          tests.test_main_v8_source_fidelity
+          tests.test_v8_main_discovery_integrity
+          tests.test_v8_main_failure_injection_t1_t16
+          tests.test_v8_pre_live_integrity_v20
+          tests.test_v8_pre_live_integrity_v203_v204
+          tests.test_v8_pre_live_production_wiring
+          tests.test_v8_secondary_priority_recheck_v205
+          tests.test_v8_discovery_receipt_contract_v206
+          tests.test_v8_grade_quota_firewall
+          tests.test_v8_market_discovery_admission
+          tests.test_v8_main_recall_conservation
+          tests.test_hunt_integrity_v18_hostile
+          tests.test_hunt_stage_failure_semantics_v18
+          tests.test_v8_next_successor
+          tests.test_v8_next_certification_runtime
+          tests.test_pre_a_source_v2
+          tests.test_pre_a_v8_next_compat
+          tests.test_pre_a_authority_hardening
+          tests.test_shadow_health_v19
+      - name: Validate Prompt Library contracts
+        run: python STOCK_AGENT_OBSIDIAN_PROMPT_LIBRARY_V2_2/VALIDATION/validate_contracts.py
+      - name: Confirm no weak parallel Discovery runtime is installed
+        shell: bash
+        run: |
+          python - <<'PY'
+          from stock_agent.production import production_composition
+          from stock_agent import runtime
+          from stock_agent.paths import canonical_prompt_library_root
+          from stock_agent.prompt_runtime import PromptRuntime
+          c = production_composition()
+          assert c['main_is_sole_discovery_owner'] is True
+          assert c['python_scanner_routing_authority'] is False
+          assert c['discovery_recall_lite_runtime_installed'] is False
+          assert c['v8_grade_quota_firewall_version']
+          assert c['v8_main_discovery_integrity_version']
+          assert c['v8_main_discovery_post_version']
+          assert c['v8_main_scanner_contract_version']
+          assert c['v8_pre_live_integrity_version'] == 'V8_PRE_LIVE_INTEGRITY_V2.0'
+          assert c['v8_pre_live_integrity_patch_version'] == 'V8_PRE_LIVE_INTEGRITY_V2.0.1'
+          assert c['v8_main_scanner_output_contract_version'] == 'V8_MAIN_SCANNER_OUTPUT_V1.3'
+          assert getattr(runtime.ProductionStockAgent, 'v8_secondary_priority_recheck_version', None) == 'V8_SECONDARY_PRIORITY_RECHECK_V2.0.5'
+          assert any('V8SecondaryPriorityRecheckProductionStockAgent' in item for item in c['mro'])
+          pr = PromptRuntime(canonical_prompt_library_root())
+          assert 'INSUFFICIENT_EVIDENCE' in pr.registry['$defs']['MarketContextGateReceipt']['properties']['decision']['enum']
+          assert 'INSUFFICIENT_EVIDENCE' in pr.registry['$defs']['SectorGateReceipt']['properties']['decision']['enum']
+          assert 'INSUFFICIENT_EVIDENCE' not in pr.registry['$defs']['MarketExecutionGateReceipt']['properties']['decision']['enum']
+          print(c['runtime_class'])
+          PY
+      - name: Verify read-only CI
+        if: always()
+        shell: bash
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
