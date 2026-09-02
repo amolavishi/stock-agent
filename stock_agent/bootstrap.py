@@ -121,6 +121,12 @@ def install_production_stack() -> None:
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
 
+    # Final pre-live fail-closed layer. This tightens assessment coverage,
+    # Secondary expiry, evidence-origin diversity, technical evidence debt and
+    # source-exhaustion semantics without adding investment authority.
+    from .v8_pre_live_integrity_v20 import install_v8_pre_live_integrity_v20
+    install_v8_pre_live_integrity_v20()
+
     from .shadow_health_v19 import install_shadow_health_v19
     install_shadow_health_v19()
     from .shadow_pointer_guard import install_shadow_pointer_guard
@@ -146,6 +152,7 @@ def production_composition() -> dict[str, Any]:
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
     from .v8_market_discovery_admission import V8_MARKET_DISCOVERY_ADMISSION_VERSION
     from .v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
+    from .v8_pre_live_integrity_v20 import V8_PRE_LIVE_INTEGRITY_VERSION
 
     cls = runtime.ProductionStockAgent
     mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
@@ -174,6 +181,7 @@ def production_composition() -> dict[str, Any]:
         "v8_main_discovery_post_version": V8_MAIN_DISCOVERY_POST_VERSION,
         "v8_main_scanner_contract_version": V8_MAIN_SCANNER_CONTRACT_VERSION,
         "v8_main_scanner_output_contract_version": SCANNER_OUTPUT_CONTRACT_VERSION,
+        "v8_pre_live_integrity_version": getattr(cls, "v8_pre_live_integrity_version", V8_PRE_LIVE_INTEGRITY_VERSION),
         "v8_main_forensic_audit_sha256": getattr(cls, "v8_main_forensic_audit_sha256", V8_MAIN_FORENSIC_AUDIT_SHA256),
         "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
         "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
