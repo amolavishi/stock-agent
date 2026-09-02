@@ -40,6 +40,7 @@ jobs:
           tests.test_v8_main_failure_injection_t1_t16
           tests.test_v8_pre_live_integrity_v20
           tests.test_v8_pre_live_integrity_v203_v204
+          tests.test_v8_pre_live_production_wiring
           tests.test_v8_grade_quota_firewall
           tests.test_v8_market_discovery_admission
           tests.test_v8_main_recall_conservation
