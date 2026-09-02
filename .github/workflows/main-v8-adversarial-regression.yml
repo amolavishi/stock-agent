@@ -38,6 +38,7 @@ jobs:
           tests.test_main_v8_source_fidelity
           tests.test_v8_main_discovery_integrity
           tests.test_v8_main_failure_injection_t1_t16
+          tests.test_v8_pre_live_integrity_v20
           tests.test_v8_grade_quota_firewall
           tests.test_v8_market_discovery_admission
           tests.test_v8_main_recall_conservation
@@ -63,6 +64,9 @@ jobs:
           assert c['v8_main_discovery_integrity_version']
           assert c['v8_main_discovery_post_version']
           assert c['v8_main_scanner_contract_version']
+          assert c['v8_pre_live_integrity_version'] == 'V8_PRE_LIVE_INTEGRITY_V2.0'
+          assert c['v8_pre_live_integrity_patch_version'] == 'V8_PRE_LIVE_INTEGRITY_V2.0.1'
+          assert c['v8_main_scanner_output_contract_version'] == 'V8_MAIN_SCANNER_OUTPUT_V1.3'
           print(c['runtime_class'])
           PY
       - name: Verify read-only CI
