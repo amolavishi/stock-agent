@@ -50,6 +50,7 @@ jobs:
           tests.test_v8_next_certification_runtime
           tests.test_pre_a_source_v2
           tests.test_pre_a_v8_next_compat
+          tests.test_pre_a_authority_hardening
           tests.test_shadow_health_v19
       - name: Validate Prompt Library contracts
         run: python STOCK_AGENT_OBSIDIAN_PROMPT_LIBRARY_V2_2/VALIDATION/validate_contracts.py
