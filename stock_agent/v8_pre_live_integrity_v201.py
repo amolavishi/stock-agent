@@ -2,9 +2,9 @@
 
 Preserves the scanner-specific V1.2 conditional schema while adding V1.3 full
 coverage-ledger proof, removes a possible default-payload recursion, and chains
-the conservative evidence-origin / Secondary-recheck / sentinel semantic
-patches. This module adds no discovery grade, PRE-A, execution, or broker
-authority.
+the conservative evidence-origin / Discovery-receipt / Secondary-recheck /
+sentinel semantic patches. This module adds no discovery grade, PRE-A,
+execution, or broker authority.
 """
 from __future__ import annotations
 
@@ -95,10 +95,15 @@ def install_v8_pre_live_integrity_v201() -> None:
     integrity._integrity_default_scanner = default_scanner_v201  # type: ignore[assignment]
     from .v8_pre_live_integrity_v202 import install_v8_pre_live_integrity_v202
     from .v8_pre_live_integrity_v203 import install_v8_pre_live_integrity_v203
+    from .v8_discovery_receipt_contract_v206 import install_v8_discovery_receipt_contract_v206
     from .v8_secondary_priority_recheck_v205 import install_v8_secondary_priority_recheck_v205
     from .v8_pre_live_integrity_v204 import install_v8_pre_live_integrity_v204
     install_v8_pre_live_integrity_v202()
     install_v8_pre_live_integrity_v203()
+    # V8 Market/Sector discovery admission may preserve an upstream canonical
+    # INSUFFICIENT_EVIDENCE receipt while continuing research.  Install the
+    # runtime receipt/schema compatibility contract before any live model call.
+    install_v8_discovery_receipt_contract_v206()
     # Persistent HIGH Secondary names are re-probed before the outer sentinel
     # validator is installed. The sentinel therefore remains the final runtime
     # wrapper and the recheck layer remains visible in its MRO.
