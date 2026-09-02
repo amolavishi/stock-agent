@@ -1,14 +1,13 @@
-"""Exact-source integrity bridge for V8 MAIN Discovery.
+"""Exact V8.4 source-lock bridge for MAIN Discovery.
 
-The canonical V8 manifest on MAIN used to be declarative only: it named the
-02..14 files and hashes while the files were not loaded by the runtime. This
-module makes source identity executable. It patches the MAIN scanner coach so
-that each scanner prompt is compiled from the actual source body only after an
-exact SHA-256 check. A missing/mismatched source is a run-global input
-integrity failure; it is never replaced with a paraphrased scanner.
+The production scanner contract is self-contained: a fresh checkout carries the
+canonical V8.4 Discovery common contract, canonical universe rules and exact
+02..14 scanner profiles. Every file is verified against an independent source
+lock with SHA-256 over raw bytes. No newline normalization, paraphrase fallback
+or model-generated substitute is permitted.
 
-This module does not create candidates, Research Grade, PRE-A status, actions,
-position sizes, or broker writes.
+This module owns source identity only. It creates no candidates, Research Grade,
+PRE-A status, execution action, position size, or broker write.
 """
 from __future__ import annotations
 
@@ -24,52 +23,39 @@ from . import v8_main_discovery_coach as coach
 from .hunt_resilience_v17 import _project_value
 from .providers import OpenAIResponsesProvider, ProviderRequestError
 
-V8_MAIN_SOURCE_FIDELITY_VERSION = "V8_MAIN_SOURCE_FIDELITY_V1.0"
-_REPO_ROOT = Path(__file__).resolve().parents[1]
-_MANIFEST = _REPO_ROOT / "docs" / "v8_canonical" / "SOURCE_MANIFEST.json"
+V8_MAIN_SOURCE_FIDELITY_VERSION = "V8_MAIN_SOURCE_FIDELITY_V8_4_V2.0"
+V8_4_SOURCE_LOCK_VERSION = "V8_4_DISCOVERY_SOURCE_LOCK_V1.0"
+V8_4_PACKAGE_VERSION = "8.4.0"
 
-_SCANNER_FILES = {
-    "02": "02_비AI_비반도체_광역_블라인드_Discovery_V8.md",
-    "03": "03_최근_IPO_Busted_IPO_재평가_Discovery_V8.md",
-    "04": "04_턴어라운드_실적주_Discovery_V8.md",
-    "05": "05_정책_이벤트_국방_원전_우라늄_핵심광물_에너지_안보_Discovery_V8.md",
-    "06": "06_우주_방산_ISR_항공우주_부품_Discovery_V8.md",
-    "07": "07_덜_알려진_수익성_개선_소형주_Discovery_V8.md",
-    "08": "08_공모_블록딜_Secondary_소화_후_회복주_Discovery_V8.md",
-    "09": "09_내부자_매수_자사주_방어형_턴어라운드_Discovery_V8.md",
-    "10": "10_부채_리파이낸싱_파산위험_제거형_Discovery_V8.md",
-    "11": "11_실적_후_추정치_상향_지연반응주_Discovery_V8.md",
-    "12": "12_고객집중_해소_두_번째_대형고객_확보주_Discovery_V8.md",
-    "13": "13_핀테크_헬스케어_비반도체_소프트웨어_로테이션_Discovery_V8.md",
-    "14": "14_AI_병목_확장_예외_후보_Discovery_V8.md",
-}
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_MANIFEST = _REPO_ROOT / "docs" / "v8_canonical" / "V8_4_DISCOVERY_SOURCE_MANIFEST.json"
+_PACKAGED_ROOT = _REPO_ROOT / "prompts" / "v8_4"
 
 _RUNTIME_ADDENDUM = r"""
 
-# STOCK AGENT MAIN RUNTIME CONTRACT — SOURCE-PRESERVING ADDENDUM
-The V8 text above is the strategy authority for this scanner. The following
-requirements only adapt its output to the repository's structured runtime; they
-do not replace, summarize, weaken, or reinterpret the V8 strategy.
+# STOCK AGENT MAIN RUNTIME ADAPTER — NON-STRATEGY AUTHORITY
+The three exact V8.4 source sections above are the strategy authority. This
+adapter only maps them to the repository's structured runtime.
 
-- Execute in HUNT_ONLY_RECALL_FIRST mode.
-- Evaluate the supplied candidate universe/evidence packet; do not merely name
-  a theme or repeat the scanner description.
-- Research Grade A/A-/B+/B is forbidden here.
-- Discovery priority is research ordering only.
-- UNKNOWN is neither PASS nor FAIL; preserve decision-relevant unknowns and
-  exact verification questions.
-- Use DEEP_DIVE_SECONDARY for high-information-value unresolved cases rather
-  than silently rejecting them, unless a verified cheap structural hard gate
-  actually fails.
-- Distinguish signal strength from research value.
-- Return only the runtime JSON object required by the attached schema. Tables
-  requested by the source are represented by the structured candidate fields;
-  the source strategy logic itself remains binding.
-- scanner_id, scanner_source_sha256 and screened_count must match the Python
+- Execute HUNT_ONLY_RECALL_FIRST.
+- Evaluate the supplied candidate universe/evidence packet; do not merely repeat
+  the scanner theme.
+- Research Grade A/A-/B+/B, PRE-A status and Execution Action are forbidden.
+- Scanner-local Discovery priority is research ordering only; do not compare
+  numeric priority across scanners.
+- UNKNOWN is neither PASS nor FAIL. Preserve decision-relevant unknowns and
+  exact next-verification questions.
+- A verified cheap structural hard failure may be EXCLUDE. Missing expensive
+  research is DISCOVERY_INSUFFICIENT / Secondary, not a synthetic hard fail.
+- Return only the attached runtime JSON schema.
+- scanner_id, scanner_source_sha256 and screened_count must match Python's
   execution contract. grade_authority must be false.
 """
 
 _SOURCE_STATE: dict[str, dict[str, Any]] = {}
+_CORE_STATE: dict[str, dict[str, Any]] = {}
+_LOCK_CACHE: dict[str, Any] | None = None
+_PREPARED = False
 _INSTALLED = False
 
 
@@ -81,16 +67,54 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _manifest_entries() -> dict[str, dict[str, Any]]:
+def _load_lock() -> dict[str, Any]:
+    global _LOCK_CACHE
+    if _LOCK_CACHE is not None:
+        return _LOCK_CACHE
     try:
         raw = json.loads(_MANIFEST.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError) as exc:
-        raise V8SourceIntegrityError(f"canonical V8 manifest unavailable: {_MANIFEST}") from exc
-    entries: dict[str, dict[str, Any]] = {}
-    for item in raw.get("files") or []:
-        if isinstance(item, dict) and item.get("file"):
-            entries[str(item["file"])] = dict(item)
-    return entries
+        raise V8SourceIntegrityError(f"V8.4 source lock unavailable: {_MANIFEST}") from exc
+    if str(raw.get("manifest_version") or "") != V8_4_SOURCE_LOCK_VERSION:
+        raise V8SourceIntegrityError("unexpected V8.4 source-lock version")
+    if str(raw.get("package_version") or "") != V8_4_PACKAGE_VERSION:
+        raise V8SourceIntegrityError("unexpected V8.4 package version")
+    scanner_ids = {str(item.get("scanner_id") or "") for item in raw.get("scanners") or [] if isinstance(item, dict)}
+    if scanner_ids != set(coach.V8_SCANNERS):
+        raise V8SourceIntegrityError(f"V8.4 scanner lock mismatch: {sorted(scanner_ids)}")
+    core_roles = {str(item.get("role") or "") for item in raw.get("core") or [] if isinstance(item, dict)}
+    if core_roles != {"discovery_common_contract", "canonical_us_universe_rules"}:
+        raise V8SourceIntegrityError(f"V8.4 core source lock mismatch: {sorted(core_roles)}")
+    _LOCK_CACHE = raw
+    return raw
+
+
+def _scanner_entries() -> dict[str, dict[str, Any]]:
+    return {
+        str(item["scanner_id"]): dict(item)
+        for item in _load_lock().get("scanners") or []
+        if isinstance(item, dict) and item.get("scanner_id")
+    }
+
+
+def _core_entries() -> dict[str, dict[str, Any]]:
+    return {
+        str(item["role"]): dict(item)
+        for item in _load_lock().get("core") or []
+        if isinstance(item, dict) and item.get("role")
+    }
+
+
+def prepare_v8_4_source_lock() -> None:
+    """Pin coach scanner identities to the V8.4 lock before schemas are built."""
+    global _PREPARED
+    if _PREPARED:
+        return
+    for sid, entry in _scanner_entries().items():
+        coach.V8_SCANNERS[sid]["sha256"] = str(entry["sha256"])
+        coach.V8_SCANNERS[sid]["source_file"] = f"prompts/v8_4/{entry['path']}"
+        coach.V8_SCANNERS[sid]["source_package_version"] = V8_4_PACKAGE_VERSION
+    _PREPARED = True
 
 
 def _candidate_roots() -> list[Path]:
@@ -98,7 +122,7 @@ def _candidate_roots() -> list[Path]:
     configured = os.getenv("V8_SOURCE_ROOT", "").strip()
     if configured:
         roots.append(Path(configured).expanduser())
-    roots.append(_REPO_ROOT / "prompts" / "v8")
+    roots.append(_PACKAGED_ROOT)
     return roots
 
 
@@ -107,15 +131,18 @@ def _archive_candidates() -> list[Path]:
     configured = os.getenv("V8_SOURCE_ARCHIVE", "").strip()
     if configured:
         values.append(Path(configured).expanduser())
-    values.extend(sorted(_REPO_ROOT.glob("STOCK_SCANNING_PROMPTS_V8_A_GRADE_PIPELINE*.zip")))
     return values
 
 
-def _read_source_bytes(filename: str) -> tuple[bytes | None, str | None]:
+def _read_source_bytes(relative_path: str) -> tuple[bytes | None, str | None]:
+    filename = Path(relative_path).name
     for root in _candidate_roots():
-        path = root / filename
+        path = root / relative_path
         if path.is_file():
             return path.read_bytes(), str(path)
+        flat = root / filename
+        if flat != path and flat.is_file():
+            return flat.read_bytes(), str(flat)
     for archive in _archive_candidates():
         if not archive.is_file():
             continue
@@ -129,83 +156,154 @@ def _read_source_bytes(filename: str) -> tuple[bytes | None, str | None]:
     return None, None
 
 
-def resolve_scanner_source(scanner_id: str) -> dict[str, Any]:
-    sid = str(scanner_id)
-    filename = _SCANNER_FILES[sid]
-    manifest_path = f"prompts/v8/{filename}"
-    entry = _manifest_entries().get(manifest_path)
-    expected = str((entry or {}).get("sha256") or coach.V8_SCANNERS[sid]["sha256"])
-    data, location = _read_source_bytes(filename)
+def _resolve_entry(entry: dict[str, Any], *, source_id: str) -> dict[str, Any]:
+    expected = str(entry.get("sha256") or "")
+    expected_bytes = int(entry.get("bytes") or 0)
+    relative_path = str(entry.get("path") or "")
+    data, location = _read_source_bytes(relative_path)
+    result: dict[str, Any] = {
+        "source_id": source_id,
+        "source_file": f"prompts/v8_4/{relative_path}",
+        "expected_sha256": expected,
+        "expected_bytes": expected_bytes,
+        "actual_sha256": None,
+        "actual_bytes": None,
+        "source_location": location,
+        "status": "MISSING",
+        "source_text": None,
+    }
     if data is None:
-        result = {
-            "scanner_id": sid,
-            "source_file": manifest_path,
-            "expected_sha256": expected,
-            "actual_sha256": None,
-            "source_location": None,
-            "status": "MISSING",
-            "source_text": None,
-        }
-    else:
-        actual = _sha(data)
-        try:
-            text = data.decode("utf-8")
-        except UnicodeDecodeError:
-            text = None
-        status = "PASS" if actual == expected and text is not None else ("HASH_MISMATCH" if actual != expected else "DECODE_FAILURE")
-        result = {
-            "scanner_id": sid,
-            "source_file": manifest_path,
-            "expected_sha256": expected,
-            "actual_sha256": actual,
-            "source_location": location,
-            "status": status,
-            "source_text": text if status == "PASS" else None,
-        }
+        return result
+    actual = _sha(data)
+    result["actual_sha256"] = actual
+    result["actual_bytes"] = len(data)
+    if actual != expected:
+        result["status"] = "HASH_MISMATCH"
+        return result
+    if len(data) != expected_bytes:
+        result["status"] = "BYTE_COUNT_MISMATCH"
+        return result
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        result["status"] = "DECODE_FAILURE"
+        return result
+    result["status"] = "PASS"
+    result["source_text"] = text
+    return result
+
+
+def resolve_core_sources() -> dict[str, dict[str, Any]]:
+    for role, entry in _core_entries().items():
+        _CORE_STATE[role] = _resolve_entry(entry, source_id=f"CORE:{role}")
+    return {key: dict(value) for key, value in _CORE_STATE.items()}
+
+
+def resolve_scanner_source(scanner_id: str) -> dict[str, Any]:
+    prepare_v8_4_source_lock()
+    sid = str(scanner_id)
+    entry = _scanner_entries()[sid]
+    result = _resolve_entry(entry, source_id=sid)
+    result["scanner_id"] = sid
+    result["source_package_version"] = V8_4_PACKAGE_VERSION
     _SOURCE_STATE[sid] = dict(result)
     return result
 
 
 def source_bundle_status() -> dict[str, Any]:
-    rows = [resolve_scanner_source(sid) for sid in sorted(_SCANNER_FILES)]
+    prepare_v8_4_source_lock()
+    core = resolve_core_sources()
+    scanner_rows = [resolve_scanner_source(sid) for sid in sorted(coach.V8_SCANNERS)]
+    core_rows = list(core.values())
+    all_rows = core_rows + scanner_rows
     return {
         "version": V8_MAIN_SOURCE_FIDELITY_VERSION,
-        "complete": all(row["status"] == "PASS" for row in rows),
-        "scanner_count": len(rows),
-        "pass_count": sum(row["status"] == "PASS" for row in rows),
-        "rows": [{k: v for k, v in row.items() if k != "source_text"} for row in rows],
+        "manifest_version": V8_4_SOURCE_LOCK_VERSION,
+        "package_version": V8_4_PACKAGE_VERSION,
+        "canonical_package": str(_load_lock().get("canonical_package") or ""),
+        "canonical_runtime_tree_hash": str(_load_lock().get("canonical_runtime_tree_hash") or ""),
+        "complete": all(row["status"] == "PASS" for row in all_rows),
+        "scanner_count": len(scanner_rows),
+        "pass_count": sum(row["status"] == "PASS" for row in scanner_rows),
+        "core_count": len(core_rows),
+        "core_pass_count": sum(row["status"] == "PASS" for row in core_rows),
+        "rows": [{k: v for k, v in row.items() if k != "source_text"} for row in scanner_rows],
+        "core_rows": [{k: v for k, v in row.items() if k != "source_text"} for row in core_rows],
+        "all_rows": [{k: v for k, v in row.items() if k != "source_text"} for row in all_rows],
     }
 
 
+def _compiled_body(scanner_id: str) -> tuple[str, dict[str, Any]]:
+    sid = str(scanner_id)
+    core = resolve_core_sources()
+    scanner = resolve_scanner_source(sid)
+    required = [core["discovery_common_contract"], core["canonical_us_universe_rules"], scanner]
+    failed = [item for item in required if item["status"] != "PASS"]
+    if failed:
+        detail = ",".join(f"{item['source_id']}:{item['status']}" for item in failed)
+        raise V8SourceIntegrityError("V8_SOURCE_INTEGRITY:" + detail)
+    body = (
+        str(core["discovery_common_contract"]["source_text"])
+        + "\n\n# --- CANONICAL UNIVERSE AUTHORITY ---\n\n"
+        + str(core["canonical_us_universe_rules"]["source_text"])
+        + "\n\n# --- SCANNER-LOCAL AUTHORITY ---\n\n"
+        + str(scanner["source_text"])
+        + _RUNTIME_ADDENDUM
+    )
+    meta = {
+        "scanner_source_sha256": scanner["actual_sha256"],
+        "common_contract_sha256": core["discovery_common_contract"]["actual_sha256"],
+        "universe_rules_sha256": core["canonical_us_universe_rules"]["actual_sha256"],
+        "source_package_version": V8_4_PACKAGE_VERSION,
+        "compiled_prompt_sha256": _sha(body.encode("utf-8")),
+    }
+    return body, meta
+
+
 def _source_backed_install(runtime: Any) -> None:
+    prepare_v8_4_source_lock()
     _ORIGINAL_INSTALL_PROMPTS(runtime)
-    for sid in sorted(_SCANNER_FILES):
-        state = resolve_scanner_source(sid)
-        if state["status"] == "PASS":
-            body = str(state["source_text"]) + _RUNTIME_ADDENDUM
-        else:
+    for sid in sorted(coach.V8_SCANNERS):
+        try:
+            body, meta = _compiled_body(sid)
+            status = "PASS"
+        except V8SourceIntegrityError as exc:
             body = (
                 "V8_SOURCE_INTEGRITY_BLOCKED\n"
-                f"scanner_id={sid}\nsource_file={state['source_file']}\n"
-                f"expected_sha256={state['expected_sha256']}\nstatus={state['status']}\n"
-                "Do not perform discovery with a reconstructed or paraphrased strategy."
+                f"scanner_id={sid}\nerror={exc}\n"
+                "Do not perform discovery with reconstructed or paraphrased source."
             )
+            meta = {
+                "scanner_source_sha256": coach.V8_SCANNERS[sid]["sha256"],
+                "common_contract_sha256": None,
+                "universe_rules_sha256": None,
+                "source_package_version": V8_4_PACKAGE_VERSION,
+                "compiled_prompt_sha256": _sha(body.encode("utf-8")),
+            }
+            status = "BLOCKED"
         coach._register_prompt(runtime, f"v8_main.discovery_{sid}", coach.SCANNER_SCHEMA_ID, body)
         spec = coach.V8_SCANNERS[sid]
-        spec["source_file"] = str(state["source_file"])
-        spec["source_integrity_status"] = str(state["status"])
-        spec["runtime_prompt_sha256"] = _sha(body.encode("utf-8"))
+        spec.update(meta)
+        spec["source_integrity_status"] = status
+        spec["runtime_prompt_sha256"] = meta["compiled_prompt_sha256"]
 
 
 def _scanner_provider_call(self: OpenAIResponsesProvider, request: dict[str, Any]):
     prompt_id = str(request.get("prompt_id") or "")
     if prompt_id.startswith("v8_main.discovery_") and prompt_id != "v8_main.discovery_rejection_sentinel":
         sid = prompt_id.rsplit("_", 1)[-1]
+        status = source_bundle_status()
+        if not status.get("complete"):
+            failed = [
+                f"{item.get('source_id')}:{item.get('status')}"
+                for item in status.get("all_rows") or []
+                if item.get("status") != "PASS"
+            ]
+            raise ProviderRequestError("V8 source integrity failure " + ",".join(failed), retryable=False)
         state = _SOURCE_STATE.get(sid) or resolve_scanner_source(sid)
         if state.get("status") != "PASS":
             raise ProviderRequestError(
-                f"V8 source integrity failure scanner={sid} status={state.get('status')} expected={state.get('expected_sha256')}",
-                retryable=False,
+                f"V8 source integrity failure scanner={sid} status={state.get('status')}", retryable=False
             )
         cloned = copy.deepcopy(request)
         runtime_input = cloned.get("runtime_input")
@@ -229,6 +327,7 @@ def install_v8_main_source_fidelity() -> None:
     global _INSTALLED
     if _INSTALLED:
         return
+    prepare_v8_4_source_lock()
     coach._install_prompts = _source_backed_install  # type: ignore[assignment]
     OpenAIResponsesProvider.call = _scanner_provider_call  # type: ignore[assignment]
     _INSTALLED = True

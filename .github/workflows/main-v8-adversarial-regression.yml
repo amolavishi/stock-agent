@@ -36,6 +36,7 @@ jobs:
         run: >-
           python -m unittest -q
           tests.test_main_v8_source_fidelity
+          tests.test_v8_4_discovery_consistency
           tests.test_v8_main_discovery_integrity
           tests.test_v8_main_failure_injection_t1_t16
           tests.test_v8_pre_live_integrity_v20
@@ -61,7 +62,7 @@ jobs:
         run: |
           python - <<'PY'
           from stock_agent.production import production_composition
-          from stock_agent import runtime
+          from stock_agent import runtime, v8_main_discovery_coach as coach
           from stock_agent.paths import canonical_prompt_library_root
           from stock_agent.prompt_runtime import PromptRuntime
           c = production_composition()
@@ -75,13 +76,36 @@ jobs:
           assert c['v8_pre_live_integrity_version'] == 'V8_PRE_LIVE_INTEGRITY_V2.0'
           assert c['v8_pre_live_integrity_patch_version'] == 'V8_PRE_LIVE_INTEGRITY_V2.0.1'
           assert c['v8_main_scanner_output_contract_version'] == 'V8_MAIN_SCANNER_OUTPUT_V1.3'
+          assert c['v8_discovery_source_package_version'] == '8.4.0'
+          assert c['v8_source_bundle']['complete'] is True
+          assert c['v8_main_scanner_failure_isolation_version'] == 'V8_MAIN_SCANNER_FAILURE_ISOLATION_V1.0'
+          assert c['v8_4_discovery_consistency_version'] == 'V8_4_DISCOVERY_CONSISTENCY_V1.0'
           assert getattr(runtime.ProductionStockAgent, 'v8_secondary_priority_recheck_version', None) == 'V8_SECONDARY_PRIORITY_RECHECK_V2.0.5'
           assert any('V8SecondaryPriorityRecheckProductionStockAgent' in item for item in c['mro'])
+          assert any('V8MainScannerFailureIsolationProductionStockAgent' in item for item in c['mro'])
+          assert any('V84DiscoveryConsistencyProductionStockAgent' in item for item in c['mro'])
+          scanner_schema = coach._scanner_schema()
+          props = scanner_schema['properties']['candidates']['items']['properties']
+          ledger = scanner_schema['properties']['coverage_ledger']['items']['properties']
+          assert props['signal_strength']['enum'] == ['HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']
+          assert ledger['signal_strength']['enum'] == ['HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']
+          assert 'EARLY_TRAJECTORY' in props['recommended_discovery_action']['enum']
           pr = PromptRuntime(canonical_prompt_library_root())
           assert 'INSUFFICIENT_EVIDENCE' in pr.registry['$defs']['MarketContextGateReceipt']['properties']['decision']['enum']
           assert 'INSUFFICIENT_EVIDENCE' in pr.registry['$defs']['SectorGateReceipt']['properties']['decision']['enum']
           assert 'INSUFFICIENT_EVIDENCE' not in pr.registry['$defs']['MarketExecutionGateReceipt']['properties']['decision']['enum']
           print(c['runtime_class'])
+          PY
+      - name: Verify canonical V8.4 files are not EOL-normalized
+        shell: bash
+        run: |
+          git check-attr text -- prompts/v8_4/*.md
+          python - <<'PY'
+          from stock_agent.v8_main_source_fidelity import source_bundle_status
+          s = source_bundle_status()
+          assert s['complete'], s
+          assert s['scanner_count'] == 13 and s['pass_count'] == 13
+          assert s['core_count'] == 2 and s['core_pass_count'] == 2
           PY
       - name: Verify read-only CI
         if: always()

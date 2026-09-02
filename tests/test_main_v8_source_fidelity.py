@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import subprocess
@@ -11,96 +10,72 @@ from pathlib import Path
 from unittest import mock
 
 from stock_agent import v8_main_source_fidelity as fidelity
-from stock_agent.providers import ProviderRequestError
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class MainV8SourceFidelityTests(unittest.TestCase):
+class MainV84SourceFidelityTests(unittest.TestCase):
     def setUp(self):
         fidelity._SOURCE_STATE.clear()
+        fidelity._CORE_STATE.clear()
+        fidelity._LOCK_CACHE = None
 
-    @staticmethod
-    def _write_fixture(root: Path, scanner_id: str, body: bytes, expected_sha: str | None = None):
-        filename = fidelity._SCANNER_FILES[scanner_id]
-        source_root = root / "sources"
-        source_root.mkdir(parents=True, exist_ok=True)
-        (source_root / filename).write_bytes(body)
-        expected = expected_sha or hashlib.sha256(body).hexdigest()
-        manifest = {
-            "files": [{"file": f"prompts/v8/{filename}", "sha256": expected, "bytes": len(body)}]
-        }
-        manifest_path = root / "SOURCE_MANIFEST.json"
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
-        return source_root, manifest_path, expected
+    def test_packaged_v84_bundle_is_complete_and_exact(self):
+        status = fidelity.source_bundle_status()
+        self.assertTrue(status["complete"], status)
+        self.assertEqual(status["package_version"], "8.4.0")
+        self.assertEqual(status["scanner_count"], 13)
+        self.assertEqual(status["pass_count"], 13)
+        self.assertEqual(status["core_count"], 2)
+        self.assertEqual(status["core_pass_count"], 2)
+        for row in status["all_rows"]:
+            self.assertEqual(row["status"], "PASS", row)
+            self.assertEqual(row["actual_sha256"], row["expected_sha256"], row)
+            self.assertEqual(row["actual_bytes"], row["expected_bytes"], row)
 
-    def test_missing_source_is_never_pass(self):
+    def test_v84_lock_replaces_legacy_scanner_hash_authority(self):
+        fidelity.prepare_v8_4_source_lock()
+        from stock_agent import v8_main_discovery_coach as coach
+        entries = fidelity._scanner_entries()
+        self.assertEqual(set(entries), set(coach.V8_SCANNERS))
+        for scanner_id, entry in entries.items():
+            self.assertEqual(coach.V8_SCANNERS[scanner_id]["sha256"], entry["sha256"])
+            self.assertEqual(coach.V8_SCANNERS[scanner_id]["source_package_version"], "8.4.0")
+
+    def test_crlf_mutation_is_hash_mismatch_not_silently_normalized(self):
+        entry = fidelity._scanner_entries()["02"]
+        canonical = (ROOT / "prompts" / "v8_4" / entry["path"]).read_bytes()
+        self.assertIn(b"\n", canonical)
+        mutated = canonical.replace(b"\n", b"\r\n")
+        self.assertNotEqual(mutated, canonical)
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            manifest = root / "SOURCE_MANIFEST.json"
-            filename = fidelity._SCANNER_FILES["02"]
-            manifest.write_text(json.dumps({"files": [{"file": f"prompts/v8/{filename}", "sha256": "a" * 64}]}), encoding="utf-8")
-            with mock.patch.object(fidelity, "_MANIFEST", manifest), mock.patch.dict(os.environ, {"V8_SOURCE_ROOT": str(root / "missing")}, clear=False), mock.patch.object(fidelity, "_archive_candidates", return_value=[]):
+            override = Path(tmp)
+            (override / entry["path"]).write_bytes(mutated)
+            with mock.patch.dict(os.environ, {"V8_SOURCE_ROOT": str(override)}, clear=False):
                 result = fidelity.resolve_scanner_source("02")
-            self.assertEqual(result["status"], "MISSING")
-            self.assertIsNone(result["source_text"])
+        self.assertEqual(result["status"], "HASH_MISMATCH")
+        self.assertNotEqual(result["actual_sha256"], result["expected_sha256"])
 
-    def test_hash_mismatch_is_never_pass(self):
+    def test_missing_packaged_sources_are_never_reconstructed(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            source_root, manifest, _ = self._write_fixture(root, "02", b"canonical body", expected_sha="b" * 64)
-            with mock.patch.object(fidelity, "_MANIFEST", manifest), mock.patch.dict(os.environ, {"V8_SOURCE_ROOT": str(source_root)}, clear=False), mock.patch.object(fidelity, "_archive_candidates", return_value=[]):
-                result = fidelity.resolve_scanner_source("02")
-            self.assertEqual(result["status"], "HASH_MISMATCH")
-            self.assertIsNone(result["source_text"])
+            missing = Path(tmp) / "missing"
+            with mock.patch.object(fidelity, "_PACKAGED_ROOT", missing), mock.patch.dict(os.environ, {"V8_SOURCE_ROOT": str(missing)}, clear=False), mock.patch.object(fidelity, "_archive_candidates", return_value=[]):
+                status = fidelity.source_bundle_status()
+        self.assertFalse(status["complete"])
+        self.assertEqual(status["pass_count"], 0)
+        self.assertEqual(status["core_pass_count"], 0)
+        self.assertTrue(all(row["status"] == "MISSING" for row in status["all_rows"]))
 
-    def test_exact_bytes_are_loaded_only_after_sha_match(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            body = "# CANONICAL V8 02\n실제 원문 전략\n".encode("utf-8")
-            source_root, manifest, expected = self._write_fixture(root, "02", body)
-            with mock.patch.object(fidelity, "_MANIFEST", manifest), mock.patch.dict(os.environ, {"V8_SOURCE_ROOT": str(source_root)}, clear=False), mock.patch.object(fidelity, "_archive_candidates", return_value=[]):
-                result = fidelity.resolve_scanner_source("02")
-            self.assertEqual(result["status"], "PASS")
-            self.assertEqual(result["actual_sha256"], expected)
-            self.assertEqual(result["source_text"].encode("utf-8"), body)
+    def test_compiled_scanner_prompt_contains_all_three_authorities(self):
+        body, meta = fidelity._compiled_body("14")
+        self.assertIn("# Discovery Common Contract — V8.4", body)
+        self.assertIn("# Canonical Strategy Universe Rules — V8.4", body)
+        self.assertIn("# 14. Discovery Scanner Profile — V8.4", body)
+        self.assertEqual(meta["source_package_version"], "8.4.0")
+        self.assertEqual(meta["scanner_source_sha256"], fidelity._scanner_entries()["14"]["sha256"])
 
-    def test_scanner_provider_receives_runtime_universe_packet(self):
-        captured = {}
-        def fake_base(_self, request):
-            captured.update(request)
-            return {"ok": True}, {"provider": "fake"}
-
-        fidelity._SOURCE_STATE["02"] = {
-            "status": "PASS", "expected_sha256": "a" * 64,
-            "actual_sha256": "a" * 64, "source_text": "source",
-        }
-        request = {
-            "prompt_id": "v8_main.discovery_02",
-            "messages": [{"role": "system", "content": "canonical source"}],
-            "runtime_input": {"candidate_universe_packet": [{"security_id": "ABC"}]},
-        }
-        with mock.patch.object(fidelity, "_BASE_PROVIDER_CALL", fake_base):
-            result, _ = fidelity._scanner_provider_call(object(), request)
-        self.assertEqual(result, {"ok": True})
-        self.assertEqual(captured["runtime_input"], {})
-        joined = "\n".join(str(item.get("content") or "") for item in captured["messages"])
-        self.assertIn("V8_CANONICAL_SCANNER_RUNTIME_INPUT", joined)
-        self.assertIn("ABC", joined)
-
-    def test_missing_source_blocks_even_before_provider_specific_logic(self):
-        fidelity._SOURCE_STATE["02"] = {
-            "status": "MISSING", "expected_sha256": "a" * 64,
-            "actual_sha256": None, "source_text": None,
-        }
-        with self.assertRaises(ProviderRequestError):
-            fidelity._scanner_provider_call(object(), {"prompt_id": "v8_main.discovery_02", "messages": [], "runtime_input": {}})
-
-    def test_production_composition_has_no_lite_runtime(self):
-        # Production composition mutates module-level class bindings by design.
-        # Probe it in a child process so this test cannot contaminate unrelated
-        # legacy/base-runtime tests in unittest discovery order.
+    def test_production_composition_is_self_contained_v84_and_no_lite_runtime(self):
         code = (
             "import json; "
             "from stock_agent.production import production_composition; "
@@ -111,8 +86,12 @@ class MainV8SourceFidelityTests(unittest.TestCase):
         self.assertTrue(value["main_is_sole_discovery_owner"])
         self.assertFalse(value["python_scanner_routing_authority"])
         self.assertFalse(value["discovery_recall_lite_runtime_installed"])
-        self.assertEqual(value["v8_main_source_fidelity_version"], fidelity.V8_MAIN_SOURCE_FIDELITY_VERSION)
-        self.assertIn("V8MainSourceGateProductionStockAgent", " ".join(value["mro"]))
+        self.assertEqual(value["v8_discovery_source_package_version"], "8.4.0")
+        self.assertTrue(value["v8_source_bundle"]["complete"])
+        mro = " ".join(value["mro"])
+        self.assertIn("V8MainSourceGateProductionStockAgent", mro)
+        self.assertIn("V8MainScannerFailureIsolationProductionStockAgent", mro)
+        self.assertIn("V84DiscoveryConsistencyProductionStockAgent", mro)
 
 
 if __name__ == "__main__":

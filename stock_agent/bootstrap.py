@@ -75,21 +75,32 @@ def install_production_stack() -> None:
     from .v8_evidence_origin_v19 import install_v8_evidence_origin_v19
     install_v8_evidence_origin_v19()
 
-    # Prepare scanner-specific schema/output contracts before source-backed
-    # prompts are registered. This also repairs the malformed 63-char Scanner
-    # 08 source hash that made COMPLETE impossible in the previous coach.
+    # Prepare the legacy scanner-specific schema extensions first. The active
+    # V8.4 source lock is applied immediately afterwards and is the sole
+    # production source-identity authority. Legacy hard-coded SHA repairs may
+    # not survive this boundary.
     from .v8_main_discovery_integrity import (
         prepare_v8_main_discovery_integrity,
         install_pre_coach_discovery_integrity,
     )
     prepare_v8_main_discovery_integrity()
+    from .v8_main_source_fidelity import (
+        prepare_v8_4_source_lock,
+        install_v8_main_source_fidelity,
+    )
+    prepare_v8_4_source_lock()
     from .v8_main_scanner_contract_v12 import prepare_v8_main_scanner_contract_v12
     prepare_v8_main_scanner_contract_v12()
 
-    # Exact-source V8 MAIN scanners. Missing/mismatched source bytes are
+    # Exact-source V8.4 MAIN scanners. Missing/mismatched source bytes are
     # non-evaluable input failures, never reconstructed/paraphrased substitutes.
-    from .v8_main_source_fidelity import install_v8_main_source_fidelity
     install_v8_main_source_fidelity()
+
+    # A provider/schema/transport failure in one scanner round is isolated as
+    # DATA_BLOCKED so the remaining scanners continue. Source-integrity failure
+    # stays run-global and fail-closed. Install this *below* the round executor.
+    from .v8_main_scanner_failure_isolation import install_v8_main_scanner_failure_isolation
+    install_v8_main_scanner_failure_isolation()
 
     # The pre-coach executor is deliberately the coach's parent. Therefore
     # every 02..14 super() call is split into auditable model-executed rounds.
@@ -129,6 +140,12 @@ def install_production_stack() -> None:
     from .v8_pre_live_integrity_v201 import install_v8_pre_live_integrity_v201
     install_v8_pre_live_integrity_v201()
 
+    # V8.4 is the active Discovery semantic authority. Apply this only after
+    # all legacy/v20 schema extensions so HIGH/MEDIUM/LOW, EARLY_TRAJECTORY,
+    # signal metrics and universe-scope claims are internally consistent.
+    from .v8_4_discovery_consistency import install_v8_4_discovery_consistency
+    install_v8_4_discovery_consistency()
+
     from .shadow_health_v19 import install_shadow_health_v19
     install_shadow_health_v19()
     from .shadow_pointer_guard import install_shadow_pointer_guard
@@ -149,8 +166,10 @@ def production_composition() -> dict[str, Any]:
     from .v8_main_discovery_integrity import V8_MAIN_DISCOVERY_INTEGRITY_VERSION, SCANNER_OUTPUT_CONTRACT_VERSION
     from .v8_main_discovery_post_v11 import V8_MAIN_DISCOVERY_POST_VERSION
     from .v8_main_scanner_contract_v12 import V8_MAIN_SCANNER_CONTRACT_VERSION
-    from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, source_bundle_status
+    from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, V8_4_PACKAGE_VERSION, source_bundle_status
     from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
+    from .v8_main_scanner_failure_isolation import V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION
+    from .v8_4_discovery_consistency import V8_4_DISCOVERY_CONSISTENCY_VERSION
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
     from .v8_market_discovery_admission import V8_MARKET_DISCOVERY_ADMISSION_VERSION
     from .v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
@@ -188,7 +207,10 @@ def production_composition() -> dict[str, Any]:
         "v8_pre_live_integrity_patch_version": V8_PRE_LIVE_INTEGRITY_PATCH_VERSION,
         "v8_main_forensic_audit_sha256": getattr(cls, "v8_main_forensic_audit_sha256", V8_MAIN_FORENSIC_AUDIT_SHA256),
         "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
+        "v8_discovery_source_package_version": V8_4_PACKAGE_VERSION,
         "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
+        "v8_main_scanner_failure_isolation_version": getattr(cls, "v8_main_scanner_failure_isolation_version", V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION),
+        "v8_4_discovery_consistency_version": getattr(cls, "v8_4_discovery_consistency_version", V8_4_DISCOVERY_CONSISTENCY_VERSION),
         "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
         "v8_market_discovery_admission_version": getattr(cls, "v8_market_discovery_admission_version", V8_MARKET_DISCOVERY_ADMISSION_VERSION),
         "v8_source_bundle": source_bundle_status(),
