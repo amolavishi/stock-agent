@@ -1,18 +1,14 @@
-"""V8.4 Discovery semantic-consistency bridge.
+"""V8.4 Discovery semantic-consistency validator.
 
 V8.4 source text is authoritative for scanner semantics while the legacy MAIN
 runtime owns orchestration and final DiscoveryCandidateSetV2. This module
-eliminates contract drift between those layers without weakening any grade,
-SEC, PRE-A, execution, sizing, or broker gate.
+eliminates contract drift between those layers without becoming a new runtime
+owner and without weakening any grade, SEC, PRE-A, execution, sizing, or broker
+gate.
 
-Key invariants:
-- scanner signal_strength uses HIGH/MEDIUM/LOW/UNKNOWN;
-- scanner action admits EARLY_TRAJECTORY in addition to legacy watch/deep states;
-- metrics/search-stop count V8.4 signals correctly;
-- EARLY_TRAJECTORY is preserved as scanner evidence debt when the legacy final
-  stock_scout schema cannot represent it directly;
-- FULL_STRATEGY_UNIVERSE_SCAN is never claimed without an explicit Python-
-  validated universe manifest.
+The final V8PreLiveSentinelProductionStockAgent remains the outermost runtime
+class. This module patches that composed class in place after all legacy/v20
+schema extensions are installed.
 """
 from __future__ import annotations
 
@@ -24,11 +20,10 @@ from typing import Any
 from . import runtime as runtime_module
 from . import v8_main_discovery_coach as coach
 from . import v8_main_discovery_integrity as integrity
-from . import v8_pre_live_integrity_v20 as v20
 from . import v8_main_source_fidelity as source_fidelity
 from .models import RunMode, RunOutcome
 
-V8_4_DISCOVERY_CONSISTENCY_VERSION = "V8_4_DISCOVERY_CONSISTENCY_V1.0"
+V8_4_DISCOVERY_CONSISTENCY_VERSION = "V8_4_DISCOVERY_CONSISTENCY_V1.1"
 V8_4_SIGNAL_STRENGTH = ("HIGH", "MEDIUM", "LOW", "UNKNOWN")
 V8_4_SCANNER_ACTIONS = (
     "DEEP_DIVE_NOW",
@@ -105,8 +100,7 @@ def _validated_full_scope_manifest(raw: dict[str, Any]) -> tuple[bool, list[str]
     for key in required_true:
         if manifest.get(key) is not True:
             failures.append(key.upper())
-    unresolved = int(manifest.get("material_unresolved_eligibility_count") or 0)
-    if unresolved != 0:
+    if int(manifest.get("material_unresolved_eligibility_count") or 0) != 0:
         failures.append("MATERIAL_UNRESOLVED_ELIGIBILITY")
     return not failures, failures
 
@@ -142,8 +136,15 @@ def install_v8_4_discovery_consistency() -> type:
     if _INSTALLED or getattr(current, "v8_4_discovery_consistency_version", None) == V8_4_DISCOVERY_CONSISTENCY_VERSION:
         return current
 
+    # V8.4 source lock must have overwritten all legacy SHA compatibility
+    # values before this validator can become active.
+    source_fidelity.prepare_v8_4_source_lock()
+    for scanner_id, entry in source_fidelity._scanner_entries().items():
+        if coach.V8_SCANNERS[scanner_id]["sha256"] != entry["sha256"]:
+            raise RuntimeError(f"V8.4 source identity drift after source lock: {scanner_id}")
+
     # Capture the fully hardened V2.0.1 schema/metrics after all legacy
-    # compatibility patches, then change only the V8.4 semantic mismatches.
+    # compatibility patches, then change only V8.4 semantic mismatches.
     _BASE_SCHEMA = coach._scanner_schema
     _BASE_ROUND_METRICS = integrity._round_metrics
     coach._scanner_schema = scanner_schema_v84  # type: ignore[assignment]
@@ -163,75 +164,77 @@ be silently converted to EXCLUDE. This compatibility mapping has zero grade,
 PRE-A, execution, sizing, or broker authority.
 """
 
-    class V84DiscoveryConsistencyProductionStockAgent(current):  # type: ignore[misc,valid-type]
-        v8_4_discovery_consistency_version = V8_4_DISCOVERY_CONSISTENCY_VERSION
+    base_work_stage = current._work_stage
+    base_run_strict = current._run_strict
 
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            super().__init__(*args, **kwargs)
-            self._v8_4_consistency_state: dict[str, dict[str, Any]] = {}
-
-        def _work_stage(self, run: Any, stage: str, prompt_id: str, payload: dict[str, Any], subject_id: str | None, dependency_ids: list[str], context_inputs: dict[str, Any] | None = None):
-            result = super()._work_stage(run, stage, prompt_id, payload, subject_id, dependency_ids, context_inputs)
-            if stage != "STOCK_DISCOVERY" or prompt_id != "workflow.stock_scout" or not isinstance(result, dict):
-                return result
-            raw = payload.get("raw_input") if isinstance(payload, dict) else {}
-            raw = raw if isinstance(raw, dict) else {}
-            full_ok, failures = _validated_full_scope_manifest(raw)
-            scope = "FULL_STRATEGY_UNIVERSE_SCAN" if full_ok else (
-                "BOUNDED_STRATEGY_UNIVERSE_SCAN" if bool(raw.get("universe")) else "PARTIAL_STRATEGY_UNIVERSE_SCAN"
-            )
-            early_ids, high_early = _scanner_early_trajectory(self.store, run.run_id)
-            final_ids = {
-                str(item.get("security_id") or "").upper()
-                for item in (result.get("candidates") or [])
-                if isinstance(item, dict) and item.get("security_id")
-            }
-            unresolved_high = sorted(high_early - final_ids)
-            state = {
-                "scope_claim": scope,
-                "full_scope_validated": full_ok,
-                "full_scope_failures": failures,
-                "early_trajectory_ids": sorted(early_ids)[:500],
-                "high_early_trajectory_ids": sorted(high_early)[:500],
-                "unresolved_high_early_trajectory_ids": unresolved_high[:500],
-                "grade_authority": False,
-                "version": V8_4_DISCOVERY_CONSISTENCY_VERSION,
-            }
-            self._v8_4_consistency_state[run.run_id] = state
-            self.store.record_funnel(run.run_id, "V8_4_UNIVERSE_SCOPE", len(raw.get("universe") or []), state)
-            self.store.record_funnel(run.run_id, "V8_4_EARLY_TRAJECTORY_LEDGER", len(early_ids), {
-                "security_ids": sorted(early_ids)[:500],
-                "high_research_value_ids": sorted(high_early)[:500],
-                "unresolved_high_research_value_ids": unresolved_high[:500],
-                "legacy_final_schema_mapping": "WATCH_STAGE0_ONLY_AT_FINAL_AGGREGATION_BOUNDARY",
-                "silent_exclude_forbidden": True,
-                "grade_authority": False,
-                "version": V8_4_DISCOVERY_CONSISTENCY_VERSION,
-            })
+    def work_stage_v84(self: Any, run: Any, stage: str, prompt_id: str, payload: dict[str, Any], subject_id: str | None, dependency_ids: list[str], context_inputs: dict[str, Any] | None = None):
+        result = base_work_stage(self, run, stage, prompt_id, payload, subject_id, dependency_ids, context_inputs)
+        if stage != "STOCK_DISCOVERY" or prompt_id != "workflow.stock_scout" or not isinstance(result, dict):
             return result
+        raw = payload.get("raw_input") if isinstance(payload, dict) else {}
+        raw = raw if isinstance(raw, dict) else {}
+        full_ok, failures = _validated_full_scope_manifest(raw)
+        scope = "FULL_STRATEGY_UNIVERSE_SCAN" if full_ok else (
+            "BOUNDED_STRATEGY_UNIVERSE_SCAN" if bool(raw.get("universe")) else "PARTIAL_STRATEGY_UNIVERSE_SCAN"
+        )
+        early_ids, high_early = _scanner_early_trajectory(self.store, run.run_id)
+        final_ids = {
+            str(item.get("security_id") or "").upper()
+            for item in (result.get("candidates") or [])
+            if isinstance(item, dict) and item.get("security_id")
+        }
+        unresolved_high = sorted(high_early - final_ids)
+        state = {
+            "scope_claim": scope,
+            "full_scope_validated": full_ok,
+            "full_scope_failures": failures,
+            "early_trajectory_ids": sorted(early_ids)[:500],
+            "high_early_trajectory_ids": sorted(high_early)[:500],
+            "unresolved_high_early_trajectory_ids": unresolved_high[:500],
+            "grade_authority": False,
+            "version": V8_4_DISCOVERY_CONSISTENCY_VERSION,
+        }
+        states = getattr(self, "_v8_4_consistency_state", None)
+        if not isinstance(states, dict):
+            states = {}
+            setattr(self, "_v8_4_consistency_state", states)
+        states[run.run_id] = state
+        self.store.record_funnel(run.run_id, "V8_4_UNIVERSE_SCOPE", len(raw.get("universe") or []), state)
+        self.store.record_funnel(run.run_id, "V8_4_EARLY_TRAJECTORY_LEDGER", len(early_ids), {
+            "security_ids": sorted(early_ids)[:500],
+            "high_research_value_ids": sorted(high_early)[:500],
+            "unresolved_high_research_value_ids": unresolved_high[:500],
+            "legacy_final_schema_mapping": "WATCH_STAGE0_ONLY_AT_FINAL_AGGREGATION_BOUNDARY",
+            "silent_exclude_forbidden": True,
+            "grade_authority": False,
+            "version": V8_4_DISCOVERY_CONSISTENCY_VERSION,
+        })
+        return result
 
-        def _run_strict(self, mode: RunMode, data: dict[str, Any]) -> RunOutcome:
-            outcome = super()._run_strict(mode, data)
-            run_id = str(getattr(outcome, "run_id", "") or "")
-            state = self._v8_4_consistency_state.get(run_id) if run_id else None
-            if not isinstance(state, dict):
-                return outcome
-            unresolved = list(state.get("unresolved_high_early_trajectory_ids") or [])
-            current_outcome = str(getattr(outcome, "outcome", "") or "")
-            if unresolved and current_outcome in {
-                "NO_QUALIFIED_CANDIDATE",
-                "NO_TRADE",
-                "QUALIFIED_CANDIDATE_POOL",
-                "NOT_EVALUABLE_DISCOVERY_COVERAGE",
-                "NOT_EVALUABLE_MAIN_V8_SEARCH_DEBT",
-            }:
-                terminal = "NOT_EVALUABLE_MAIN_V8_SEARCH_DEBT"
-                reason = f"unresolved HIGH EARLY_TRAJECTORY research debt={len(unresolved)}"
-                with self.store.transaction() as db:
-                    db.execute("UPDATE runs SET status='FAILED', outcome=? WHERE run_id=?", (terminal, run_id))
-                return replace(outcome, outcome=terminal, blocked_reason=reason)
+    def run_strict_v84(self: Any, mode: RunMode, data: dict[str, Any]) -> RunOutcome:
+        outcome = base_run_strict(self, mode, data)
+        run_id = str(getattr(outcome, "run_id", "") or "")
+        state = getattr(self, "_v8_4_consistency_state", {}).get(run_id) if run_id else None
+        if not isinstance(state, dict):
             return outcome
+        unresolved = list(state.get("unresolved_high_early_trajectory_ids") or [])
+        current_outcome = str(getattr(outcome, "outcome", "") or "")
+        if unresolved and current_outcome in {
+            "NO_QUALIFIED_CANDIDATE",
+            "NO_TRADE",
+            "QUALIFIED_CANDIDATE_POOL",
+            "NOT_EVALUABLE_DISCOVERY_COVERAGE",
+            "NOT_EVALUABLE_MAIN_V8_SEARCH_DEBT",
+        }:
+            terminal = "NOT_EVALUABLE_MAIN_V8_SEARCH_DEBT"
+            reason = f"unresolved HIGH EARLY_TRAJECTORY research debt={len(unresolved)}"
+            with self.store.transaction() as db:
+                db.execute("UPDATE runs SET status='FAILED', outcome=? WHERE run_id=?", (terminal, run_id))
+            return replace(outcome, outcome=terminal, blocked_reason=reason)
+        return outcome
 
-    runtime_module.ProductionStockAgent = V84DiscoveryConsistencyProductionStockAgent
+    current._work_stage = work_stage_v84  # type: ignore[assignment]
+    current._run_strict = run_strict_v84  # type: ignore[assignment]
+    current.v8_4_discovery_consistency_version = V8_4_DISCOVERY_CONSISTENCY_VERSION
     _INSTALLED = True
-    return V84DiscoveryConsistencyProductionStockAgent
+    return current

@@ -107,7 +107,7 @@ class V84DiscoveryStructuralConsistencyTests(unittest.TestCase):
         self.assertFalse(isolation._isolatable(ProviderRequestError("V8 source integrity failure scanner=02", retryable=False)))
         self.assertTrue(isolation._isolatable(ProviderRequestError("HTTP 500", retryable=True, status_code=500)))
 
-    def test_composed_production_schema_and_versions_are_v84_consistent(self):
+    def test_composed_production_schema_versions_and_final_sentinel_are_v84_consistent(self):
         code = r'''
 import json
 from stock_agent.production import production_composition
@@ -124,6 +124,7 @@ print(json.dumps({
   "isolation": c["v8_main_scanner_failure_isolation_version"],
   "consistency": c["v8_4_discovery_consistency_version"],
   "source_complete": c["v8_source_bundle"]["complete"],
+  "runtime_class": c["runtime_class"],
   "mro": c["mro"],
 }, sort_keys=True))
 '''
@@ -136,9 +137,10 @@ print(json.dumps({
         self.assertEqual(data["isolation"], isolation.V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION)
         self.assertEqual(data["consistency"], consistency.V8_4_DISCOVERY_CONSISTENCY_VERSION)
         self.assertTrue(data["source_complete"])
+        self.assertEqual(data["runtime_class"], "V8PreLiveSentinelProductionStockAgent")
         joined = " ".join(data["mro"])
         self.assertIn("V8MainScannerFailureIsolationProductionStockAgent", joined)
-        self.assertIn("V84DiscoveryConsistencyProductionStockAgent", joined)
+        self.assertNotIn("V84DiscoveryConsistencyProductionStockAgent", joined)
 
 
 if __name__ == "__main__":

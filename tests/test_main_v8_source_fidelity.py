@@ -75,7 +75,7 @@ class MainV84SourceFidelityTests(unittest.TestCase):
         self.assertEqual(meta["source_package_version"], "8.4.0")
         self.assertEqual(meta["scanner_source_sha256"], fidelity._scanner_entries()["14"]["sha256"])
 
-    def test_production_composition_is_self_contained_v84_and_no_lite_runtime(self):
+    def test_production_composition_is_self_contained_v84_and_preserves_final_sentinel(self):
         code = (
             "import json; "
             "from stock_agent.production import production_composition; "
@@ -88,10 +88,12 @@ class MainV84SourceFidelityTests(unittest.TestCase):
         self.assertFalse(value["discovery_recall_lite_runtime_installed"])
         self.assertEqual(value["v8_discovery_source_package_version"], "8.4.0")
         self.assertTrue(value["v8_source_bundle"]["complete"])
+        self.assertEqual(value["runtime_class"], "V8PreLiveSentinelProductionStockAgent")
         mro = " ".join(value["mro"])
         self.assertIn("V8MainSourceGateProductionStockAgent", mro)
         self.assertIn("V8MainScannerFailureIsolationProductionStockAgent", mro)
-        self.assertIn("V84DiscoveryConsistencyProductionStockAgent", mro)
+        self.assertNotIn("V84DiscoveryConsistencyProductionStockAgent", mro)
+        self.assertEqual(value["v8_4_discovery_consistency_version"], "V8_4_DISCOVERY_CONSISTENCY_V1.1")
 
 
 if __name__ == "__main__":

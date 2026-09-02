@@ -66,6 +66,7 @@ jobs:
           from stock_agent.paths import canonical_prompt_library_root
           from stock_agent.prompt_runtime import PromptRuntime
           c = production_composition()
+          assert c['runtime_class'] == 'V8PreLiveSentinelProductionStockAgent'
           assert c['main_is_sole_discovery_owner'] is True
           assert c['python_scanner_routing_authority'] is False
           assert c['discovery_recall_lite_runtime_installed'] is False
@@ -79,11 +80,11 @@ jobs:
           assert c['v8_discovery_source_package_version'] == '8.4.0'
           assert c['v8_source_bundle']['complete'] is True
           assert c['v8_main_scanner_failure_isolation_version'] == 'V8_MAIN_SCANNER_FAILURE_ISOLATION_V1.0'
-          assert c['v8_4_discovery_consistency_version'] == 'V8_4_DISCOVERY_CONSISTENCY_V1.0'
+          assert c['v8_4_discovery_consistency_version'] == 'V8_4_DISCOVERY_CONSISTENCY_V1.1'
           assert getattr(runtime.ProductionStockAgent, 'v8_secondary_priority_recheck_version', None) == 'V8_SECONDARY_PRIORITY_RECHECK_V2.0.5'
           assert any('V8SecondaryPriorityRecheckProductionStockAgent' in item for item in c['mro'])
           assert any('V8MainScannerFailureIsolationProductionStockAgent' in item for item in c['mro'])
-          assert any('V84DiscoveryConsistencyProductionStockAgent' in item for item in c['mro'])
+          assert not any('V84DiscoveryConsistencyProductionStockAgent' in item for item in c['mro'])
           scanner_schema = coach._scanner_schema()
           props = scanner_schema['properties']['candidates']['items']['properties']
           ledger = scanner_schema['properties']['coverage_ledger']['items']['properties']
