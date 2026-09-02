@@ -42,6 +42,7 @@ jobs:
           tests.test_v8_pre_live_integrity_v203_v204
           tests.test_v8_pre_live_production_wiring
           tests.test_v8_secondary_priority_recheck_v205
+          tests.test_v8_discovery_receipt_contract_v206
           tests.test_v8_grade_quota_firewall
           tests.test_v8_market_discovery_admission
           tests.test_v8_main_recall_conservation
@@ -61,6 +62,8 @@ jobs:
           python - <<'PY'
           from stock_agent.production import production_composition
           from stock_agent import runtime
+          from stock_agent.paths import canonical_prompt_library_root
+          from stock_agent.prompt_runtime import PromptRuntime
           c = production_composition()
           assert c['main_is_sole_discovery_owner'] is True
           assert c['python_scanner_routing_authority'] is False
@@ -74,6 +77,10 @@ jobs:
           assert c['v8_main_scanner_output_contract_version'] == 'V8_MAIN_SCANNER_OUTPUT_V1.3'
           assert getattr(runtime.ProductionStockAgent, 'v8_secondary_priority_recheck_version', None) == 'V8_SECONDARY_PRIORITY_RECHECK_V2.0.5'
           assert any('V8SecondaryPriorityRecheckProductionStockAgent' in item for item in c['mro'])
+          pr = PromptRuntime(canonical_prompt_library_root())
+          assert 'INSUFFICIENT_EVIDENCE' in pr.registry['$defs']['MarketContextGateReceipt']['properties']['decision']['enum']
+          assert 'INSUFFICIENT_EVIDENCE' in pr.registry['$defs']['SectorGateReceipt']['properties']['decision']['enum']
+          assert 'INSUFFICIENT_EVIDENCE' not in pr.registry['$defs']['MarketExecutionGateReceipt']['properties']['decision']['enum']
           print(c['runtime_class'])
           PY
       - name: Verify read-only CI
