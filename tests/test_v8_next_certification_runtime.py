@@ -182,13 +182,17 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
             observed_at="2026-09-01T00:00:00Z",
             payload={
                 "content": "research",
-                "evidence_items": [{
-                    "source_class": "SEC",
-                    "source_url": "https://www.sec.gov/Archives/fixture",
-                    "source_observed_at": "2026-09-01T00:00:00Z",
-                    "title": "issuer filing",
-                    "content": "independent source-backed material fact",
-                }],
+                "evidence_items": [
+                    {
+                        "origin_artifact_id": f"SOURCE-{i}",
+                        "source_class": "SEC" if i == 1 else "COMPANY_IR",
+                        "source_url": f"https://example.com/source-{i}",
+                        "source_observed_at": "2026-09-01T00:00:00Z",
+                        "title": f"independent source {i}",
+                        "content": f"independent source-backed material fact {i}",
+                    }
+                    for i in range(1, 5)
+                ],
             },
         )
 
@@ -215,14 +219,13 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
             if prompt_id == cert.PROMPT_STEP16:
                 audit = robust_atomic_audit()
                 mapping = origin._ORIGIN_CONTEXT.get()
-                source_eids = [eid for eid in evidence_ids if eid in mapping]
-                if not source_eids:
-                    raise AssertionError("fixture must materialize at least one Python evidence origin")
-                eid = source_eids[0]
-                for claim in audit["atomic_claims"]:
+                source_eids = sorted(eid for eid in evidence_ids if eid in mapping)
+                if len(source_eids) < len(audit["atomic_claims"]):
+                    raise AssertionError("A-grade fixture must materialize multiple independent Python evidence origins")
+                for claim, eid in zip(audit["atomic_claims"], source_eids):
                     claim["evidence_ids"] = [eid]
                     claim["independent_origin_ids"] = [mapping[eid]]
-                audit["value_realization_bridge_1_8w"]["evidence_ids"] = [eid]
+                audit["value_realization_bridge_1_8w"]["evidence_ids"] = [source_eids[0]]
                 return audit
             if prompt_id == cert.PROMPT_STEP17_5:
                 return robust_assumption_audit()
@@ -245,8 +248,11 @@ class V8NextCertificationRuntimeTests(unittest.TestCase):
             cert.STEP17_5_STAGE, cert.STEP18_STAGE, cert.STEP20_STAGE,
         ):
             self.assertIsNotNone(agent.store.get_stage_result(run.run_id, stage, "XYZ"), stage)
+        atomic = json.loads(agent.store.get_stage_result(run.run_id, cert.STEP16_STAGE, "XYZ")["result_json"])
         certification = json.loads(agent.store.get_stage_result(run.run_id, cert.STEP18_STAGE, "XYZ")["result_json"])
         validator = json.loads(agent.store.get_stage_result(run.run_id, cert.STEP20_STAGE, "XYZ")["result_json"])
+        self.assertGreaterEqual(atomic.get("python_independent_origin_count", 0), 2)
+        self.assertEqual(atomic.get("evidence_independence"), "PASS")
         self.assertEqual(certification["research_grade"], "A")
         self.assertEqual(certification.get("active_grade_caps"), [])
         self.assertEqual(validator["route"], "PASS")
