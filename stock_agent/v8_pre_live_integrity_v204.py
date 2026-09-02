@@ -17,6 +17,7 @@ from . import v8_pre_live_integrity_v20 as v20
 V8_PRE_LIVE_SENTINEL_PATCH_VERSION = "V8_PRE_LIVE_SENTINEL_V2.0.4"
 _INSTALLED = False
 _BASE_CONTRACT = v20._contract_complete_v20
+_BASE_SENTINEL_SAMPLE = v20._sentinel_sample_v20
 
 _ACTION_TO_DISPOSITION = {
     "DEEP_DIVE_NOW": "RETAINED",
@@ -87,9 +88,9 @@ def contract_complete_v204(scanner_id: str, result: dict[str, Any], expected_cou
 
 
 def sentinel_sample_v204(results: list[dict[str, Any]], limit: int = 30) -> list[dict[str, Any]]:
-    # Start from the V2.0 disposition-stratified pool, then guarantee scanner
-    # family representation wherever that scanner has a non-retained row.
-    pool = v20._sentinel_sample_v20(results, limit=max(10000, int(limit)))
+    # Start from the captured V2.0 disposition-stratified pool, then guarantee
+    # scanner-family representation wherever that scanner has a non-retained row.
+    pool = _BASE_SENTINEL_SAMPLE(results, limit=max(10000, int(limit)))
     by_scanner: dict[str, list[dict[str, Any]]] = {}
     for item in pool:
         by_scanner.setdefault(str(item.get("scanner_id") or ""), []).append(item)
@@ -111,6 +112,30 @@ def sentinel_sample_v204(results: list[dict[str, Any]], limit: int = 30) -> list
         selected.append(item)
         seen.add(key)
     return selected[:limit]
+
+
+def sentinel_exact_coverage_v204(expected: list[dict[str, Any]], sentinel: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    expected_pairs = {(str(item.get("security_id") or ""), str(item.get("scanner_id") or "")) for item in expected}
+    audits = [item for item in (sentinel.get("audits") or []) if isinstance(item, dict)]
+    actual_pairs = [(str(item.get("security_id") or ""), str(item.get("scanner_id") or "")) for item in audits]
+    actual_set = set(actual_pairs)
+    exact = (
+        str(sentinel.get("status") or "") == "COMPLETE"
+        and sentinel.get("grade_authority") is False
+        and len(actual_pairs) == len(expected_pairs)
+        and len(actual_set) == len(actual_pairs)
+        and actual_set == expected_pairs
+    )
+    return exact, {
+        "expected_sample_size": len(expected_pairs),
+        "returned_audit_count": len(actual_pairs),
+        "exact_sample_coverage": exact,
+        "missing_pairs": sorted(expected_pairs - actual_set)[:100],
+        "unexpected_pairs": sorted(actual_set - expected_pairs)[:100],
+        "duplicate_audit_rows": len(actual_pairs) - len(actual_set),
+        "scanner_ids_expected": sorted({scanner for _, scanner in expected_pairs}),
+        "scanner_ids_returned": sorted({scanner for _, scanner in actual_pairs}),
+    }
 
 
 def _parse_stage_payload(row: Any) -> dict[str, Any]:
@@ -150,33 +175,16 @@ def install_v8_pre_live_integrity_v204() -> type:
                 if value:
                     round_results.append(value)
             expected = sentinel_sample_v204(round_results, 30)
-            expected_pairs = {(str(item.get("security_id") or ""), str(item.get("scanner_id") or "")) for item in expected}
-
             sentinel_row = self.store.get_stage_result(run.run_id, "V8_MAIN_REJECTION_SENTINEL", None)
             sentinel = _parse_stage_payload(sentinel_row)
-            audits = [item for item in (sentinel.get("audits") or []) if isinstance(item, dict)]
-            actual_pairs = [(str(item.get("security_id") or ""), str(item.get("scanner_id") or "")) for item in audits]
-            exact = (
-                str(sentinel.get("status") or "") == "COMPLETE"
-                and sentinel.get("grade_authority") is False
-                and len(actual_pairs) == len(expected_pairs)
-                and len(set(actual_pairs)) == len(actual_pairs)
-                and set(actual_pairs) == expected_pairs
-            )
+            exact, details = sentinel_exact_coverage_v204(expected, sentinel)
             state = getattr(self, "_v8_main_discovery_state", {}).get(run.run_id)
             if isinstance(state, dict):
                 state["sentinel_complete"] = bool(exact)
                 if not exact:
                     state["systematic_false_negative_risk"] = True
-            self.store.record_funnel(run.run_id, "V8_MAIN_SENTINEL_COVERAGE_VALIDATION", len(expected_pairs), {
-                "expected_sample_size": len(expected_pairs),
-                "returned_audit_count": len(actual_pairs),
-                "exact_sample_coverage": exact,
-                "missing_pairs": sorted(expected_pairs - set(actual_pairs))[:100],
-                "unexpected_pairs": sorted(set(actual_pairs) - expected_pairs)[:100],
-                "duplicate_audit_rows": len(actual_pairs) - len(set(actual_pairs)),
-                "scanner_ids_expected": sorted({scanner for _, scanner in expected_pairs}),
-                "scanner_ids_returned": sorted({scanner for _, scanner in actual_pairs}),
+            self.store.record_funnel(run.run_id, "V8_MAIN_SENTINEL_COVERAGE_VALIDATION", int(details["expected_sample_size"]), {
+                **details,
                 "grade_authority": False,
                 "version": V8_PRE_LIVE_SENTINEL_PATCH_VERSION,
             })
