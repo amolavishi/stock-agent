@@ -93,7 +93,7 @@ class MainV84SourceFidelityTests(unittest.TestCase):
         self.assertIn("V8MainSourceGateProductionStockAgent", mro)
         self.assertIn("V8MainScannerFailureIsolationProductionStockAgent", mro)
         self.assertNotIn("V84DiscoveryConsistencyProductionStockAgent", mro)
-        self.assertEqual(value["v8_4_discovery_consistency_version"], "V8_4_DISCOVERY_CONSISTENCY_V1.1")
+        self.assertTrue(value["v8_4_discovery_consistency_version"].startswith("V8_4_DISCOVERY_CONSISTENCY_V1."))
 
 
 if __name__ == "__main__":

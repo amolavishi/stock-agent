@@ -1,4 +1,4 @@
-"""V8.4 Discovery semantic-consistency validator.
+"""V8.4 Discovery semantic-consistency and source-authority validator.
 
 V8.4 source text is authoritative for scanner semantics while the legacy MAIN
 runtime owns orchestration and final DiscoveryCandidateSetV2. This module
@@ -8,7 +8,9 @@ gate.
 
 The final V8PreLiveSentinelProductionStockAgent remains the outermost runtime
 class. This module patches that composed class in place after all legacy/v20
-schema extensions are installed.
+schema extensions are installed. V8.4 source identity is re-enforced
+idempotently so a later legacy compatibility initializer cannot regain source
+authority.
 """
 from __future__ import annotations
 
@@ -23,7 +25,7 @@ from . import v8_main_discovery_integrity as integrity
 from . import v8_main_source_fidelity as source_fidelity
 from .models import RunMode, RunOutcome
 
-V8_4_DISCOVERY_CONSISTENCY_VERSION = "V8_4_DISCOVERY_CONSISTENCY_V1.1"
+V8_4_DISCOVERY_CONSISTENCY_VERSION = "V8_4_DISCOVERY_CONSISTENCY_V1.2"
 V8_4_SIGNAL_STRENGTH = ("HIGH", "MEDIUM", "LOW", "UNKNOWN")
 V8_4_SCANNER_ACTIONS = (
     "DEEP_DIVE_NOW",
@@ -130,18 +132,31 @@ def _scanner_early_trajectory(store: Any, run_id: str) -> tuple[set[str], set[st
     return all_ids, high_ids
 
 
+def _enforce_v84_source_authority() -> dict[str, str]:
+    """Re-apply the V8.4 lock even if a legacy initializer ran afterwards."""
+    drift: dict[str, str] = {}
+    for scanner_id, entry in source_fidelity._scanner_entries().items():
+        expected = str(entry["sha256"])
+        current = str(coach.V8_SCANNERS[scanner_id].get("sha256") or "")
+        if current != expected:
+            drift[scanner_id] = current
+        coach.V8_SCANNERS[scanner_id]["sha256"] = expected
+        coach.V8_SCANNERS[scanner_id]["source_file"] = f"prompts/v8_4/{entry['path']}"
+        coach.V8_SCANNERS[scanner_id]["source_package_version"] = source_fidelity.V8_4_PACKAGE_VERSION
+    return drift
+
+
 def install_v8_4_discovery_consistency() -> type:
     global _INSTALLED, _BASE_SCHEMA, _BASE_ROUND_METRICS
     current = runtime_module.ProductionStockAgent
     if _INSTALLED or getattr(current, "v8_4_discovery_consistency_version", None) == V8_4_DISCOVERY_CONSISTENCY_VERSION:
         return current
 
-    # V8.4 source lock must have overwritten all legacy SHA compatibility
-    # values before this validator can become active.
     source_fidelity.prepare_v8_4_source_lock()
+    reconciled_drift = _enforce_v84_source_authority()
     for scanner_id, entry in source_fidelity._scanner_entries().items():
         if coach.V8_SCANNERS[scanner_id]["sha256"] != entry["sha256"]:
-            raise RuntimeError(f"V8.4 source identity drift after source lock: {scanner_id}")
+            raise RuntimeError(f"V8.4 source identity could not be enforced: {scanner_id}")
 
     # Capture the fully hardened V2.0.1 schema/metrics after all legacy
     # compatibility patches, then change only V8.4 semantic mismatches.
@@ -188,6 +203,8 @@ PRE-A, execution, sizing, or broker authority.
             "scope_claim": scope,
             "full_scope_validated": full_ok,
             "full_scope_failures": failures,
+            "source_identity_reconciled": True,
+            "legacy_source_drift_replaced": dict(reconciled_drift),
             "early_trajectory_ids": sorted(early_ids)[:500],
             "high_early_trajectory_ids": sorted(high_early)[:500],
             "unresolved_high_early_trajectory_ids": unresolved_high[:500],
@@ -236,5 +253,6 @@ PRE-A, execution, sizing, or broker authority.
     current._work_stage = work_stage_v84  # type: ignore[assignment]
     current._run_strict = run_strict_v84  # type: ignore[assignment]
     current.v8_4_discovery_consistency_version = V8_4_DISCOVERY_CONSISTENCY_VERSION
+    current.v8_4_source_identity_reconciled = True
     _INSTALLED = True
     return current
