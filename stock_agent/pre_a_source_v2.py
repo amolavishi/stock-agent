@@ -68,8 +68,6 @@ def _readonly_connection(database: Path) -> sqlite3.Connection:
     path = database.expanduser().resolve()
     if not path.is_file():
         raise PreASourceError(f"PRIMARY SQLite database does not exist: {path}")
-    # SQLite URI read-only mode prevents the PRE-A process from creating,
-    # migrating, journaling, or otherwise mutating PRIMARY state.
     uri = "file:" + path.as_posix() + "?mode=ro"
     connection = sqlite3.connect(uri, uri=True)
     connection.row_factory = sqlite3.Row
@@ -86,8 +84,6 @@ def _certification_grade(value: dict[str, Any] | None) -> str | None:
     source = str(value.get("source_sha256") or "")
     authority = value.get("grade_authority")
     if source == V8_NEXT_POLICY_HASH:
-        # Reuse the same fail-closed validator as PRIMARY qualification. PRE-A
-        # must never implement a weaker shadow copy of Step18 semantics.
         from .v8_next_successor import validate_v8_next_certification
         grade, failures = validate_v8_next_certification(value)
         if failures:
@@ -99,6 +95,30 @@ def _certification_grade(value: dict[str, Any] | None) -> str | None:
         grade = str(value.get("research_grade") or value.get("grade") or "").upper()
         return grade if grade in {"A", "A-", "B+", "B"} else None
     return None
+
+
+def _authoritative_certification_grade(
+    cert_entry: dict[str, Any] | None,
+    stages: dict[str, dict[str, Any]],
+) -> str | None:
+    """Return only a persisted successful certification chain.
+
+    For active V8 NEXT receipts, Step20 must also have persisted a successful
+    PASS validator route. A model/decision grade can never substitute for this
+    chain. Frozen legacy Step18 receipts retain their historical compatibility.
+    """
+    if not isinstance(cert_entry, dict) or str(cert_entry.get("status") or "") != "SUCCEEDED":
+        return None
+    certification = cert_entry.get("result") if isinstance(cert_entry.get("result"), dict) else None
+    grade = _certification_grade(certification)
+    if grade is None or not isinstance(certification, dict):
+        return None
+    if str(certification.get("source_sha256") or "") == V8_NEXT_POLICY_HASH:
+        validator_entry = stages.get("V8_RESEARCH_VALIDATOR") or {}
+        validator = validator_entry.get("result") if isinstance(validator_entry.get("result"), dict) else {}
+        if str(validator_entry.get("status") or "") != "SUCCEEDED" or str(validator.get("route") or "") != "PASS":
+            return None
+    return grade
 
 
 def build_pre_a_source_bundle(database: Path, shadow_run_id: str) -> dict[str, Any]:
@@ -130,9 +150,12 @@ def build_pre_a_source_bundle(database: Path, shadow_run_id: str) -> dict[str, A
             value = _decode(row["decision_json"])
             if not isinstance(value, dict):
                 raise PreASourceError(f"malformed ShadowDecision for {row['ticker']}")
+            expected_hash = str(row["decision_hash"] or "")
+            if not expected_hash or canonical_hash(value) != expected_hash:
+                raise PreASourceError(f"ShadowDecision hash mismatch for {row['ticker']}")
             decisions[str(row["ticker"]).upper()] = {
                 "value": value,
-                "decision_hash": str(row["decision_hash"]),
+                "decision_hash": expected_hash,
             }
 
         stage_map: dict[str, dict[str, dict[str, Any]]] = {}
@@ -168,10 +191,12 @@ def build_pre_a_source_bundle(database: Path, shadow_run_id: str) -> dict[str, A
             decision_grade = str(decision.get("grade") or "").upper()
             if decision_grade not in _ALLOWED_GRADES:
                 decision_grade = ""
-            cert_grade = _certification_grade(certification)
-            source_grade = decision_grade or cert_grade or "UNKNOWN"
-            # If both exist they must agree.  PRE-A must never reconcile a
-            # disagreement by guessing which grade is newer/correct.
+            cert_grade = _authoritative_certification_grade(cert_entry, stages)
+
+            # PRE-A source grade is certification-owned. ShadowDecision is an
+            # output/projection and may be displayed, but can never manufacture
+            # a B+ source grade when Step18/20 is missing or invalid.
+            source_grade = cert_grade or "UNKNOWN"
             grade_conflict = bool(decision_grade and cert_grade and decision_grade != cert_grade)
             if grade_conflict:
                 source_grade = "UNKNOWN"
@@ -179,6 +204,9 @@ def build_pre_a_source_bundle(database: Path, shadow_run_id: str) -> dict[str, A
             candidates.append({
                 "ticker": ticker,
                 "source_grade": source_grade,
+                "certification_grade": cert_grade or "UNKNOWN",
+                "certification_valid": cert_grade is not None,
+                "decision_grade_non_authoritative": decision_grade or "UNKNOWN",
                 "grade_conflict": grade_conflict,
                 "decision": decision,
                 "decision_hash": decision_entry.get("decision_hash"),
