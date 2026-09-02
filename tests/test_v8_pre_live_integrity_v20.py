@@ -18,7 +18,6 @@ from stock_agent.v8_pre_live_integrity_v20 import (
     _finalize_atomic_audit_v20,
     _provider_exhaustion_v20,
     _sentinel_sample_v20,
-    _source_lineage_v20,
     _system_rounds_v20,
     _technical_receipt_usable,
     _upsert_secondary_v20,
@@ -27,6 +26,10 @@ from stock_agent.v8_pre_live_integrity_v201 import (
     V8_PRE_LIVE_INTEGRITY_PATCH_VERSION,
     default_scanner_v201,
     scanner_schema_v201,
+)
+from stock_agent.v8_pre_live_integrity_v202 import (
+    V8_PRE_LIVE_EVIDENCE_ORIGIN_PATCH_VERSION,
+    source_lineage_v202,
 )
 
 
@@ -122,45 +125,45 @@ class V8PreLiveIntegrityTests(unittest.TestCase):
         self.assertTrue(payload["recheck_trigger_fired"])
         self.assertEqual(payload["recheck_trigger_evidence_ids"], ["E-NEW"])
 
-    def test_same_aggregate_parent_different_text_is_one_conservative_origin_family(self):
-        a, hash_a = _source_lineage_v20(
+    def test_unproven_bundle_children_collapse_to_one_origin_even_if_text_or_class_differs(self):
+        a, hash_a = source_lineage_v202(
             {"source_class": "NEWS", "title": "A", "content": "first story"}, "artifact-bundle-1"
         )
-        b, hash_b = _source_lineage_v20(
-            {"source_class": "NEWS", "title": "B", "content": "different reprint"}, "artifact-bundle-1"
+        b, hash_b = source_lineage_v202(
+            {"source_class": "IR", "title": "B", "content": "different reprint"}, "artifact-bundle-1"
         )
         self.assertEqual(a, b)
         self.assertNotEqual(hash_a, hash_b)
 
     def test_explicit_origin_artifacts_remain_distinct(self):
-        a, _ = _source_lineage_v20(
+        a, _ = source_lineage_v202(
             {"source_class": "NEWS", "origin_artifact_id": "publisher-A", "content": "same"}, "bundle"
         )
-        b, _ = _source_lineage_v20(
+        b, _ = source_lineage_v202(
             {"source_class": "NEWS", "origin_artifact_id": "publisher-B", "content": "same"}, "bundle"
         )
         self.assertNotEqual(a, b)
 
     @staticmethod
-    def atomic_draft(e1="E1", e2="E2", groups=("G1", "G2")):
+    def atomic_draft(groups=("G1", "G2")):
         return {
             "status": "COMPLETE",
             "atomic_claims": [
                 {
                     "claim_id": "C1", "statement": "claim 1", "verification_status": "VERIFIED",
                     "economic_event_id": "EVENT-1", "independent_evidence_group": groups[0],
-                    "evidence_ids": [e1], "independent_origin_ids": [],
+                    "evidence_ids": ["E1"], "independent_origin_ids": [],
                 },
                 {
                     "claim_id": "C2", "statement": "claim 2", "verification_status": "VERIFIED",
                     "economic_event_id": "EVENT-2", "independent_evidence_group": groups[1],
-                    "evidence_ids": [e2], "independent_origin_ids": [],
+                    "evidence_ids": ["E2"], "independent_origin_ids": [],
                 },
             ],
             "evidence_independence": "PASS",
             "duplicate_economic_event_ids": [],
             "critical_unknowns": [],
-            "value_realization_bridge_1_8w": {"status": "ROBUST", "summary": "bridge", "evidence_ids": [e1]},
+            "value_realization_bridge_1_8w": {"status": "ROBUST", "summary": "bridge", "evidence_ids": ["E1"]},
             "probability_provenance": "DATA_BACKED",
             "grade_authority": False,
         }
@@ -284,18 +287,24 @@ class V8PreLiveIntegrityTests(unittest.TestCase):
         self.assertTrue(_technical_receipt_usable({"evaluation_status": "PASS", "rsi": 48.2}))
 
     def test_production_composition_installs_pre_live_layer_without_weak_parallel_runtime(self):
-        code = (
-            "import json; from stock_agent.production import production_composition; "
-            "c=production_composition(); print(json.dumps({"
-            "'v':c.get('v8_pre_live_integrity_version'),'p':c.get('v8_pre_live_integrity_patch_version'),"
-            "'o':c.get('v8_main_scanner_output_contract_version'),'weak':c.get('discovery_recall_lite_runtime_installed')""}))"
-        )
+        code = """
+import json
+from stock_agent.production import production_composition
+c = production_composition()
+print(json.dumps({
+    "v": c.get("v8_pre_live_integrity_version"),
+    "p": c.get("v8_pre_live_integrity_patch_version"),
+    "o": c.get("v8_main_scanner_output_contract_version"),
+    "weak": c.get("discovery_recall_lite_runtime_installed"),
+}))
+"""
         completed = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
         data = json.loads(completed.stdout.strip().splitlines()[-1])
         self.assertEqual(data["v"], "V8_PRE_LIVE_INTEGRITY_V2.0")
         self.assertEqual(data["p"], V8_PRE_LIVE_INTEGRITY_PATCH_VERSION)
         self.assertEqual(data["o"], SCANNER_OUTPUT_CONTRACT_VERSION)
         self.assertFalse(data["weak"])
+        self.assertEqual(V8_PRE_LIVE_EVIDENCE_ORIGIN_PATCH_VERSION, "V8_PRE_LIVE_EVIDENCE_ORIGIN_V2.0.2")
 
 
 if __name__ == "__main__":
