@@ -97,17 +97,18 @@ class SecondaryPriorityRecheckTests(unittest.TestCase):
         self.assertFalse(provider.last_secondary_priority_recheck["broad_budget_reduced"])
         self.assertEqual(provider.last_secondary_priority_recheck["base_probe_limit"], 1000)
 
-    def test_production_composition_installs_recheck_layer(self):
+    def test_production_composition_installs_recheck_inside_final_sentinel(self):
         code = (
-            "import json; from stock_agent.production import production_composition; "
-            "c=production_composition(); print(json.dumps({'v':c.get('v8_secondary_priority_recheck_version'),"
-            "'weak':c.get('discovery_recall_lite_runtime_installed'),'cls':c.get('runtime_class')}))"
+            "import json; from stock_agent.production import production_composition; from stock_agent import runtime; "
+            "c=production_composition(); print(json.dumps({'v':getattr(runtime.ProductionStockAgent,'v8_secondary_priority_recheck_version',None),"
+            "'weak':c.get('discovery_recall_lite_runtime_installed'),'cls':c.get('runtime_class'),'mro':c.get('mro')}))"
         )
         completed = subprocess.run([sys.executable, "-c", code], text=True, capture_output=True, check=True)
         data = json.loads(completed.stdout.strip().splitlines()[-1])
         self.assertEqual(data["v"], V8_SECONDARY_PRIORITY_RECHECK_VERSION)
         self.assertFalse(data["weak"])
-        self.assertEqual(data["cls"], "V8SecondaryPriorityRecheckProductionStockAgent")
+        self.assertEqual(data["cls"], "V8PreLiveSentinelProductionStockAgent")
+        self.assertTrue(any("V8SecondaryPriorityRecheckProductionStockAgent" in item for item in data["mro"]))
 
 
 if __name__ == "__main__":
