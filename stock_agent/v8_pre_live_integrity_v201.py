@@ -2,8 +2,8 @@
 
 Preserves the scanner-specific V1.2 conditional schema while adding V1.3 full
 coverage-ledger proof, removes a possible default-payload recursion, and chains
-the final conservative evidence-origin patch.  This module adds no discovery,
-grade, PRE-A, execution, or broker authority.
+the conservative evidence-origin / sentinel semantic patches.  This module adds
+no discovery, grade, PRE-A, execution, or broker authority.
 """
 from __future__ import annotations
 
@@ -93,5 +93,9 @@ def install_v8_pre_live_integrity_v201() -> None:
     coach._scanner_schema = scanner_schema_v201  # type: ignore[assignment]
     integrity._integrity_default_scanner = default_scanner_v201  # type: ignore[assignment]
     from .v8_pre_live_integrity_v202 import install_v8_pre_live_integrity_v202
+    from .v8_pre_live_integrity_v203 import install_v8_pre_live_integrity_v203
+    from .v8_pre_live_integrity_v204 import install_v8_pre_live_integrity_v204
     install_v8_pre_live_integrity_v202()
+    install_v8_pre_live_integrity_v203()
+    install_v8_pre_live_integrity_v204()
     _INSTALLED = True
