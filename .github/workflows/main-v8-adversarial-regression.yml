@@ -38,6 +38,7 @@ jobs:
           tests.test_main_v8_source_fidelity
           tests.test_v8_4_discovery_consistency
           tests.test_v8_system_scenario_matrix
+          tests.test_v8_semantic_core_v22
           tests.test_v8_main_discovery_integrity
           tests.test_v8_main_failure_injection_t1_t16
           tests.test_v8_pre_live_integrity_v20
@@ -84,6 +85,7 @@ jobs:
           assert c['v8_main_scanner_failure_isolation_version'] == 'V8_MAIN_SCANNER_FAILURE_ISOLATION_V1.0'
           assert c['v8_4_discovery_consistency_version'].startswith('V8_4_DISCOVERY_CONSISTENCY_V1.')
           assert c['v8_system_semantics_version'] == 'V8_SYSTEM_SEMANTICS_V2.1'
+          assert c['v8_semantic_core_version'] == 'V8_SEMANTIC_CORE_V2.2'
           assert getattr(runtime.ProductionStockAgent, 'v8_secondary_priority_recheck_version', None) == 'V8_SECONDARY_PRIORITY_RECHECK_V2.0.5'
           assert getattr(runtime.ProductionStockAgent, 'v8_4_source_identity_reconciled', None) is True
           assert any('V8SecondaryPriorityRecheckProductionStockAgent' in item for item in c['mro'])
