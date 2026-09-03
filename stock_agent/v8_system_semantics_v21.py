@@ -1,33 +1,27 @@
-"""End-to-end semantic state guard for V8 MAIN / V8 NEXT.
+"""End-to-end semantic compatibility layer for V8 MAIN / V8 NEXT.
 
-This module fixes contradictions that only become visible when a candidate is
-followed from Discovery through Step18/20 and into Shadow/PRE-A.  Evaluation
-completeness and investment conclusion are orthogonal: B+, B and EXCLUDE are
-valid completed evaluations even though only A/A- can be execution candidates.
+V2.1 remains a compatibility API, but candidate-conservation authority is now
+implemented by the canonical V2.2 semantic core.  Keeping one derivation path
+prevents the legacy helper from reintroducing engineering/evidence failure as
+investment rejection when imported directly or through a different bootstrap
+order.
 """
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from . import hunt_integrity_v18 as v18
 from . import runtime as runtime_module
-from . import v8_next_certification as cert
 from . import v8_next_successor as successor
 from . import v8_primary
-from .models import GateDecision
 
 V8_SYSTEM_SEMANTICS_VERSION = "V8_SYSTEM_SEMANTICS_V2.1"
 _INSTALLED = False
 _VALID_RESEARCH_GRADES = {"A", "A-", "B+", "B", "EXCLUDE"}
-_INCOMPLETE_STATES = {
-    "ENGINEERING_FAILURE", "PROVIDER_FAILURE", "NOT_EVALUATED",
-    "EVIDENCE_DEBT", "SOURCE_EXHAUSTED",
-}
 
-# PRE-A is downstream of Step18 and therefore must be blind input to Step16/17/
-# 17.5/18 exactly like Discovery rank/score.  Make this property independent of
-# bootstrap order: v8_blind_packet reads these module-global sets dynamically.
+# PRE-A is downstream of Step18 and therefore must be blind input to
+# certification.  These legacy sets remain populated for compatibility; V2.2
+# owns the canonical complete forbidden-key registry.
 _PRE_A_BLIND_KEYS = {
     "pre_a_status", "pre_a_metadata", "promotion_readiness", "a_trajectory",
     "pre_a_readiness", "trajectory_status", "pre_a_high", "pre_a_candidate",
@@ -38,7 +32,7 @@ v8_primary._BLIND_KEYS.update(_PRE_A_BLIND_KEYS)
 
 
 def validated_research_grade(payload: dict[str, Any] | None) -> str | None:
-    """Return all valid Step18 conclusions, including EXCLUDE."""
+    """Return every valid completed Step18 conclusion, including EXCLUDE."""
     if not isinstance(payload, dict):
         return None
     source = str(payload.get("source_sha256") or "")
@@ -64,7 +58,7 @@ def certification_terminal_state(
     expectation_gap_pass: bool,
     has_evidence_debt: bool,
 ) -> tuple[str, str]:
-    """Map completion and investment conclusion without conflating them."""
+    """Compatibility mapping; evaluation completeness and grade are orthogonal."""
     route = str(step20_route or "")
     if grade in _VALID_RESEARCH_GRADES:
         if route != "PASS":
@@ -83,127 +77,18 @@ def certification_terminal_state(
     return "NOT_EVALUATED", "NO_TERMINAL_STATE"
 
 
-def _latest_payload(store: Any, run_id: str, stage: str, sid: str) -> dict[str, Any] | None:
-    row = store.get_stage_result(run_id, stage, sid)
-    if not row or row.get("status") != "SUCCEEDED":
-        return None
-    try:
-        value = json.loads(row.get("result_json") or "{}")
-    except (TypeError, ValueError):
-        return None
-    return value if isinstance(value, dict) else None
-
-
 def candidate_conservation_v21(self: Any, run_id: str) -> list[dict[str, Any]]:
-    """Conserve every discovered candidate using orthogonal evaluation/grade semantics."""
-    discovery_row = self.store.get_stage_result(run_id, "STOCK_DISCOVERY", None)
-    if not discovery_row or discovery_row.get("status") != "SUCCEEDED":
-        return []
-    try:
-        discovery = json.loads(discovery_row.get("result_json") or "{}")
-    except (TypeError, ValueError):
-        return []
-    candidates = discovery.get("candidates") if isinstance(discovery, dict) else []
-    ledger: list[dict[str, Any]] = []
+    """Delegate to the single canonical V2.2 conservation implementation.
 
-    for candidate in candidates or []:
-        if not isinstance(candidate, dict) or not candidate.get("security_id"):
-            continue
-        sid = str(candidate["security_id"])
-        action = str(candidate.get("recommended_discovery_action") or "EXCLUDE")
-        rows = self.store.list_stage_results(run_id, sid)
-        values: dict[str, dict[str, Any]] = {}
-        dependencies: set[str] = set()
-        for row in rows:
-            try:
-                value = json.loads(row.get("result_json") or "{}")
-            except (TypeError, ValueError):
-                value = {}
-            if isinstance(value, dict):
-                values[str(row.get("stage"))] = value
-            try:
-                dependencies.update(str(item) for item in json.loads(row.get("dependency_ids_json") or "[]"))
-            except (TypeError, ValueError):
-                pass
-
-        state, reason = "NOT_EVALUATED", "NO_TERMINAL_STATE"
-        if action == "EXCLUDE":
-            state, reason = "REJECT", "DISCOVERY_EXCLUDE"
-        elif action in {"WATCH_STAGE0", "WATCH_RESET"}:
-            state, reason = "NEXT_STAGE", action
-        elif "CANDIDATE_ENGINEERING_FAILURE" in values or sid in getattr(self, "_v18_candidate_failures", {}):
-            failure = values.get("CANDIDATE_ENGINEERING_FAILURE") or getattr(self, "_v18_candidate_failures", {}).get(sid) or {}
-            state, reason = "ENGINEERING_FAILURE", str(failure.get("failed_stage") or failure.get("stage") or "CANDIDATE_STAGE")
-        elif any(stage in values for stage in ("RESEARCH_PROVIDER_FAILURE", "SEC_PROVIDER_FAILURE", "SEC_STALE_DATA")):
-            failed_stage = next(stage for stage in ("RESEARCH_PROVIDER_FAILURE", "SEC_PROVIDER_FAILURE", "SEC_STALE_DATA") if stage in values)
-            state, reason = "PROVIDER_FAILURE", failed_stage
-        else:
-            terminal_gate = False
-            for gate_stage in ("STAGE_GATE", "CAPITAL_PRESCREEN_GATE", "CATALYST_GATE", "EXPECTATION_GAP_GATE"):
-                value = values.get(gate_stage) or {}
-                decision = str(value.get("decision") or "")
-                if decision == GateDecision.REJECT.value:
-                    state, reason, terminal_gate = "REJECT", gate_stage, True
-                    break
-                if decision == GateDecision.INSUFFICIENT_EVIDENCE.value and gate_stage in {"CATALYST_GATE", "EXPECTATION_GAP_GATE"}:
-                    if values.get("SOURCE_EXHAUSTED"):
-                        state, reason = "SOURCE_EXHAUSTED", gate_stage
-                    else:
-                        state, reason = "NOT_EVALUATED", gate_stage
-                    terminal_gate = True
-                    break
-
-            if not terminal_gate:
-                audit = values.get("ADVERSARIAL_AUDIT") or {}
-                if str(audit.get("audit_recommendation") or "") in {"CHALLENGES_CONTINUATION", "AUDIT_EVIDENCE_INCOMPLETE"}:
-                    state, reason = "REJECT", "ADVERSARIAL_AUDIT"
-                else:
-                    certification = values.get(cert.STEP18_STAGE) or _latest_payload(self.store, run_id, cert.STEP18_STAGE, sid)
-                    grade = validated_research_grade(certification)
-                    validator = values.get(cert.STEP20_STAGE) or _latest_payload(self.store, run_id, cert.STEP20_STAGE, sid) or {}
-                    route = str(validator.get("route") or "")
-                    expectation_pass = str((values.get("EXPECTATION_GAP_GATE") or {}).get("decision") or "") == GateDecision.PASS.value
-                    state, reason = certification_terminal_state(
-                        grade,
-                        step20_route=route,
-                        expectation_gap_pass=expectation_pass,
-                        has_evidence_debt=bool(values.get("EVIDENCE_DEBT")),
-                    )
-
-        receipt = {
-            "state": state,
-            "reason": reason,
-            "discovery_action": action,
-            "security_id": sid,
-            "version": V8_SYSTEM_SEMANTICS_VERSION,
-            "evaluation_complete": state not in _INCOMPLETE_STATES,
-        }
-        dep_ids = sorted(dependencies)
-        run = self.store.get_run(run_id)
-        self.store.record_stage_result(
-            run_id, None, "CANDIDATE_CONSERVATION", sid, receipt, dep_ids,
-            self.store.dependency_hash(dep_ids, run.rule_set.rule_set_hash, run.context_manifest_hash),
-            self.store.current_evidence_epoch_for(dep_ids),
-        )
-        ledger.append(receipt)
-
-    counts: dict[str, int] = {}
-    for item in ledger:
-        counts[item["state"]] = counts.get(item["state"], 0) + 1
-    self.store.record_funnel(run_id, "CANDIDATE_CONSERVATION_TOTAL", len(ledger), {
-        "states": counts,
-        "version": V8_SYSTEM_SEMANTICS_VERSION,
-        "evaluation_and_grade_are_orthogonal": True,
-    })
-    for state in sorted(_INCOMPLETE_STATES | set(counts)):
-        self.store.record_funnel(run_id, f"CONSERVATION_{state}", counts.get(state, 0), {
-            "version": V8_SYSTEM_SEMANTICS_VERSION,
-        })
-    return ledger
+    Import is deliberately local to avoid a module-load cycle: V2.2 imports
+    ``validated_research_grade`` from this compatibility module.
+    """
+    from .v8_semantic_core_v22 import candidate_conservation_v22
+    return candidate_conservation_v22(self, run_id)
 
 
 def install_v8_system_semantics_v21() -> type:
-    """Patch semantics in place without creating a new outer authority class."""
+    """Install compatibility hooks in place; no outer authority class."""
     global _INSTALLED
     current = runtime_module.ProductionStockAgent
     if _INSTALLED or getattr(current, "v8_system_semantics_version", None) == V8_SYSTEM_SEMANTICS_VERSION:
