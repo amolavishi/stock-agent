@@ -106,10 +106,14 @@ def _core_entries() -> dict[str, dict[str, Any]]:
 
 
 def prepare_v8_4_source_lock() -> None:
-    """Pin coach scanner identities to the V8.4 lock before schemas are built."""
+    """Reassert exact V8.4 manifest identity on every call.
+
+    ``_PREPARED`` records that initialization has occurred; it is not an
+    authorization to skip source-identity reconciliation. Imported function
+    references and repeated bootstrap calls therefore converge to the same
+    canonical manifest state.
+    """
     global _PREPARED
-    if _PREPARED:
-        return
     for sid, entry in _scanner_entries().items():
         coach.V8_SCANNERS[sid]["sha256"] = str(entry["sha256"])
         coach.V8_SCANNERS[sid]["source_file"] = f"prompts/v8_4/{entry['path']}"

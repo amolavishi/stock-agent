@@ -651,7 +651,13 @@ def install_hunt_integrity_v18() -> None:
                             break
                     if not rejected:
                         audit = values.get("ADVERSARIAL_AUDIT") or {}
-                        if str(audit.get("audit_recommendation") or "") in {"CHALLENGES_CONTINUATION", "AUDIT_EVIDENCE_INCOMPLETE"}:
+                        audit_recommendation = str(audit.get("audit_recommendation") or "")
+                        audit_status = str(audit.get("status") or "")
+                        if bool(audit.get("engineering_failure")):
+                            state, reason = "ENGINEERING_FAILURE", "ADVERSARIAL_AUDIT"
+                        elif audit_recommendation == "AUDIT_EVIDENCE_INCOMPLETE" or audit_status in {"INCOMPLETE", "CONTEXT_INCOMPLETE", "BLOCKED"}:
+                            state, reason = "EVIDENCE_DEBT", "ADVERSARIAL_AUDIT"
+                        elif audit_recommendation == "CHALLENGES_CONTINUATION":
                             state, reason = "REJECT", "ADVERSARIAL_AUDIT"
                         else:
                             cert = values.get("V8_CERTIFICATION") or _certification_payload(self.store, run_id, sid)

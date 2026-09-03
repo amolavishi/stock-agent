@@ -130,13 +130,15 @@ def _integrity_default_scanner(scanner_id: str, screened_count: int) -> dict[str
 
 
 def prepare_v8_main_discovery_integrity() -> None:
-    """Patch dynamic scanner schema before source-backed prompts are registered."""
+    """Patch scanner schema/defaults without owning canonical source identity.
+
+    Source SHA/path/package identity belongs exclusively to
+    ``v8_main_source_fidelity``. This legacy compatibility helper must never
+    mutate source identity, regardless of import or call order.
+    """
     global _PREPARED
     if _PREPARED:
         return
-    # MAIN had a literal 63-character Scanner-08 SHA.  Pin it to the manifest
-    # value so an exact canonical source can actually satisfy the receipt.
-    coach.V8_SCANNERS["08"]["sha256"] = "a1c713679274209b99b7c1e165a2cb2b350d25fd002b70038da1b1aedf9408c4"
     coach._scanner_schema = _integrity_scanner_schema  # type: ignore[assignment]
     coach._default_scanner = _integrity_default_scanner  # type: ignore[assignment]
     _PREPARED = True

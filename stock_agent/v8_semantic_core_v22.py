@@ -230,12 +230,32 @@ def candidate_conservation_v22(self: Any, run_id: str) -> list[dict[str, Any]]:
         values: dict[str, dict[str, Any]] = {}
         dependencies: set[str] = set()
         for row in rows:
+            stage_name = str(row.get("stage") or "")
+            row_status = str(row.get("status") or "")
+            # Failed/incomplete StageResults are engineering/information
+            # receipts, never issuer evidence. Only explicit failure-marker
+            # stages may be parsed while non-SUCCEEDED. All other failed rows
+            # are ignored so a stale ``decision=REJECT`` payload cannot become
+            # an investment rejection. Absence of a successful replacement
+            # remains NOT_EVALUATED/EVIDENCE_DEBT downstream.
+            failure_marker = stage_name in {
+                "CANDIDATE_ENGINEERING_FAILURE",
+                "RESEARCH_PROVIDER_FAILURE",
+                "SEC_PROVIDER_FAILURE",
+                "SEC_STALE_DATA",
+            }
+            if row_status != "SUCCEEDED" and not failure_marker:
+                try:
+                    dependencies.update(str(item) for item in json.loads(row.get("dependency_ids_json") or "[]"))
+                except (TypeError, ValueError):
+                    pass
+                continue
             try:
                 value = json.loads(row.get("result_json") or "{}")
             except (TypeError, ValueError):
                 value = {}
             if isinstance(value, dict):
-                values[str(row.get("stage") or "")] = value
+                values[stage_name] = value
             try:
                 dependencies.update(str(item) for item in json.loads(row.get("dependency_ids_json") or "[]"))
             except (TypeError, ValueError):
@@ -393,7 +413,12 @@ def build_run_evaluation_proof(agent: Any, run_id: str) -> dict[str, Any]:
         ] if isinstance(discovery, dict) else []
 
     ledger_ids = [str(item.get("security_id") or "") for item in ledger]
-    conservation_complete = len(ledger_ids) == len(discovered_ids) and len(set(ledger_ids)) == len(ledger_ids)
+    conservation_complete = (
+        len(ledger_ids) == len(discovered_ids)
+        and len(set(ledger_ids)) == len(ledger_ids)
+        and len(set(discovered_ids)) == len(discovered_ids)
+        and set(ledger_ids) == set(discovered_ids)
+    )
     engineering_count = sum(item.get("state") in {"ENGINEERING_FAILURE", "DATA_BLOCK"} for item in ledger)
     not_evaluated_count = sum(item.get("state") in {"NOT_EVALUATED", "EVIDENCE_DEBT"} for item in ledger)
     qualified_count = sum(item.get("state") == "PASS" and item.get("evaluation_complete") is True for item in ledger)
