@@ -101,7 +101,10 @@ def _scanner_schema_v13() -> dict[str, Any]:
 
 
 def _default_scanner_v13(scanner_id: str, screened_count: int) -> dict[str, Any]:
-    value = integrity._integrity_default_scanner(scanner_id, screened_count)
+    # Call the captured pre-install implementation, not the module attribute
+    # that this installer replaces with this wrapper. This prevents recursion
+    # and makes installer order deterministic.
+    value = _BASE_INTEGRITY_DEFAULT_SCANNER(scanner_id, screened_count)
     value["coverage_ledger"] = []
     value["output_contract_version"] = SCANNER_OUTPUT_CONTRACT_VERSION
     value["execution_status"] = "PARTIAL"
@@ -659,6 +662,7 @@ missing decision-critical evidence is actually resolved, and must include rechec
     return V8PreLiveIntegrityProductionStockAgent
 
 
+_BASE_INTEGRITY_DEFAULT_SCANNER = integrity._integrity_default_scanner
 _BASE_CONTRACT_COMPLETE = integrity._contract_complete
 _BASE_ROUND_METRICS = integrity._round_metrics
 _BASE_ATOMIC_FINALIZER = next_runtime._finalize_atomic_audit

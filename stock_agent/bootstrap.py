@@ -188,10 +188,11 @@ def production_composition() -> dict[str, Any]:
     from .v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
     from .v8_pre_live_integrity_v20 import V8_PRE_LIVE_INTEGRITY_VERSION
     from .v8_pre_live_integrity_v201 import V8_PRE_LIVE_INTEGRITY_PATCH_VERSION
+    from .models import canonical_hash
 
     cls = runtime.ProductionStockAgent
     mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
-    return {
+    composition = {
         "runtime_module": cls.__module__,
         "runtime_class": cls.__name__,
         "mro": mro,
@@ -235,3 +236,30 @@ def production_composition() -> dict[str, Any]:
         "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
         "shadow_non_evaluable_guard_version": getattr(shadow.DailyShadowRunner, "shadow_non_evaluable_guard_version", None),
     }
+    version_vector = {
+        "runtime_module": composition["runtime_module"],
+        "runtime_class": composition["runtime_class"],
+        "v8_policy_version": composition["v8_policy_version"],
+        "v8_ruleset_hash": composition["v8_ruleset_hash"],
+        "v8_semantic_core_version": composition["v8_semantic_core_version"],
+        "v8_system_semantics_version": composition["v8_system_semantics_version"],
+        "v8_discovery_source_package_version": composition["v8_discovery_source_package_version"],
+        "v8_source_identity_guard_version": composition["v8_source_identity_guard_version"],
+    }
+    composition["production_version_vector"] = version_vector
+    composition["canonical_production_entrypoint"] = (
+        composition["runtime_class"] == "V8PreLiveSentinelProductionStockAgent"
+        and composition["main_is_sole_discovery_owner"] is True
+        and composition["discovery_recall_lite_runtime_installed"] is False
+    )
+    composition["production_composition_valid"] = bool(
+        composition["canonical_production_entrypoint"]
+        and composition["v8_source_bundle"].get("complete") is True
+        and composition["v8_source_identity_guard"].get("complete") is True
+    )
+    composition["production_composition_hash"] = canonical_hash({
+        "mro": mro,
+        "version_vector": version_vector,
+        "canonical_production_entrypoint": composition["canonical_production_entrypoint"],
+    })
+    return composition

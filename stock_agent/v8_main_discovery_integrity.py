@@ -116,6 +116,9 @@ def _integrity_scanner_schema() -> dict[str, Any]:
 
 def _integrity_default_scanner(scanner_id: str, screened_count: int) -> dict[str, Any]:
     value = _ORIGINAL_DEFAULT_SCANNER(scanner_id, screened_count)
+    # Compatibility wrapping must never upgrade an absence-of-model-evidence
+    # fallback into a completed execution receipt.
+    value["execution_status"] = "PARTIAL"
     value.update({
         "output_contract_version": SCANNER_OUTPUT_CONTRACT_VERSION,
         "strategy_contract": {
