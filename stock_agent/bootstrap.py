@@ -110,7 +110,7 @@ def install_production_stack() -> None:
 
     # System-wide post validator aggregates the same round sequence across all
     # 13 scanners. It persists Secondary/Near-Miss state and owns search-stop
-    # semantics; it does not generate candidates or grades.
+    # evidence; final run-state authority is centralized later by semantic core.
     from .v8_main_discovery_post_v11 import install_v8_main_discovery_post_v11
     install_v8_main_discovery_post_v11()
 
@@ -118,40 +118,37 @@ def install_production_stack() -> None:
     install_v8_main_source_gate()
 
     # Preserve strong Discovery names whose technical snapshot is unresolved.
-    # This does not waive Stage/Execution gates; it creates explicit evidence
-    # debt and forbids a false clean NO_TRADE/search-stop conclusion.
     from .v8_main_recall_conservation import install_v8_main_recall_conservation
     install_v8_main_recall_conservation()
 
     # Investment Rules v2.0: partial Market Context may continue Discovery,
-    # while Market Execution remains strict. The proxy preserves canonical
-    # insufficient-evidence receipts and only changes research admission.
+    # while Market Execution remains strict.
     from .v8_market_discovery_admission import install_v8_market_discovery_admission
     install_v8_market_discovery_admission()
 
     from .v8_next_terminal_lineage import install_post_successor_terminal_restore
     install_post_successor_terminal_restore()
 
-    # Final pre-live fail-closed layer. This tightens assessment coverage,
-    # Secondary expiry, evidence-origin diversity, technical evidence debt and
-    # source-exhaustion semantics without adding investment authority.
+    # Final pre-live fail-closed layer and compatibility chain.
     from .v8_pre_live_integrity_v20 import install_v8_pre_live_integrity_v20
     install_v8_pre_live_integrity_v20()
     from .v8_pre_live_integrity_v201 import install_v8_pre_live_integrity_v201
     install_v8_pre_live_integrity_v201()
 
-    # V8.4 is the active Discovery semantic authority. Apply this only after
-    # all legacy/v20 schema extensions so HIGH/MEDIUM/LOW, EARLY_TRAJECTORY,
-    # signal metrics and universe-scope claims are internally consistent.
+    # V8.4 is the active Discovery semantic authority.
     from .v8_4_discovery_consistency import install_v8_4_discovery_consistency
     install_v8_4_discovery_consistency()
 
-    # End-to-end state semantics are patched in place on the final composed
-    # runtime.  This does not add a wrapper/authority class: it only prevents
-    # valid B+/B/EXCLUDE Step18+20 conclusions from being rewritten as
-    # NOT_EVALUATED by the legacy V1.8 conservation/shadow layer.
+    # Preserve valid B+/B/EXCLUDE Step18+20 conclusions before centralization.
     from .v8_system_semantics_v21 import install_v8_system_semantics_v21
     install_v8_system_semantics_v21()
+
+    # Canonical semantic core: patches the final sentinel class in place.  It
+    # centralizes failure meaning, source-exhaustion proof, candidate
+    # conservation, certification blindness and clean-NO_TRADE authorization.
+    # It MUST NOT create a new outer ProductionStockAgent wrapper.
+    from .v8_semantic_core_v22 import install_v8_semantic_core_v22
+    install_v8_semantic_core_v22()
 
     from .shadow_health_v19 import install_shadow_health_v19
     install_shadow_health_v19()
@@ -178,6 +175,7 @@ def production_composition() -> dict[str, Any]:
     from .v8_main_scanner_failure_isolation import V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION
     from .v8_4_discovery_consistency import V8_4_DISCOVERY_CONSISTENCY_VERSION
     from .v8_system_semantics_v21 import V8_SYSTEM_SEMANTICS_VERSION
+    from .v8_semantic_core_v22 import V8_SEMANTIC_CORE_VERSION
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
     from .v8_market_discovery_admission import V8_MARKET_DISCOVERY_ADMISSION_VERSION
     from .v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
@@ -220,6 +218,7 @@ def production_composition() -> dict[str, Any]:
         "v8_main_scanner_failure_isolation_version": getattr(cls, "v8_main_scanner_failure_isolation_version", V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION),
         "v8_4_discovery_consistency_version": getattr(cls, "v8_4_discovery_consistency_version", V8_4_DISCOVERY_CONSISTENCY_VERSION),
         "v8_system_semantics_version": getattr(cls, "v8_system_semantics_version", V8_SYSTEM_SEMANTICS_VERSION),
+        "v8_semantic_core_version": getattr(cls, "v8_semantic_core_version", V8_SEMANTIC_CORE_VERSION),
         "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
         "v8_market_discovery_admission_version": getattr(cls, "v8_market_discovery_admission_version", V8_MARKET_DISCOVERY_ADMISSION_VERSION),
         "v8_source_bundle": source_bundle_status(),
