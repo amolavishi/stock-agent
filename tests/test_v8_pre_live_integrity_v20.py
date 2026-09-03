@@ -205,15 +205,21 @@ class V8PreLiveIntegrityTests(unittest.TestCase):
         self.assertFalse(exhausted)
         self.assertFalse(details["small_fully_probed_subset_is_source_exhaustion"])
 
-    def test_explicit_1000_name_operational_probe_can_document_exhaustion_boundary(self):
+    def test_explicit_1000_name_operational_probe_is_not_source_exhaustion_with_unresolved_debt(self):
         store = FunnelStore([
             {"funnel_stage": "RAW_UNIVERSE", "count": 3000},
             {"funnel_stage": "ADV_PROBED", "count": MIN_OPERATIONAL_PROBE},
             {"funnel_stage": "ADV_NOT_EVALUATED", "count": 2000},
+            {"funnel_stage": "V8_4_UNIVERSE_SCOPE", "count": 3000, "details_json": json.dumps({
+                "scope_claim": "FULL_STRATEGY_UNIVERSE_SCAN",
+                "full_scope_validated": True,
+            })},
         ])
         exhausted, details = _provider_exhaustion_v20(store, "RUN", 600)
-        self.assertTrue(exhausted)
+        self.assertFalse(exhausted)
         self.assertTrue(details["explicit_operational_ceiling"])
+        self.assertFalse(details["operational_probe_threshold_is_source_exhaustion"])
+        self.assertTrue(details["search_debt_remains"])
 
     def test_cross_scanner_duplicate_evidence_counts_once_in_system_round(self):
         rounds = []
