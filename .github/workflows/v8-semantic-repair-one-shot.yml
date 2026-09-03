@@ -1,0 +1,76 @@
+name: v8-semantic-repair-one-shot
+
+on:
+  push:
+    branches:
+      - audit/main-v8-adversarial-hardening-20260903
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[semantic-repair-bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/main-v8-adversarial-hardening-20260903
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply deterministic semantic-authority repair
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one repair target, found {count}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "stock_agent/v8_main_source_fidelity.py",
+              '''def prepare_v8_4_source_lock() -> None:\n    """Pin coach scanner identities to the V8.4 lock before schemas are built."""\n    global _PREPARED\n    if _PREPARED:\n        return\n    for sid, entry in _scanner_entries().items():\n''',
+              '''def prepare_v8_4_source_lock() -> None:\n    """Reassert exact V8.4 manifest identity on every call.\n\n    ``_PREPARED`` records that initialization has occurred; it is not an\n    authorization to skip source-identity reconciliation. Imported function\n    references and repeated bootstrap calls therefore converge to the same\n    canonical manifest state.\n    """\n    global _PREPARED\n    for sid, entry in _scanner_entries().items():\n''',
+          )
+
+          replace_once(
+              "stock_agent/v8_main_discovery_integrity.py",
+              '''def prepare_v8_main_discovery_integrity() -> None:\n    """Patch dynamic scanner schema before source-backed prompts are registered."""\n    global _PREPARED\n    if _PREPARED:\n        return\n    # MAIN had a literal 63-character Scanner-08 SHA.  Pin it to the manifest\n    # value so an exact canonical source can actually satisfy the receipt.\n    coach.V8_SCANNERS["08"]["sha256"] = "a1c713679274209b99b7c1e165a2cb2b350d25fd002b70038da1b1aedf9408c4"\n    coach._scanner_schema = _integrity_scanner_schema  # type: ignore[assignment]\n''',
+              '''def prepare_v8_main_discovery_integrity() -> None:\n    """Patch scanner schema/defaults without owning canonical source identity.\n\n    Source SHA/path/package identity belongs exclusively to\n    ``v8_main_source_fidelity``. This legacy compatibility helper must never\n    mutate source identity, regardless of import or call order.\n    """\n    global _PREPARED\n    if _PREPARED:\n        return\n    coach._scanner_schema = _integrity_scanner_schema  # type: ignore[assignment]\n''',
+          )
+
+          replace_once(
+              "stock_agent/hunt_integrity_v18.py",
+              '''                    if not rejected:\n                        audit = values.get("ADVERSARIAL_AUDIT") or {}\n                        if str(audit.get("audit_recommendation") or "") in {"CHALLENGES_CONTINUATION", "AUDIT_EVIDENCE_INCOMPLETE"}:\n                            state, reason = "REJECT", "ADVERSARIAL_AUDIT"\n                        else:\n''',
+              '''                    if not rejected:\n                        audit = values.get("ADVERSARIAL_AUDIT") or {}\n                        audit_recommendation = str(audit.get("audit_recommendation") or "")\n                        audit_status = str(audit.get("status") or "")\n                        if bool(audit.get("engineering_failure")):\n                            state, reason = "ENGINEERING_FAILURE", "ADVERSARIAL_AUDIT"\n                        elif audit_recommendation == "AUDIT_EVIDENCE_INCOMPLETE" or audit_status in {"INCOMPLETE", "CONTEXT_INCOMPLETE", "BLOCKED"}:\n                            state, reason = "EVIDENCE_DEBT", "ADVERSARIAL_AUDIT"\n                        elif audit_recommendation == "CHALLENGES_CONTINUATION":\n                            state, reason = "REJECT", "ADVERSARIAL_AUDIT"\n                        else:\n''',
+          )
+
+          replace_once(
+              "stock_agent/v8_semantic_core_v22.py",
+              '''        values: dict[str, dict[str, Any]] = {}\n        dependencies: set[str] = set()\n        for row in rows:\n            try:\n                value = json.loads(row.get("result_json") or "{}")\n            except (TypeError, ValueError):\n                value = {}\n            if isinstance(value, dict):\n                values[str(row.get("stage") or "")] = value\n            try:\n''',
+              '''        values: dict[str, dict[str, Any]] = {}\n        dependencies: set[str] = set()\n        for row in rows:\n            stage_name = str(row.get("stage") or "")\n            row_status = str(row.get("status") or "")\n            # Failed/incomplete StageResults are engineering/information\n            # receipts, never issuer evidence. Only explicit failure-marker\n            # stages may be parsed while non-SUCCEEDED. All other failed rows\n            # are ignored so a stale ``decision=REJECT`` payload cannot become\n            # an investment rejection. Absence of a successful replacement\n            # remains NOT_EVALUATED/EVIDENCE_DEBT downstream.\n            failure_marker = stage_name in {\n                "CANDIDATE_ENGINEERING_FAILURE",\n                "RESEARCH_PROVIDER_FAILURE",\n                "SEC_PROVIDER_FAILURE",\n                "SEC_STALE_DATA",\n            }\n            if row_status != "SUCCEEDED" and not failure_marker:\n                try:\n                    dependencies.update(str(item) for item in json.loads(row.get("dependency_ids_json") or "[]"))\n                except (TypeError, ValueError):\n                    pass\n                continue\n            try:\n                value = json.loads(row.get("result_json") or "{}")\n            except (TypeError, ValueError):\n                value = {}\n            if isinstance(value, dict):\n                values[stage_name] = value\n            try:\n''',
+          )
+
+          replace_once(
+              "stock_agent/v8_semantic_core_v22.py",
+              '''    ledger_ids = [str(item.get("security_id") or "") for item in ledger]\n    conservation_complete = len(ledger_ids) == len(discovered_ids) and len(set(ledger_ids)) == len(ledger_ids)\n''',
+              '''    ledger_ids = [str(item.get("security_id") or "") for item in ledger]\n    conservation_complete = (\n        len(ledger_ids) == len(discovered_ids)\n        and len(set(ledger_ids)) == len(ledger_ids)\n        and len(set(discovered_ids)) == len(discovered_ids)\n        and set(ledger_ids) == set(discovered_ids)\n    )\n''',
+          )
+
+      - name: Commit repaired production semantics
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No semantic repair changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stock_agent/v8_main_source_fidelity.py stock_agent/v8_main_discovery_integrity.py stock_agent/hunt_integrity_v18.py stock_agent/v8_semantic_core_v22.py
+          git commit -m "[semantic-repair-bot] Centralize V8 semantic authority"
+          git push origin HEAD:audit/main-v8-adversarial-hardening-20260903
