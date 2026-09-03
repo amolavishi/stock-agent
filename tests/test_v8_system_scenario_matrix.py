@@ -112,13 +112,13 @@ class V8SystemScenarioMatrixTests(unittest.TestCase):
         )
         validate_sidecar_payload(_payload(), _bundle())
 
-    def test_s03_b_is_evaluated_watch_not_not_evaluated(self):
+    def test_s03_b_is_completed_watch_not_not_evaluated(self):
         receipt, validator = _grade_chain("B", "S03")
         self.assertEqual(validated_research_grade(receipt), "B")
         self.assertEqual(validator["route"], "PASS")
         self.assertEqual(
             certification_terminal_state("B", step20_route="PASS", expectation_gap_pass=True, has_evidence_debt=False),
-            ("NEXT_STAGE", "V8_CERTIFICATION_B_WATCH"),
+            ("WATCH", "V8_CERTIFICATION_B_WATCH"),
         )
         with self.assertRaisesRegex(PreASidecarError, "B grade"):
             validate_sidecar_payload(
@@ -211,7 +211,7 @@ class V8SystemScenarioMatrixTests(unittest.TestCase):
         store = SQLiteStore(":memory:")
         try:
             rules = store.resolve_rule_set()
-            run = store.create_run(RunMode.HUNT, rules, "c" * 64, 0)
+            run = store.create_run(RunMode.HUNT_ONLY, rules, "c" * 64, 0)
             ids = ["A1", "BP1", "B1", "X1"]
             _record(store, run, "STOCK_DISCOVERY", None, {
                 "candidates": [
@@ -231,7 +231,7 @@ class V8SystemScenarioMatrixTests(unittest.TestCase):
             by_id = {row["security_id"]: row for row in ledger}
             self.assertEqual(by_id["A1"]["state"], "PASS")
             self.assertEqual(by_id["BP1"]["state"], "NEXT_STAGE")
-            self.assertEqual(by_id["B1"]["state"], "NEXT_STAGE")
+            self.assertEqual(by_id["B1"]["state"], "WATCH")
             self.assertEqual(by_id["X1"]["state"], "REJECT")
             self.assertTrue(all(row["evaluation_complete"] for row in ledger))
             funnel = {row["funnel_stage"]: row["count"] for row in store.list_funnel(run.run_id)}
