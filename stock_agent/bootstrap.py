@@ -139,6 +139,12 @@ def install_production_stack() -> None:
     from .v8_4_discovery_consistency import install_v8_4_discovery_consistency
     install_v8_4_discovery_consistency()
 
+    # Legacy prepare helpers remain callable by tests/notebooks/embedding code.
+    # Make exact V8.4 source identity reassertable so no later legacy call can
+    # resurrect obsolete scanner SHAs after the one-shot source-lock prepare.
+    from .v8_source_identity_guard_v221 import install_v8_source_identity_guard_v221
+    install_v8_source_identity_guard_v221()
+
     # Preserve valid B+/B/EXCLUDE Step18+20 conclusions before centralization.
     from .v8_system_semantics_v21 import install_v8_system_semantics_v21
     install_v8_system_semantics_v21()
@@ -174,6 +180,7 @@ def production_composition() -> dict[str, Any]:
     from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
     from .v8_main_scanner_failure_isolation import V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION
     from .v8_4_discovery_consistency import V8_4_DISCOVERY_CONSISTENCY_VERSION
+    from .v8_source_identity_guard_v221 import V8_SOURCE_IDENTITY_GUARD_VERSION, source_identity_guard_status
     from .v8_system_semantics_v21 import V8_SYSTEM_SEMANTICS_VERSION
     from .v8_semantic_core_v22 import V8_SEMANTIC_CORE_VERSION
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
@@ -217,6 +224,8 @@ def production_composition() -> dict[str, Any]:
         "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
         "v8_main_scanner_failure_isolation_version": getattr(cls, "v8_main_scanner_failure_isolation_version", V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION),
         "v8_4_discovery_consistency_version": getattr(cls, "v8_4_discovery_consistency_version", V8_4_DISCOVERY_CONSISTENCY_VERSION),
+        "v8_source_identity_guard_version": V8_SOURCE_IDENTITY_GUARD_VERSION,
+        "v8_source_identity_guard": source_identity_guard_status(),
         "v8_system_semantics_version": getattr(cls, "v8_system_semantics_version", V8_SYSTEM_SEMANTICS_VERSION),
         "v8_semantic_core_version": getattr(cls, "v8_semantic_core_version", V8_SEMANTIC_CORE_VERSION),
         "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
