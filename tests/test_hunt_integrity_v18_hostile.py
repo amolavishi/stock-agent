@@ -7,8 +7,8 @@ import sys
 import unittest
 from pathlib import Path
 
+from stock_agent import hunt_integrity_v18 as v18_module
 from stock_agent.hunt_integrity_v18 import (
-    STEP18_SOURCE_SHA256,
     _certification_grade,
     _select_source_indices,
     _v18_dedupe_sources,
@@ -65,8 +65,11 @@ class HuntIntegrityV18HostileTests(unittest.TestCase):
         self.assertLessEqual(len(excerpt), 6_000)
 
     def test_step18_receipt_fails_closed_on_wrong_source_or_noncanonical_authority(self):
+        # Production successor installation intentionally advances the live V18
+        # source pin.  Read the module-global value at assertion time so this
+        # legacy compatibility test does not depend on test import order.
         good = {
-            "source_sha256": STEP18_SOURCE_SHA256,
+            "source_sha256": v18_module.STEP18_SOURCE_SHA256,
             "grade_authority": "V8_STEP18_CANONICAL",
             "discovery_score_used": False,
             "research_grade": "B+",
