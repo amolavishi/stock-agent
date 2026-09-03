@@ -5,11 +5,7 @@ import unittest
 from pathlib import Path
 
 from stock_agent.models import canonical_hash
-from stock_agent.pre_a_source_v2 import (
-    STEP18_SOURCE_SHA256,
-    PreASourceError,
-    build_pre_a_source_bundle,
-)
+from stock_agent.pre_a_source_v2 import STEP18_SOURCE_SHA256, PreASourceError, build_pre_a_source_bundle
 
 
 def _make_db(path: Path, *, decision_grade=None, certification_grade="B+") -> None:
@@ -69,10 +65,9 @@ def _make_db(path: Path, *, decision_grade=None, certification_grade="B+") -> No
             "INSERT INTO stage_results VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             ("R1", "HUNT-1", None, "V8_CERTIFICATION", "ABC", json.dumps(cert), "[]", "h", 1, "SUCCEEDED", "2026-09-01T00:50:00Z"),
         )
-        capital = {"decision": "PASS"}
         connection.execute(
             "INSERT INTO stage_results VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-            ("R2", "HUNT-1", None, "CAPITAL_PRESCREEN_GATE", "ABC", json.dumps(capital), "[]", "h2", 1, "SUCCEEDED", "2026-09-01T00:40:00Z"),
+            ("R2", "HUNT-1", None, "CAPITAL_PRESCREEN_GATE", "ABC", json.dumps({"decision": "PASS"}), "[]", "h2", 1, "SUCCEEDED", "2026-09-01T00:40:00Z"),
         )
         connection.commit()
     finally:
@@ -93,14 +88,23 @@ class PreASourceV2Tests(unittest.TestCase):
             self.assertEqual(bundle["candidates"][0]["source_grade"], "B+")
             self.assertIn("V8_CERTIFICATION", bundle["candidates"][0]["stages"])
 
-    def test_decision_and_certification_grade_conflict_fails_to_unknown(self):
+    def test_non_authoritative_decision_conflict_does_not_erase_certification(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             database = Path(temp_dir) / "primary.db"
             _make_db(database, decision_grade="A-", certification_grade="B+")
-            bundle = build_pre_a_source_bundle(database, "SHADOW-1")
-            candidate = bundle["candidates"][0]
+            candidate = build_pre_a_source_bundle(database, "SHADOW-1")["candidates"][0]
             self.assertTrue(candidate["grade_conflict"])
-            self.assertEqual(candidate["source_grade"], "UNKNOWN")
+            self.assertEqual(candidate["certification_grade"], "B+")
+            self.assertEqual(candidate["source_grade"], "B+")
+            self.assertEqual(candidate["decision_grade_non_authoritative"], "A-")
+
+    def test_authoritative_exclude_is_not_weakened_to_unknown(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            database = Path(temp_dir) / "primary.db"
+            _make_db(database, decision_grade=None, certification_grade="EXCLUDE")
+            candidate = build_pre_a_source_bundle(database, "SHADOW-1")["candidates"][0]
+            self.assertTrue(candidate["certification_valid"])
+            self.assertEqual(candidate["source_grade"], "EXCLUDE")
 
     def test_nonzero_broker_write_count_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
