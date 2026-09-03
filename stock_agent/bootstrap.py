@@ -146,6 +146,13 @@ def install_production_stack() -> None:
     from .v8_4_discovery_consistency import install_v8_4_discovery_consistency
     install_v8_4_discovery_consistency()
 
+    # End-to-end state semantics are patched in place on the final composed
+    # runtime.  This does not add a wrapper/authority class: it only prevents
+    # valid B+/B/EXCLUDE Step18+20 conclusions from being rewritten as
+    # NOT_EVALUATED by the legacy V1.8 conservation/shadow layer.
+    from .v8_system_semantics_v21 import install_v8_system_semantics_v21
+    install_v8_system_semantics_v21()
+
     from .shadow_health_v19 import install_shadow_health_v19
     install_shadow_health_v19()
     from .shadow_pointer_guard import install_shadow_pointer_guard
@@ -170,6 +177,7 @@ def production_composition() -> dict[str, Any]:
     from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
     from .v8_main_scanner_failure_isolation import V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION
     from .v8_4_discovery_consistency import V8_4_DISCOVERY_CONSISTENCY_VERSION
+    from .v8_system_semantics_v21 import V8_SYSTEM_SEMANTICS_VERSION
     from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
     from .v8_market_discovery_admission import V8_MARKET_DISCOVERY_ADMISSION_VERSION
     from .v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
@@ -211,6 +219,7 @@ def production_composition() -> dict[str, Any]:
         "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
         "v8_main_scanner_failure_isolation_version": getattr(cls, "v8_main_scanner_failure_isolation_version", V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION),
         "v8_4_discovery_consistency_version": getattr(cls, "v8_4_discovery_consistency_version", V8_4_DISCOVERY_CONSISTENCY_VERSION),
+        "v8_system_semantics_version": getattr(cls, "v8_system_semantics_version", V8_SYSTEM_SEMANTICS_VERSION),
         "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
         "v8_market_discovery_admission_version": getattr(cls, "v8_market_discovery_admission_version", V8_MARKET_DISCOVERY_ADMISSION_VERSION),
         "v8_source_bundle": source_bundle_status(),
