@@ -145,9 +145,9 @@ class PreASidecarTests(unittest.TestCase):
         with self.assertRaisesRegex(PreASidecarError, "does not match structured PRIMARY grade"):
             validate_sidecar_payload(payload, _bundle(source_grade="A-", decision={"ticker": "ABC", "grade": "A-"}))
 
-    def test_pre_a_readiness_requires_structured_b_plus(self):
+    def test_pre_a_readiness_rejects_already_certified_a_minus(self):
         payload = _payload(_candidate(source_grade="A-", promotion_readiness="PRE_A"))
-        with self.assertRaisesRegex(PreASidecarError, r"requires structured B\+"):
+        with self.assertRaisesRegex(PreASidecarError, r"already-certified A/A-"):
             validate_sidecar_payload(payload, _bundle(source_grade="A-", decision={"ticker": "ABC", "grade": "A-"}))
 
     def test_pre_a_readiness_rejects_engineering_failure(self):
@@ -155,7 +155,7 @@ class PreASidecarTests(unittest.TestCase):
             "CAPITAL_PRESCREEN_GATE": {"status": "SUCCEEDED", "result": {"decision": "PASS"}},
             "CANDIDATE_ENGINEERING_FAILURE": {"status": "FAILED", "result": {"status": "ENGINEERING_FAILURE"}},
         })
-        with self.assertRaisesRegex(PreASidecarError, "incomplete PRIMARY evaluation"):
+        with self.assertRaisesRegex(PreASidecarError, "incomplete PRE-A analysis"):
             validate_sidecar_payload(_payload(), bundle)
 
     def test_pre_a_high_rejects_critical_gate(self):
