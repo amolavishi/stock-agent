@@ -1,0 +1,46 @@
+name: branch-prune-once
+
+on:
+  push:
+    branches:
+      - audit/main-v8-adversarial-hardening-20260903
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/main-v8-adversarial-hardening-20260903
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Delete every branch except main and current hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEEP_MAIN='main'
+          KEEP_WORK='audit/main-v8-adversarial-hardening-20260903'
+
+          mapfile -t branches < <(git ls-remote --heads origin | awk '{sub("refs/heads/", "", $2); print $2}')
+          for branch in "${branches[@]}"; do
+            if [[ "$branch" == "$KEEP_MAIN" || "$branch" == "$KEEP_WORK" ]]; then
+              echo "KEEP $branch"
+              continue
+            fi
+            echo "DELETE $branch"
+            git push origin --delete "$branch"
+          done
+
+      - name: Verify exactly two branches remain
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t remaining < <(git ls-remote --heads origin | awk '{sub("refs/heads/", "", $2); print $2}' | sort)
+          printf 'Remaining branches:\n%s\n' "${remaining[*]}"
+          [[ "${#remaining[@]}" -eq 2 ]]
+          [[ " ${remaining[*]} " == *" main "* ]]
+          [[ " ${remaining[*]} " == *" audit/main-v8-adversarial-hardening-20260903 "* ]]
