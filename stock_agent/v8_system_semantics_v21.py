@@ -1,17 +1,9 @@
 """End-to-end semantic state guard for V8 MAIN / V8 NEXT.
 
-This module fixes a class of contradictions that only becomes visible when a
-candidate is followed from Discovery through Step18/20 and into Shadow/PRE-A:
-a valid non-executable Research Grade (B+, B, EXCLUDE) is still a completed
-investment evaluation and must never be rewritten as NOT_EVALUATED merely
-because it is not A/A-.
-
-Authority remains unchanged:
-- Step18 is the sole Research Grade writer.
-- Step20 is a pure validator.
-- only A/A- can qualify for execution.
-- B+ routes to PRE-A/re-certification, B to watch, EXCLUDE to rejection.
-- missing/invalid certification or engineering failure remains non-evaluable.
+This module fixes contradictions that only become visible when a candidate is
+followed from Discovery through Step18/20 and into Shadow/PRE-A.  Evaluation
+completeness and investment conclusion are orthogonal: B+, B and EXCLUDE are
+valid completed evaluations even though only A/A- can be execution candidates.
 """
 from __future__ import annotations
 
@@ -22,6 +14,7 @@ from . import hunt_integrity_v18 as v18
 from . import runtime as runtime_module
 from . import v8_next_certification as cert
 from . import v8_next_successor as successor
+from . import v8_primary
 from .models import GateDecision
 
 V8_SYSTEM_SEMANTICS_VERSION = "V8_SYSTEM_SEMANTICS_V2.1"
@@ -32,13 +25,20 @@ _INCOMPLETE_STATES = {
     "EVIDENCE_DEBT", "SOURCE_EXHAUSTED",
 }
 
+# PRE-A is downstream of Step18 and therefore must be blind input to Step16/17/
+# 17.5/18 exactly like Discovery rank/score.  Make this property independent of
+# bootstrap order: v8_blind_packet reads these module-global sets dynamically.
+_PRE_A_BLIND_KEYS = {
+    "pre_a_status", "pre_a_metadata", "promotion_readiness", "a_trajectory",
+    "pre_a_readiness", "trajectory_status", "pre_a_high", "pre_a_candidate",
+}
+v8_primary._DISCOVERY_ONLY_KEYS.update(_PRE_A_BLIND_KEYS)
+v8_primary._DISCOVERY_SCORE_KEYS.update(_PRE_A_BLIND_KEYS)
+v8_primary._BLIND_KEYS.update(_PRE_A_BLIND_KEYS)
+
 
 def validated_research_grade(payload: dict[str, Any] | None) -> str | None:
-    """Return all valid Step18 conclusions, including EXCLUDE.
-
-    Parsing a grade is not the same as qualifying it for execution.  The latter
-    continues to be restricted to A/A- by the qualification gate.
-    """
+    """Return all valid Step18 conclusions, including EXCLUDE."""
     if not isinstance(payload, dict):
         return None
     source = str(payload.get("source_sha256") or "")
@@ -47,9 +47,6 @@ def validated_research_grade(payload: dict[str, Any] | None) -> str | None:
         if failures or grade not in _VALID_RESEARCH_GRADES:
             return None
         return grade
-
-    # Frozen legacy compatibility.  Keep the same authority requirements but
-    # do not erase a valid legacy EXCLUDE merely because it is non-executable.
     if source == getattr(v18, "STEP18_SOURCE_SHA256", ""):
         if payload.get("grade_authority") not in {True, "V8_STEP18_CANONICAL"}:
             return None
@@ -67,7 +64,7 @@ def certification_terminal_state(
     expectation_gap_pass: bool,
     has_evidence_debt: bool,
 ) -> tuple[str, str]:
-    """Map evaluation completeness and investment conclusion without conflating them."""
+    """Map completion and investment conclusion without conflating them."""
     route = str(step20_route or "")
     if grade in _VALID_RESEARCH_GRADES:
         if route != "PASS":
@@ -198,8 +195,6 @@ def candidate_conservation_v21(self: Any, run_id: str) -> list[dict[str, Any]]:
         "version": V8_SYSTEM_SEMANTICS_VERSION,
         "evaluation_and_grade_are_orthogonal": True,
     })
-    # Explicitly zero all incomplete state counters not present in this run so
-    # an earlier write in the same run cannot leave stale degradation residue.
     for state in sorted(_INCOMPLETE_STATES | set(counts)):
         self.store.record_funnel(run_id, f"CONSERVATION_{state}", counts.get(state, 0), {
             "version": V8_SYSTEM_SEMANTICS_VERSION,
@@ -208,19 +203,12 @@ def candidate_conservation_v21(self: Any, run_id: str) -> list[dict[str, Any]]:
 
 
 def install_v8_system_semantics_v21() -> type:
-    """Patch semantics in place without creating a new outer runtime authority class."""
+    """Patch semantics in place without creating a new outer authority class."""
     global _INSTALLED
     current = runtime_module.ProductionStockAgent
     if _INSTALLED or getattr(current, "v8_system_semantics_version", None) == V8_SYSTEM_SEMANTICS_VERSION:
         return current
-
-    # V1.8 calls this module-global parser dynamically for qualification,
-    # conservation and Shadow rendering.  Returning EXCLUDE here does not make
-    # it executable because qualification still explicitly requires A/A-.
     v18._certification_grade = validated_research_grade  # type: ignore[assignment]
-
-    # Assign the corrected method directly to the final composed class.  This
-    # preserves the existing final pre-live sentinel class as the outer owner.
     current._candidate_conservation = candidate_conservation_v21  # type: ignore[attr-defined,assignment]
     current.v8_system_semantics_version = V8_SYSTEM_SEMANTICS_VERSION
     _INSTALLED = True
