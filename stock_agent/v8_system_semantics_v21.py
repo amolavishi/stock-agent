@@ -68,7 +68,7 @@ def certification_terminal_state(
         if grade == "B+":
             return "NEXT_STAGE", "V8_CERTIFICATION_B_PLUS_PRE_A"
         if grade == "B":
-            return "NEXT_STAGE", "V8_CERTIFICATION_B_WATCH"
+            return "WATCH", "V8_CERTIFICATION_B_WATCH"
         return "REJECT", "V8_CERTIFICATION_EXCLUDE"
     if has_evidence_debt:
         return "EVIDENCE_DEBT", "UNRESOLVED_EVIDENCE_DEBT"
