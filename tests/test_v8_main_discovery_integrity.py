@@ -5,12 +5,11 @@ import unittest
 from jsonschema import ValidationError, validate
 
 from stock_agent import v8_main_discovery_coach as coach
+from stock_agent import v8_main_discovery_integrity as integrity
 from stock_agent.v8_main_discovery_integrity import (
-    SCANNER_OUTPUT_CONTRACT_VERSION,
     SCANNER_REQUIRED_DIMENSIONS,
     _contract_complete,
     _merge_candidate,
-    _provider_exhaustion,
     _two_low_yield_rounds,
     prepare_v8_main_discovery_integrity,
 )
@@ -19,6 +18,8 @@ from stock_agent.v8_main_discovery_post_v11 import (
     _two_complete_low_yield_system_rounds,
 )
 from stock_agent.v8_main_scanner_contract_v12 import scanner_schema_v12
+from stock_agent.v8_main_source_fidelity import prepare_v8_4_source_lock
+from stock_agent.v8_semantic_core_v22 import provider_exhaustion_v22 as _provider_exhaustion
 
 
 class FunnelStore:
@@ -31,10 +32,12 @@ class FunnelStore:
 class V8MainDiscoveryIntegrityTests(unittest.TestCase):
     def setUp(self):
         prepare_v8_main_discovery_integrity()
+        # V8.4 exact-source identity is the final production authority.
+        prepare_v8_4_source_lock()
 
     def _result(self, scanner_id="02", count=75):
         dims = list(SCANNER_REQUIRED_DIMENSIONS[scanner_id])
-        return {
+        result = {
             "scanner_id": scanner_id,
             "scanner_source_sha256": coach.V8_SCANNERS[scanner_id]["sha256"],
             "execution_status": "COMPLETE",
@@ -43,7 +46,7 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
             "systemic_unknowns": [],
             "search_expansion_questions": [],
             "grade_authority": False,
-            "output_contract_version": SCANNER_OUTPUT_CONTRACT_VERSION,
+            "output_contract_version": integrity.SCANNER_OUTPUT_CONTRACT_VERSION,
             "strategy_contract": {
                 "scanner_id": scanner_id,
                 "dimensions_evaluated": dims,
@@ -52,11 +55,15 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
             "source_exhaustion": False,
             "source_exhaustion_reason": "NOT_PROVEN",
         }
+        schema = scanner_schema_v12()
+        if "coverage_ledger" in schema.get("properties", {}):
+            result["coverage_ledger"] = []
+        return result
 
-    def test_scanner_08_source_hash_is_valid_64_char_manifest_hash(self):
+    def test_scanner_08_source_hash_is_exact_v8_4_manifest_hash(self):
         value = coach.V8_SCANNERS["08"]["sha256"]
         self.assertEqual(len(value), 64)
-        self.assertEqual(value, "a1c713679274209b99b7c1e165a2cb2b350d25fd002b70038da1b1aedf9408c4")
+        self.assertEqual(value, "1a7c67f527456d0ae4d188250a046c472c41c96a08b46a017309ed8d31f8edad")
 
     def test_t14_missing_scanner_specific_output_equivalent_is_not_complete(self):
         result = self._result("05")
@@ -133,19 +140,30 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
             {"new_signal": 0, "new_secondary": 0, "new_independent_evidence": 0},
         ]))
 
+    @staticmethod
+    def _system_round(scanner_id: str, sequence: int, *, secondary=False):
+        sid = "SECONDARY" if secondary else ""
+        return {
+            "round_id": f"{scanner_id}-R{sequence:03d}",
+            "scanner_id": scanner_id,
+            "new_unique_tickers": 75,
+            "new_signal": 0,
+            "new_secondary": 1 if secondary else 0,
+            "new_high_research_value": 0,
+            "new_independent_evidence": 0,
+            "new_deep_dive_now": 0,
+            # V2.0 system-round aggregation deduplicates by IDs. Supplying both
+            # representations keeps this historical compatibility test immune
+            # to production import order.
+            "new_signal_security_ids": [],
+            "new_secondary_security_ids": [sid] if sid else [],
+            "new_high_research_value_security_ids": [],
+            "new_independent_evidence_ids": [],
+            "new_deep_dive_security_ids": [],
+        }
+
     def test_system_round_unique_breadth_is_not_multiplied_by_13_scanners(self):
-        rounds = []
-        for scanner_id in SCANNER_REQUIRED_DIMENSIONS:
-            rounds.append({
-                "round_id": f"{scanner_id}-R001",
-                "scanner_id": scanner_id,
-                "new_unique_tickers": 75,
-                "new_signal": 0,
-                "new_secondary": 0,
-                "new_high_research_value": 0,
-                "new_independent_evidence": 0,
-                "new_deep_dive_now": 0,
-            })
+        rounds = [self._system_round(scanner_id, 1) for scanner_id in SCANNER_REQUIRED_DIMENSIONS]
         system = _system_rounds(rounds)
         self.assertEqual(len(system), 1)
         self.assertEqual(system[0]["new_unique_tickers"], 75)
@@ -153,37 +171,21 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
         self.assertTrue(system[0]["scanner_family_complete"])
 
     def test_low_yield_system_round_requires_all_13_scanners_in_both_rounds(self):
-        rounds = []
-        for sequence in (1, 2):
-            for scanner_id in SCANNER_REQUIRED_DIMENSIONS:
-                rounds.append({
-                    "round_id": f"{scanner_id}-R{sequence:03d}",
-                    "scanner_id": scanner_id,
-                    "new_unique_tickers": 75,
-                    "new_signal": 0,
-                    "new_secondary": 0,
-                    "new_high_research_value": 0,
-                    "new_independent_evidence": 0,
-                    "new_deep_dive_now": 0,
-                })
+        rounds = [
+            self._system_round(scanner_id, sequence)
+            for sequence in (1, 2)
+            for scanner_id in SCANNER_REQUIRED_DIMENSIONS
+        ]
         self.assertTrue(_two_complete_low_yield_system_rounds(rounds))
         rounds.pop()
         self.assertFalse(_two_complete_low_yield_system_rounds(rounds))
 
     def test_any_secondary_in_last_system_round_blocks_low_yield_stop(self):
-        rounds = []
-        for sequence in (1, 2):
-            for scanner_id in SCANNER_REQUIRED_DIMENSIONS:
-                rounds.append({
-                    "round_id": f"{scanner_id}-R{sequence:03d}",
-                    "scanner_id": scanner_id,
-                    "new_unique_tickers": 75,
-                    "new_signal": 0,
-                    "new_secondary": 1 if sequence == 2 and scanner_id == "14" else 0,
-                    "new_high_research_value": 0,
-                    "new_independent_evidence": 0,
-                    "new_deep_dive_now": 0,
-                })
+        rounds = [
+            self._system_round(scanner_id, sequence, secondary=(sequence == 2 and scanner_id == "14"))
+            for sequence in (1, 2)
+            for scanner_id in SCANNER_REQUIRED_DIMENSIONS
+        ]
         self.assertFalse(_two_complete_low_yield_system_rounds(rounds))
 
     def test_t5_raw_150_is_not_source_exhaustion_when_names_remain_unprobed(self):
@@ -194,19 +196,20 @@ class V8MainDiscoveryIntegrityTests(unittest.TestCase):
         ])
         exhausted, details = _provider_exhaustion(store, "RUN", eligible=150)
         self.assertFalse(exhausted)
-        self.assertEqual(details["raw_unique_ticker_coverage"], 150)
-        self.assertEqual(details["adv_not_evaluated"], 25)
+        self.assertEqual(details["canonical_universe_count"], 150)
+        self.assertEqual(details["unresolved_count"], 25)
 
-    def test_explicit_1000_name_operational_ceiling_is_documented_not_hidden(self):
+    def test_1000_name_operational_ceiling_is_not_source_exhaustion(self):
         store = FunnelStore([
             {"funnel_stage": "RAW_UNIVERSE", "count": 3000},
             {"funnel_stage": "ADV_PROBED", "count": 1000},
             {"funnel_stage": "ADV_NOT_EVALUATED", "count": 2000},
         ])
         exhausted, details = _provider_exhaustion(store, "RUN", eligible=600)
-        self.assertTrue(exhausted)
-        self.assertTrue(details["explicit_operational_ceiling"])
-        self.assertEqual(details["adv_not_evaluated"], 2000)
+        self.assertFalse(exhausted)
+        self.assertTrue(details["minimum_operational_probe_met"])
+        self.assertTrue(details["search_debt_remains"])
+        self.assertEqual(details["unresolved_count"], 2000)
 
     def test_secondary_signal_survives_weaker_exclude_from_another_round(self):
         secondary = {"security_id": "ABC", "recommended_discovery_action": "DEEP_DIVE_SECONDARY", "unknowns": ["x"], "strategy_evidence": []}
