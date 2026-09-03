@@ -43,10 +43,16 @@ class PreAAuthorityHardeningTests(unittest.TestCase):
         self.assertIsNone(_authoritative_certification_grade(cert_entry, {"V8_CERTIFICATION": cert_entry}))
         stages = {
             "V8_CERTIFICATION": cert_entry,
-            "V8_RESEARCH_VALIDATOR": {"status": "SUCCEEDED", "result": {"route": "RETURN_TO_STEP17_5"}},
+            "V8_RESEARCH_VALIDATOR": {
+                "status": "SUCCEEDED",
+                "result": {"status": "PASS", "route": "RETURN_TO_STEP17_5"},
+            },
         }
         self.assertIsNone(_authoritative_certification_grade(cert_entry, stages))
-        stages["V8_RESEARCH_VALIDATOR"] = {"status": "SUCCEEDED", "result": {"route": "PASS"}}
+        stages["V8_RESEARCH_VALIDATOR"] = {
+            "status": "SUCCEEDED",
+            "result": {"status": "PASS", "route": "PASS"},
+        }
         self.assertEqual(_authoritative_certification_grade(cert_entry, stages), "B+")
 
     def test_shadow_decision_hash_mismatch_fails_closed(self):
