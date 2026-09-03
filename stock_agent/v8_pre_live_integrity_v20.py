@@ -104,6 +104,9 @@ def _default_scanner_v13(scanner_id: str, screened_count: int) -> dict[str, Any]
     value = integrity._integrity_default_scanner(scanner_id, screened_count)
     value["coverage_ledger"] = []
     value["output_contract_version"] = SCANNER_OUTPUT_CONTRACT_VERSION
+    value["execution_status"] = "PARTIAL"
+    value["source_exhaustion"] = False
+    value["source_exhaustion_reason"] = "DEFAULT_PAYLOAD_NOT_MODEL_EXECUTION"
     return value
 
 
@@ -219,19 +222,48 @@ def _provider_exhaustion_v20(store: Any, run_id: str, eligible: int) -> tuple[bo
     def count(stage: str) -> int:
         row = funnel.get(stage) or {}
         return int(row.get("count") or 0)
+    def details(stage: str) -> dict[str, Any]:
+        row = funnel.get(stage) or {}
+        raw_details = row.get("details_json")
+        if isinstance(raw_details, dict):
+            return raw_details
+        try:
+            parsed = json.loads(raw_details or "{}")
+        except (TypeError, ValueError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
     raw = count("RAW_UNIVERSE")
     adv_probed = count("ADV_PROBED")
     adv_unknown = count("ADV_NOT_EVALUATED")
-    explicit_ceiling = adv_probed >= MIN_OPERATIONAL_PROBE
-    exhausted = bool(explicit_ceiling)
+    eligible_count = max(0, int(eligible or 0))
+    scope = details("V8_4_UNIVERSE_SCOPE")
+    full_scope_validated = bool(
+        scope.get("full_scope_validated") is True
+        and str(scope.get("scope_claim") or "") == "FULL_STRATEGY_UNIVERSE_SCAN"
+    )
+    operational_probe_met = adv_probed >= MIN_OPERATIONAL_PROBE
+    denominator_reconciled = raw >= eligible_count
+    eligible_probe_complete = adv_probed >= eligible_count
+    exhausted = bool(
+        full_scope_validated
+        and denominator_reconciled
+        and eligible_probe_complete
+        and adv_unknown == 0
+    )
     return exhausted, {
         "raw_unique_ticker_coverage": raw,
-        "strategy_eligible_unique_coverage": int(eligible),
+        "strategy_eligible_unique_coverage": eligible_count,
         "adv_probed": adv_probed,
         "adv_not_evaluated": adv_unknown,
-        "complete_verified_breadth": bool(adv_unknown == 0 and adv_probed >= raw and raw >= MIN_OPERATIONAL_PROBE),
-        "explicit_operational_ceiling": explicit_ceiling,
+        "complete_verified_breadth": exhausted,
+        "explicit_operational_ceiling": operational_probe_met,
         "minimum_operational_probe": MIN_OPERATIONAL_PROBE,
+        "operational_probe_threshold_is_source_exhaustion": False,
+        "full_scope_validated": full_scope_validated,
+        "denominator_reconciled": denominator_reconciled,
+        "eligible_probe_complete": eligible_probe_complete,
+        "search_debt_remains": not exhausted,
         "small_fully_probed_subset_is_source_exhaustion": False,
     }
 

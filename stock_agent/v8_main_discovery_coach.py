@@ -173,10 +173,12 @@ def _install_prompts(runtime: Any) -> None:
 
 
 def _default_scanner(scanner_id: str, screened_count: int) -> dict[str, Any]:
+    # A default/fallback payload is schema-shaped absence of model evidence.
+    # It can never represent actual scanner execution.
     return {
         "scanner_id": scanner_id,
         "scanner_source_sha256": V8_SCANNERS[scanner_id]["sha256"],
-        "execution_status": "COMPLETE",
+        "execution_status": "PARTIAL",
         "screened_count": screened_count,
         "candidates": [],
         "systemic_unknowns": [],
@@ -273,18 +275,25 @@ def install_v8_main_discovery_coach() -> type:
                     {},
                 )
                 result = dict(result)
-                complete = (
+                contract_complete = (
                     result.get("scanner_id") == scanner_id
                     and result.get("scanner_source_sha256") == V8_SCANNERS[scanner_id]["sha256"]
                     and result.get("execution_status") == "COMPLETE"
                     and int(result.get("screened_count") or 0) == screened_count
                     and result.get("grade_authority") is False
                 )
+                integrity_state = getattr(self, "_v8_integrity_state", {}).get(run.run_id) or {}
+                authoritative = (integrity_state.get("scanners") or {}).get(scanner_id) or {}
+                actual_execution = bool(
+                    authoritative.get("execution_status") == "SIGNAL_SCAN_COMPLETE"
+                    and authoritative.get("output_validated") is True
+                )
+                complete = bool(contract_complete and actual_execution)
                 receipt = {
                     "scanner_id": scanner_id,
                     "scanner_name": V8_SCANNERS[scanner_id]["name"],
                     "scanner_source_sha256": V8_SCANNERS[scanner_id]["sha256"],
-                    "model_call_executed": True,
+                    "model_call_executed": actual_execution,
                     "execution_complete": complete,
                     "universe_seen": screened_count,
                     "model_screened_count": int(result.get("screened_count") or 0),
