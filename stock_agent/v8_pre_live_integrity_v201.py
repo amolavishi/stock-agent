@@ -81,7 +81,7 @@ def default_scanner_v201(scanner_id: str, screened_count: int) -> dict[str, Any]
             "methodology_summary": "fallback is non-authoritative; complete coverage ledger requires provider execution",
         },
         "source_exhaustion": False,
-        "source_exhaustion_reason": "NOT_PROVEN",
+        "source_exhaustion_reason": "DEFAULT_PAYLOAD_NOT_MODEL_EXECUTION",
     }
 
 
