@@ -1,0 +1,265 @@
+"""Canonical production composition for Stock Agent MAIN.
+
+Every production entry point must install this stack exactly once. Discovery
+MAIN remains the sole discovery owner; no Python heuristic scanner runtime is
+installed. The only code imported from Discovery Recall Lite is its live
+breadth/provider adapter.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+_INSTALLED = False
+
+
+def install_production_stack() -> None:
+    global _INSTALLED
+    if _INSTALLED:
+        return
+
+    from .alpha_bootstrap import install_alpha_discovery_policy
+    from .alpha_coverage_v14 import install_alpha_coverage_v14
+    install_alpha_discovery_policy()
+    install_alpha_coverage_v14()
+
+    # Provider/breadth only. Never install install_discovery_recall_lite_runtime().
+    from .discovery_recall_lite_v15 import install_discovery_recall_lite_provider
+    install_discovery_recall_lite_provider()
+
+    from .catalyst_acquisition_v15 import install_catalyst_evidence_acquisition_v15
+    install_catalyst_evidence_acquisition_v15()
+
+    from .v8_primary import install_v8_primary_policy
+    install_v8_primary_policy()
+    from .v8_grade_quota_firewall import install_v8_grade_quota_firewall
+    install_v8_grade_quota_firewall()
+
+    from .discovery_recall_firewall_v15 import install_discovery_recall_firewall_v15
+    install_discovery_recall_firewall_v15()
+
+    from . import hunt_pipeline_v16 as v16
+    from .catalyst_extractor_v16 import install_v16_extractor
+    install_v16_extractor(v16)
+    v16.install_hunt_pipeline_v16()
+
+    from .hunt_resilience_v17 import install_hunt_resilience_v17
+    install_hunt_resilience_v17()
+
+    # Independently reproduced MAIN integrity defects: candidate isolation,
+    # adverse/late evidence selection, canonical preservation and allocation
+    # isolation. These layers add no new grade authority.
+    from . import store as store_module
+    if not hasattr(store_module, "_pre_v18_commit_final_allocation"):
+        store_module._pre_v18_commit_final_allocation = store_module.SQLiteStore.commit_final_allocation
+    from .hunt_integrity_v18 import install_hunt_integrity_v18
+    from .hunt_integrity_v181 import install_hunt_integrity_v181
+    from .hunt_integrity_v182 import install_hunt_integrity_v182
+    install_hunt_integrity_v18()
+    install_hunt_integrity_v181()
+    install_hunt_integrity_v182()
+
+    from .v8_next_terminal_lineage import install_pre_successor_terminal_capture
+    install_pre_successor_terminal_capture()
+
+    # Actual Step15/16/17/17.5/18/20 authority chain. Step18 is the only
+    # Research Grade writer; Step20 validates and cannot create a grade.
+    from .v8_next_successor import install_v8_next_successor
+    install_v8_next_successor()
+    from .v8_next_certification_v11 import install_v8_next_certification_v11
+    install_v8_next_certification_v11()
+    from .v8_next_runtime import install_v8_next_runtime
+    install_v8_next_runtime()
+
+    # Materialize bundle-internal sources as individual evidence receipts and
+    # make Step16 evidence independence a Python-validated origin contract.
+    from .v8_evidence_origin_v19 import install_v8_evidence_origin_v19
+    install_v8_evidence_origin_v19()
+
+    # Prepare the legacy scanner-specific schema extensions first. The active
+    # V8.4 source lock is applied immediately afterwards and is the sole
+    # production source-identity authority. Legacy hard-coded SHA repairs may
+    # not survive this boundary.
+    from .v8_main_discovery_integrity import (
+        prepare_v8_main_discovery_integrity,
+        install_pre_coach_discovery_integrity,
+    )
+    prepare_v8_main_discovery_integrity()
+    from .v8_main_source_fidelity import (
+        prepare_v8_4_source_lock,
+        install_v8_main_source_fidelity,
+    )
+    prepare_v8_4_source_lock()
+    from .v8_main_scanner_contract_v12 import prepare_v8_main_scanner_contract_v12
+    prepare_v8_main_scanner_contract_v12()
+
+    # Exact-source V8.4 MAIN scanners. Missing/mismatched source bytes are
+    # non-evaluable input failures, never reconstructed/paraphrased substitutes.
+    install_v8_main_source_fidelity()
+
+    # A provider/schema/transport failure in one scanner round is isolated as
+    # DATA_BLOCKED so the remaining scanners continue. Source-integrity failure
+    # stays run-global and fail-closed. Install this *below* the round executor.
+    from .v8_main_scanner_failure_isolation import install_v8_main_scanner_failure_isolation
+    install_v8_main_scanner_failure_isolation()
+
+    # The pre-coach executor is deliberately the coach's parent. Therefore
+    # every 02..14 super() call is split into auditable model-executed rounds.
+    install_pre_coach_discovery_integrity()
+    from .v8_main_discovery_coach import install_v8_main_discovery_coach
+    install_v8_main_discovery_coach()
+
+    # System-wide post validator aggregates the same round sequence across all
+    # 13 scanners. It persists Secondary/Near-Miss state and owns search-stop
+    # evidence; final run-state authority is centralized later by semantic core.
+    from .v8_main_discovery_post_v11 import install_v8_main_discovery_post_v11
+    install_v8_main_discovery_post_v11()
+
+    from .v8_main_source_gate import install_v8_main_source_gate
+    install_v8_main_source_gate()
+
+    # Preserve strong Discovery names whose technical snapshot is unresolved.
+    from .v8_main_recall_conservation import install_v8_main_recall_conservation
+    install_v8_main_recall_conservation()
+
+    # Investment Rules v2.0: partial Market Context may continue Discovery,
+    # while Market Execution remains strict.
+    from .v8_market_discovery_admission import install_v8_market_discovery_admission
+    install_v8_market_discovery_admission()
+
+    from .v8_next_terminal_lineage import install_post_successor_terminal_restore
+    install_post_successor_terminal_restore()
+
+    # Final pre-live fail-closed layer and compatibility chain.
+    from .v8_pre_live_integrity_v20 import install_v8_pre_live_integrity_v20
+    install_v8_pre_live_integrity_v20()
+    from .v8_pre_live_integrity_v201 import install_v8_pre_live_integrity_v201
+    install_v8_pre_live_integrity_v201()
+
+    # V8.4 is the active Discovery semantic authority.
+    from .v8_4_discovery_consistency import install_v8_4_discovery_consistency
+    install_v8_4_discovery_consistency()
+
+    # Legacy prepare helpers remain callable by tests/notebooks/embedding code.
+    # Make exact V8.4 source identity reassertable so no later legacy call can
+    # resurrect obsolete scanner SHAs after the one-shot source-lock prepare.
+    from .v8_source_identity_guard_v221 import install_v8_source_identity_guard_v221
+    install_v8_source_identity_guard_v221()
+
+    # Preserve valid B+/B/EXCLUDE Step18+20 conclusions before centralization.
+    from .v8_system_semantics_v21 import install_v8_system_semantics_v21
+    install_v8_system_semantics_v21()
+
+    # Canonical semantic core: patches the final sentinel class in place.  It
+    # centralizes failure meaning, source-exhaustion proof, candidate
+    # conservation, certification blindness and clean-NO_TRADE authorization.
+    # It MUST NOT create a new outer ProductionStockAgent wrapper.
+    from .v8_semantic_core_v22 import install_v8_semantic_core_v22
+    install_v8_semantic_core_v22()
+
+    from .shadow_health_v19 import install_shadow_health_v19
+    install_shadow_health_v19()
+    from .shadow_pointer_guard import install_shadow_pointer_guard
+    install_shadow_pointer_guard()
+    from .shadow_non_evaluable_guard import install_shadow_non_evaluable_guard
+    install_shadow_non_evaluable_guard()
+
+    _INSTALLED = True
+
+
+def production_composition() -> dict[str, Any]:
+    install_production_stack()
+    from . import adapters, runtime, shadow
+    from .discovery_recall_firewall_v15 import DISCOVERY_RECALL_FIREWALL_VERSION
+    from .v8_evidence_origin_v19 import V8_EVIDENCE_ORIGIN_VERSION
+    from .v8_grade_quota_firewall import V8_GRADE_QUOTA_FIREWALL_VERSION
+    from .v8_main_discovery_coach import V8_MAIN_DISCOVERY_COACH_VERSION, V8_MAIN_FORENSIC_AUDIT_SHA256
+    from .v8_main_discovery_integrity import V8_MAIN_DISCOVERY_INTEGRITY_VERSION, SCANNER_OUTPUT_CONTRACT_VERSION
+    from .v8_main_discovery_post_v11 import V8_MAIN_DISCOVERY_POST_VERSION
+    from .v8_main_scanner_contract_v12 import V8_MAIN_SCANNER_CONTRACT_VERSION
+    from .v8_main_source_fidelity import V8_MAIN_SOURCE_FIDELITY_VERSION, V8_4_PACKAGE_VERSION, source_bundle_status
+    from .v8_main_source_gate import V8_MAIN_SOURCE_GATE_VERSION
+    from .v8_main_scanner_failure_isolation import V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION
+    from .v8_4_discovery_consistency import V8_4_DISCOVERY_CONSISTENCY_VERSION
+    from .v8_source_identity_guard_v221 import V8_SOURCE_IDENTITY_GUARD_VERSION, source_identity_guard_status
+    from .v8_system_semantics_v21 import V8_SYSTEM_SEMANTICS_VERSION
+    from .v8_semantic_core_v22 import V8_SEMANTIC_CORE_VERSION
+    from .v8_main_recall_conservation import V8_MAIN_RECALL_CONSERVATION_VERSION
+    from .v8_market_discovery_admission import V8_MARKET_DISCOVERY_ADMISSION_VERSION
+    from .v8_next_successor import V8_NEXT_POLICY_HASH, V8_NEXT_POLICY_VERSION
+    from .v8_pre_live_integrity_v20 import V8_PRE_LIVE_INTEGRITY_VERSION
+    from .v8_pre_live_integrity_v201 import V8_PRE_LIVE_INTEGRITY_PATCH_VERSION
+    from .models import canonical_hash
+
+    cls = runtime.ProductionStockAgent
+    mro = [f"{item.__module__}.{item.__name__}" for item in cls.__mro__]
+    composition = {
+        "runtime_module": cls.__module__,
+        "runtime_class": cls.__name__,
+        "mro": mro,
+        "main_is_sole_discovery_owner": True,
+        "python_scanner_routing_authority": False,
+        "discovery_recall_lite_runtime_installed": any("DiscoveryRecallLiteProductionStockAgent" in item for item in mro),
+        "discovery_breadth_provider_version": getattr(adapters.CompositeLiveMarketContextProvider, "discovery_recall_lite_version", None),
+        "integrity_version": getattr(cls, "HUNT_INTEGRITY_VERSION", None),
+        "integrity_patch_version": getattr(cls, "HUNT_INTEGRITY_PATCH_VERSION", None),
+        "allocation_guard_version": getattr(cls, "ALLOCATION_GUARD_VERSION", None),
+        "v8_primary_version": getattr(cls, "v8_primary_version", None),
+        "v8_policy_version": V8_NEXT_POLICY_VERSION,
+        "v8_ruleset_hash": V8_NEXT_POLICY_HASH,
+        "v8_grade_quota_firewall_version": V8_GRADE_QUOTA_FIREWALL_VERSION,
+        "v8_evidence_origin_version": getattr(cls, "v8_evidence_origin_version", V8_EVIDENCE_ORIGIN_VERSION),
+        "v8_next_successor_version": getattr(cls, "v8_next_successor_version", None),
+        "v8_next_runtime_version": getattr(cls, "v8_next_runtime_version", None),
+        "v8_next_terminal_capture_version": getattr(cls, "v8_next_terminal_capture_version", None),
+        "v8_next_terminal_restore_version": getattr(cls, "v8_next_terminal_restore_version", None),
+        "v8_main_discovery_coach_version": getattr(cls, "v8_main_discovery_coach_version", V8_MAIN_DISCOVERY_COACH_VERSION),
+        "v8_main_discovery_integrity_version": V8_MAIN_DISCOVERY_INTEGRITY_VERSION,
+        "v8_main_discovery_post_version": V8_MAIN_DISCOVERY_POST_VERSION,
+        "v8_main_scanner_contract_version": V8_MAIN_SCANNER_CONTRACT_VERSION,
+        "v8_main_scanner_output_contract_version": SCANNER_OUTPUT_CONTRACT_VERSION,
+        "v8_pre_live_integrity_version": getattr(cls, "v8_pre_live_integrity_version", V8_PRE_LIVE_INTEGRITY_VERSION),
+        "v8_pre_live_integrity_patch_version": V8_PRE_LIVE_INTEGRITY_PATCH_VERSION,
+        "v8_main_forensic_audit_sha256": getattr(cls, "v8_main_forensic_audit_sha256", V8_MAIN_FORENSIC_AUDIT_SHA256),
+        "v8_main_source_fidelity_version": V8_MAIN_SOURCE_FIDELITY_VERSION,
+        "v8_discovery_source_package_version": V8_4_PACKAGE_VERSION,
+        "v8_main_source_gate_version": getattr(cls, "v8_main_source_gate_version", V8_MAIN_SOURCE_GATE_VERSION),
+        "v8_main_scanner_failure_isolation_version": getattr(cls, "v8_main_scanner_failure_isolation_version", V8_MAIN_SCANNER_FAILURE_ISOLATION_VERSION),
+        "v8_4_discovery_consistency_version": getattr(cls, "v8_4_discovery_consistency_version", V8_4_DISCOVERY_CONSISTENCY_VERSION),
+        "v8_source_identity_guard_version": V8_SOURCE_IDENTITY_GUARD_VERSION,
+        "v8_source_identity_guard": source_identity_guard_status(),
+        "v8_system_semantics_version": getattr(cls, "v8_system_semantics_version", V8_SYSTEM_SEMANTICS_VERSION),
+        "v8_semantic_core_version": getattr(cls, "v8_semantic_core_version", V8_SEMANTIC_CORE_VERSION),
+        "v8_main_recall_conservation_version": getattr(cls, "v8_main_recall_conservation_version", V8_MAIN_RECALL_CONSERVATION_VERSION),
+        "v8_market_discovery_admission_version": getattr(cls, "v8_market_discovery_admission_version", V8_MARKET_DISCOVERY_ADMISSION_VERSION),
+        "v8_source_bundle": source_bundle_status(),
+        "discovery_recall_firewall_version": DISCOVERY_RECALL_FIREWALL_VERSION,
+        "shadow_health_version": getattr(shadow, "SHADOW_HEALTH_VERSION", None),
+        "shadow_non_evaluable_guard_version": getattr(shadow.DailyShadowRunner, "shadow_non_evaluable_guard_version", None),
+    }
+    version_vector = {
+        "runtime_module": composition["runtime_module"],
+        "runtime_class": composition["runtime_class"],
+        "v8_policy_version": composition["v8_policy_version"],
+        "v8_ruleset_hash": composition["v8_ruleset_hash"],
+        "v8_semantic_core_version": composition["v8_semantic_core_version"],
+        "v8_system_semantics_version": composition["v8_system_semantics_version"],
+        "v8_discovery_source_package_version": composition["v8_discovery_source_package_version"],
+        "v8_source_identity_guard_version": composition["v8_source_identity_guard_version"],
+    }
+    composition["production_version_vector"] = version_vector
+    composition["canonical_production_entrypoint"] = (
+        composition["runtime_class"] == "V8PreLiveSentinelProductionStockAgent"
+        and composition["main_is_sole_discovery_owner"] is True
+        and composition["discovery_recall_lite_runtime_installed"] is False
+    )
+    composition["production_composition_valid"] = bool(
+        composition["canonical_production_entrypoint"]
+        and composition["v8_source_bundle"].get("complete") is True
+        and composition["v8_source_identity_guard"].get("complete") is True
+    )
+    composition["production_composition_hash"] = canonical_hash({
+        "mro": mro,
+        "version_vector": version_vector,
+        "canonical_production_entrypoint": composition["canonical_production_entrypoint"],
+    })
+    return composition

@@ -1,0 +1,40 @@
+{
+  "canonical_package": "STOCK_SCANNING_PROMPTS_V8_4_ENGINE_HARDENED_2026-09-02",
+  "canonical_runtime_tree_hash": "40d19cf6613fa1c093cb102e3170d7657460599db3b2a1fc39eb6748ef31093a",
+  "core": [
+    {
+      "bytes": 3052,
+      "drive_id": "1nul1UrTIcFCaklgmaqqISivNhS19DX2R",
+      "path": "DISCOVERY_COMMON_CONTRACT.md",
+      "role": "discovery_common_contract",
+      "sha256": "1639a5caebf3eed256466ff2acb8a744182d557797530ea5bdacc07d3cfdaed8"
+    },
+    {
+      "bytes": 1181,
+      "drive_id": "1jmmQGH6RnhGfNUZpx65DsWKUKMpT4eFE",
+      "path": "CANONICAL_US_UNIVERSE_RULES.md",
+      "role": "canonical_us_universe_rules",
+      "sha256": "0a0c7fd9daf6304677946988fa5e6a99b91d3c38092e153a0d023b092ebcdd74"
+    }
+  ],
+  "drive_folder_id": "1iBay1jCHSwhflk1Rf0fWbuk7IAU9LIRy",
+  "hashing_policy": "SHA-256 over exact raw bytes; no newline normalization",
+  "manifest_version": "V8_4_DISCOVERY_SOURCE_LOCK_V1.0",
+  "package_version": "8.4.0",
+  "scanners": [
+    {"bytes":3533,"drive_id":"17_-Q5Ypkv0h99guu40n2zYWnfPNfFHEy","path":"02_비AI_비반도체_광역_블라인드_Discovery_V8.md","scanner_id":"02","sha256":"1ef96b966850a6cd17b40c1d2116a4fe583ed335344ac4afef42200049d19ae4"},
+    {"bytes":3233,"drive_id":"1zjRdYhvsXkxmaJE6PMsvdIfXp5N4ipbx","path":"03_최근_IPO_Busted_IPO_재평가_Discovery_V8.md","scanner_id":"03","sha256":"63d15cd4ac0a227a2317cb9e260148810712871a59c00ca16900f5b41a7f6343"},
+    {"bytes":2922,"drive_id":"1677R-wH2fqAgSWgk0VMhM813QXKvSc0e","path":"04_턴어라운드_실적주_Discovery_V8.md","scanner_id":"04","sha256":"82d1f7968a8afbb37668f3b73b90c96b4c515048f09fce27a9ecc7e48ff5899f"},
+    {"bytes":2944,"drive_id":"1WN0zaKXTSqbiC2K5o0gnnLZx1CSS4UJK","path":"05_정책_이벤트_국방_원전_우라늄_핵심광물_에너지_안보_Discovery_V8.md","scanner_id":"05","sha256":"1386a6184e0b91990ec48c5e93da52e0d8c21c3675abece4f9a66d95b591495e"},
+    {"bytes":2796,"drive_id":"1AyOKVXNV8n9O4IUXA_cVcxiPjFKFtZRI","path":"06_우주_방산_ISR_항공우주_부품_Discovery_V8.md","scanner_id":"06","sha256":"89cb83cba3045af23ffff4b40faec1a5f5aaf29f7e860a3c470135c1acc57fca"},
+    {"bytes":2688,"drive_id":"1BD_gUn6Qc5uxoKOdJSOmVqTYCrvuBPMA","path":"07_덜_알려진_수익성_개선_소형주_Discovery_V8.md","scanner_id":"07","sha256":"1417cb3f364bda218b016746662bfc2f411154b016fb37a3ff97c0dcd371f6e3"},
+    {"bytes":2773,"drive_id":"1EZyr5oLT2c-15z3YkW_aDW8jCrCPF13g","path":"08_공모_블록딜_Secondary_소화_후_회복주_Discovery_V8.md","scanner_id":"08","sha256":"1a7c67f527456d0ae4d188250a046c472c41c96a08b46a017309ed8d31f8edad"},
+    {"bytes":2783,"drive_id":"1E-cKjlX45Nh5Fyvnr65mNwwEw0-0o_Yk","path":"09_내부자_매수_자사주_방어형_턴어라운드_Discovery_V8.md","scanner_id":"09","sha256":"4005b4aaf3abe9927abc11f3300fa38601170b5f40e72445980fcddf30179c56"},
+    {"bytes":2726,"drive_id":"1QsYQvtUl1iwjLpVxI-UJhGEZR88AV0z7","path":"10_부채_리파이낸싱_파산위험_제거형_Discovery_V8.md","scanner_id":"10","sha256":"0c00d953d9b1dae0090b053247ac7997cc02810ae6e9c19289281e16bfed66b3"},
+    {"bytes":2892,"drive_id":"1eIZQ5vw-V7pRXa9KyFaR-tEyZOeakiI9","path":"11_실적_후_추정치_상향_지연반응주_Discovery_V8.md","scanner_id":"11","sha256":"8873b3f317f81bac5b92db85984b16d836a1466ba936a3689d5f4ab6febee3c4"},
+    {"bytes":2775,"drive_id":"1FtCYX5OLm_srYHPU9vSD_0lQeWvlU09m","path":"12_고객집중_해소_두_번째_대형고객_확보주_Discovery_V8.md","scanner_id":"12","sha256":"060089cfa85cd2b6f631da5fd255f2bb4b7574bf8e46c0fdbbc922ff1487d14c"},
+    {"bytes":2762,"drive_id":"1Tiwl57ntiIquauPzsERn4em21rSO5qC0","path":"13_핀테크_헬스케어_비반도체_소프트웨어_로테이션_Discovery_V8.md","scanner_id":"13","sha256":"8ddf8b13aa3a2603008d3d3e9ad279a6016492708f50fdd39071033ea89bfd4f"},
+    {"bytes":3047,"drive_id":"1zBdFujbPL5CEkD-iR8CDw9lIq3yko11c","path":"14_AI_병목_확장_예외_후보_Discovery_V8.md","scanner_id":"14","sha256":"96aadc654d67eae1ad474b1fed667406ce389a6b90a6d5042cb22fb42a41735c"}
+  ],
+  "source_root": "prompts/v8_4"
+}

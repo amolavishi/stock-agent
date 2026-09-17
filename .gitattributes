@@ -1,0 +1,2 @@
+# Canonical V8.4 source bytes are hashed exactly; never perform EOL conversion.
+prompts/v8_4/*.md -text
